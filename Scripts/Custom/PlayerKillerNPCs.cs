@@ -64,7 +64,9 @@ namespace Server.Custom
                     Say(AggroLines[Utility.Random(AggroLines.Length)]);
 
                 Combatant = target;
-                Activate(); // wake up the AI loop — without this the NPC stands idle after spawn
+                // Wake up the AI loop — without this the NPC stands idle after spawn
+                if (AIObject != null)
+                    AIObject.Action = ActionType.Combat;
 
                 // Auto-delete after 5 min if the player escapes
                 Timer.DelayCall(TimeSpan.FromMinutes(5.0), () =>

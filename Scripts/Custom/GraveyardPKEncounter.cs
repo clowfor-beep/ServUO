@@ -149,7 +149,6 @@ namespace Server.Custom
                 // Spawn a random Newbie-tier PK archetype
                 BasePKNPC pk = CreateRandomNewbie();
                 pk.MoveToWorld(spawnPoint, Map.Felucca);
-                pk.Activate(); // start AI ticking immediately on spawn
                 pk.InitEncounter(target);
 
                 // Track it
