@@ -3,7 +3,11 @@
 // Scripts/Custom/GraveyardPKEncounter.cs
 //
 // Detects players entering the Britain graveyard and
-// portals in a NovicePlayerKiller who immediately hunts them.
+// portals in a random Newbie-tier PK who immediately hunts them.
+//
+// Spawns one of 7 archetypes at random (all Newbie tier):
+//   ClassicDexxerNewbie, PureMageNewbie, NecroMageNewbie,
+//   NinjaDexxerNewbie, PaladinNewbie, ArcherNewbie, SampireNewbie
 //
 // Features:
 //   - 3-minute cooldown per player (no spam)
@@ -40,7 +44,7 @@ namespace Server.Custom
         // Per-player cooldown and active PK tracking
         // -------------------------------------------------------
         private static readonly Dictionary<Mobile, DateTime>        Cooldowns  = new Dictionary<Mobile, DateTime>();
-        private static readonly Dictionary<Mobile, NovicePlayerKiller> ActivePKs = new Dictionary<Mobile, NovicePlayerKiller>();
+        private static readonly Dictionary<Mobile, BasePKNPC> ActivePKs = new Dictionary<Mobile, BasePKNPC>();
 
         private static readonly TimeSpan CooldownDuration = TimeSpan.FromMinutes(3.0);
 
@@ -80,7 +84,7 @@ namespace Server.Custom
                 return;
 
             // Already has an active PK hunting them?
-            if (ActivePKs.TryGetValue(pm, out var existingPK))
+            if (ActivePKs.TryGetValue(pm, out BasePKNPC existingPK))
             {
                 if (existingPK != null && !existingPK.Deleted)
                     return; // PK is still alive and hunting
@@ -142,9 +146,10 @@ namespace Server.Custom
                     0x3728, 10, 10, 2023);
                 Effects.PlaySound(spawnPoint, Map.Felucca, 0x1FE);
 
-                // Spawn the PK
-                NovicePlayerKiller pk = new NovicePlayerKiller(target);
+                // Spawn a random Newbie-tier PK archetype
+                BasePKNPC pk = CreateRandomNewbie();
                 pk.MoveToWorld(spawnPoint, Map.Felucca);
+                pk.InitEncounter(target);
 
                 // Track it
                 ActivePKs[target] = pk;
@@ -152,7 +157,7 @@ namespace Server.Custom
                 // Notify player
                 target.SendMessage(0x26, "A dark figure steps through a shimmering portal...");
 
-                // Clean up ActivePKs entry when PK is killed
+                // Clean up ActivePKs entry when PK is killed/deleted
                 Timer.DelayCall(TimeSpan.FromSeconds(5.0), TimeSpan.FromSeconds(5.0), () =>
                 {
                     if (pk == null || pk.Deleted)
@@ -162,6 +167,23 @@ namespace Server.Custom
                     }
                 });
             });
+        }
+
+        // -------------------------------------------------------
+        // Pick a random Newbie-tier archetype
+        // -------------------------------------------------------
+        private static BasePKNPC CreateRandomNewbie()
+        {
+            switch (Utility.Random(7))
+            {
+                case 0:  return new ClassicDexxerNewbie();
+                case 1:  return new PureMageNewbie();
+                case 2:  return new NecroMageNewbie();
+                case 3:  return new NinjaDexxerNewbie();
+                case 4:  return new PaladinNewbie();
+                case 5:  return new ArcherNewbie();
+                default: return new SampireNewbie();
+            }
         }
 
         // -------------------------------------------------------
