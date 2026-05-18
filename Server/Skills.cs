@@ -1,4 +1,4 @@
-#region References
+﻿#region References
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -877,6 +877,7 @@ namespace Server
 			return "...";
 		}
 
+		public static Action<Mobile, string, double> OnSkillUsed;
 		public static bool UseSkill(Mobile from, SkillName name)
 		{
 			return UseSkill(from, (int)name);
@@ -907,7 +908,10 @@ namespace Server
 					{
 						from.DisruptiveAction();
 
-						from.NextSkillTime = Core.TickCount + (int)info.Callback(from).TotalMilliseconds;
+						var skillDelay = info.Callback(from);
+								from.NextSkillTime = Core.TickCount + (int)skillDelay.TotalMilliseconds;
+
+								OnSkillUsed?.Invoke(from, info.Name, skillDelay.TotalSeconds);
 
 						return true;
 					}

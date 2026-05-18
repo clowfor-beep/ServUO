@@ -1,4 +1,4 @@
-using Server.Mobiles;
+﻿using Server.Mobiles;
 using Server.Network;
 using Server.SkillHandlers;
 using Server.Targeting;
@@ -19,7 +19,7 @@ namespace Server.Items
             from.SendLocalizedMessage(500343); // What do you wish to appraise and identify?
             from.Target = new InternalTarget();
 
-            return TimeSpan.FromSeconds(1.0);
+            return TimeSpan.FromSeconds(5.0);
         }
 
         [PlayerVendorTarget]

@@ -1,4 +1,4 @@
-#region References
+﻿#region References
 using Server.Items;
 using Server.Misc;
 using Server.Mobiles;
@@ -325,6 +325,7 @@ namespace Server.SkillHandlers
 
 
                     m_From.NextSkillTime = Core.TickCount + 10000;
+                    Server.Custom.CooldownSystem.Start(m_From, "Begging", 10.0);
                 }
             }
         }

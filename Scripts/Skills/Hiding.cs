@@ -1,3 +1,4 @@
+using Server.Custom;
 using Server.Multis;
 using Server.Network;
 using System;
@@ -102,6 +103,9 @@ namespace Server.SkillHandlers
 
                 m.LocalOverheadMessage(MessageType.Regular, 0x22, 501241); // You can't seem to hide here.
             }
+
+            // Show cooldown HUD
+            CooldownSystem.Start(m, "Hiding", 10.0);
 
             return TimeSpan.FromSeconds(10.0);
         }

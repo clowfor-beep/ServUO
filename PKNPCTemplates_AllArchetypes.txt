@@ -1,0 +1,682 @@
+# ================================================================
+# Player Killer NPC Templates — Full Design Document
+# Shard: Fun Stuff | ServUO + ClassicUO
+# Created: 2026-05-18
+# ================================================================
+#
+# 7 archetypes × 3 tiers = 21 NPC templates
+#
+# TIER CAPS (applied to all archetypes):
+#   Newbie   — StatCap 150, SkillCap 450
+#   Advanced — StatCap 180, SkillCap 600
+#   Expert   — StatCap 225, SkillCap 700
+#
+# GLOBAL RULES:
+#   Karma        : Negative (murderer) — grants Justice virtue on kill
+#   FightMode    : FightMode.Closest
+#   Body         : 0x190 male / 0x191 female (random)
+#   Respawn      : Controlled by spawner, not built-in
+#
+# ================================================================
+# ARCHETYPE 1 — CLASSIC DEXXER (Warrior)
+# ================================================================
+#
+# Description:
+#   The oldest and most recognisable PK template in UO history.
+#   Pure melee: sword, shield, and bandages. No magic. Relies on
+#   high damage output, parry defence, and self-healing.
+#   Predictable but brutally effective in close quarters.
+#
+# ─────────────────────────────────────────
+# NEWBIE DEXXER  |  StatCap 150  SkillCap 450
+# ─────────────────────────────────────────
+# Spawn Name  : "a ruffian" / "a cutpurse"
+# Str/Dex/Int : 75 / 50 / 25
+# HP/Stam/Mana: 75 / 50 / 25
+#
+# Skills:
+#   Swords         80
+#   Tactics        75
+#   Anatomy        70
+#   Healing        75
+#   Parry          70
+#   Hiding         30  (escape if low HP)
+#   ─────────────
+#   Total         400  (50 spare — put into Resisting Spells 50)
+#
+# Gear  : Leather armour, Katana, Wooden Shield
+# Loot  : 50–200 gold, leather pieces, bandages x10
+# Fame  : 1500  |  Karma : -1500
+# AI    : AI_Melee, aggressive on sight at range 10
+#
+# ─────────────────────────────────────────
+# ADVANCED DEXXER  |  StatCap 180  SkillCap 600
+# ─────────────────────────────────────────
+# Spawn Name  : "a brigand" / "a bandit"
+# Str/Dex/Int : 85 / 65 / 30
+# HP/Stam/Mana: 85 / 65 / 30
+#
+# Skills:
+#   Swords        100
+#   Tactics       100
+#   Anatomy        90
+#   Healing        90
+#   Parry         100
+#   Hiding         60
+#   Resisting      60
+#   ─────────────
+#   Total         600
+#
+# Gear  : Ringmail chest+legs, Leather arms/gorget, Katana, Metal Shield
+# Loot  : 200–600 gold, ringmail pieces, bandages x25, minor magic item 5%
+# Fame  : 5000  |  Karma : -5000
+# AI    : AI_Melee, uses Concussion Blow / Mortal Strike specials
+#
+# ─────────────────────────────────────────
+# EXPERT DEXXER  |  StatCap 225  SkillCap 700
+# ─────────────────────────────────────────
+# Spawn Name  : "a warlord" / "a dread warrior"
+# Str/Dex/Int : 100 / 80 / 45
+# HP/Stam/Mana: 100 / 80 / 45
+#
+# Skills:
+#   Swords        100
+#   Tactics       100
+#   Anatomy       100
+#   Healing       100
+#   Parry         100
+#   Hiding         70
+#   Resisting      70
+#   Chivalry       60  (bonus heals + honor procs)
+#   ─────────────
+#   Total         700
+#
+# Gear  : Platemail or studded set (GM), Verite Katana, Heater Shield
+#         Cloak of Power or comparable minor magic
+# Loot  : 600–2000 gold, platemail, GM weapon, potions, rare item 10%
+# Fame  : 12500  |  Karma : -12500
+# AI    : AI_Melee, uses specials, drinks pots at 35% HP
+#
+#
+# ================================================================
+# ARCHETYPE 2 — PURE MAGE (Tank Mage)
+# ================================================================
+#
+# Description:
+#   The cornerstone PvP caster. Magery + Evaluate Intelligence for
+#   raw spell damage, Wrestling to avoid melee interrupts without a
+#   weapon, and Meditation / Focus for mana sustain. Dominant in
+#   UO from Trammel-era through AoS.
+#
+# ─────────────────────────────────────────
+# NEWBIE MAGE  |  StatCap 150  SkillCap 450
+# ─────────────────────────────────────────
+# Spawn Name  : "a dark mage" / "a rogue mage"
+# Str/Dex/Int : 30 / 30 / 90
+# HP/Stam/Mana: 30 / 30 / 90
+#
+# Skills:
+#   Magery         80
+#   Eval Int       75
+#   Magic Resist   70
+#   Meditation     75
+#   Wrestling      60
+#   Hiding         40  (break combat, regen mana)
+#   ─────────────
+#   Total         400  (50 spare — Tactics 50 for minor melee)
+#
+# Gear  : Robe, Sandals, Spellbook (Circles 1–5), full basic reagents
+# Spells: Fireball, Lightning, Harm, Magic Arrow, Heal, Cure
+# Loot  : 50–200 gold, reagents, minor scrolls
+# Fame  : 2000  |  Karma : -2000
+# AI    : AI_Mage, favours ranged spells, maintains distance
+#
+# ─────────────────────────────────────────
+# ADVANCED MAGE  |  StatCap 180  SkillCap 600
+# ─────────────────────────────────────────
+# Spawn Name  : "a war mage" / "a sorcerer"
+# Str/Dex/Int : 35 / 35 / 110
+# HP/Stam/Mana: 35 / 35 / 110
+#
+# Skills:
+#   Magery        100
+#   Eval Int      100
+#   Magic Resist  100
+#   Meditation    100
+#   Wrestling      80
+#   Focus          60
+#   Hiding         60
+#   ─────────────
+#   Total         600
+#
+# Gear  : Mage robe (dyed dark), GM spellbook (all 8 circles), reagents
+# Spells: Explosion + Energy Bolt combo, Poison, Chain Lightning, Heal
+# Loot  : 200–700 gold, full reagent set, GM spellbook, scrolls
+# Fame  : 5000  |  Karma : -5000
+# AI    : AI_Mage, uses Explosion pre-cast + Energy Bolt follow-up
+#
+# ─────────────────────────────────────────
+# EXPERT MAGE  |  StatCap 225  SkillCap 700
+# ─────────────────────────────────────────
+# Spawn Name  : "a archmage assassin" / "a void scholar"
+# Str/Dex/Int : 40 / 40 / 145
+# HP/Stam/Mana: 40 / 40 / 145
+#
+# Skills:
+#   Magery        100
+#   Eval Int      100
+#   Magic Resist  100
+#   Meditation    100
+#   Wrestling     100
+#   Focus         100
+#   Inscription   100  (passive SDI bonus, scroll use)
+#   ─────────────
+#   Total         700
+#
+# Gear  : Exceptional mage robe, GM spellbook, Mage's Wand backup
+#         Wizard's Hat, Bracelet of Health (minor magic)
+# Spells: Full repertoire — favours Meteor Swarm, Flamestrike, EBolt
+# Loot  : 700–2000 gold, GM spellbook, inscription scrolls, rare item 15%
+# Fame  : 12500  |  Karma : -12500
+# AI    : AI_Mage, uses Field spells to zone control, teleports to reposition
+#
+#
+# ================================================================
+# ARCHETYPE 3 — NECROMANCER MAGE (NecroMage)
+# ================================================================
+#
+# Description:
+#   The most feared PvP template of the AoS/SE era. Combines full
+#   Magery with Necromancy: Wraith Form drains mana on hit,
+#   Strangle bleeds targets dry of mana, Wither devastates groups.
+#   Near-immune to poison. Self-sustaining through Spirit Speak.
+#
+# ─────────────────────────────────────────
+# NEWBIE NECROMAGE  |  StatCap 150  SkillCap 450
+# ─────────────────────────────────────────
+# Spawn Name  : "a blood mage" / "a dark acolyte"
+# Str/Dex/Int : 30 / 30 / 90
+# HP/Stam/Mana: 30 / 30 / 90
+#
+# Skills:
+#   Magery         70
+#   Eval Int       60
+#   Magic Resist   60
+#   Necromancy     80
+#   Spirit Speak   70
+#   Meditation     60
+#   Hiding         50
+#   ─────────────
+#   Total         450
+#
+# Gear  : Dark robe, Spellbook (Circles 1–5), Necromancer spellbook
+#         Basic necro reagents (batwing, nox crystal, pig iron)
+# Spells: Wraith Form (opens all fights), Pain Spike, Corpse Skin
+# Loot  : 50–200 gold, necro reagents, basic scrolls
+# Fame  : 2000  |  Karma : -2000
+# AI    : AI_Mage, opens in Wraith Form, targets mana users first
+#
+# ─────────────────────────────────────────
+# ADVANCED NECROMAGE  |  StatCap 180  SkillCap 600
+# ─────────────────────────────────────────
+# Spawn Name  : "a necromancer" / "a soul reaper"
+# Str/Dex/Int : 35 / 35 / 110
+# HP/Stam/Mana: 35 / 35 / 110
+#
+# Skills:
+#   Magery        100
+#   Eval Int       90
+#   Magic Resist   90
+#   Necromancy    100
+#   Spirit Speak  100
+#   Meditation     60
+#   Focus          60
+#   ─────────────
+#   Total         600
+#
+# Gear  : Bone chest + bone arms, GM spellbook + Necro spellbook
+# Spells: Strangle, Wither, Animate Dead, Poison + EBolt combo
+# Loot  : 300–800 gold, bone armour pieces, both spellbooks, necro reagents
+# Fame  : 6000  |  Karma : -6000
+# AI    : AI_Mage, casts Strangle on players using magery, Wither on groups
+#
+# ─────────────────────────────────────────
+# EXPERT NECROMAGE  |  StatCap 225  SkillCap 700
+# ─────────────────────────────────────────
+# Spawn Name  : "a dread lord" / "a death knight"
+# Str/Dex/Int : 50 / 45 / 130
+# HP/Stam/Mana: 50 / 45 / 130
+#
+# Skills:
+#   Magery        100
+#   Eval Int      100
+#   Magic Resist  100
+#   Necromancy    100
+#   Spirit Speak  100
+#   Swords        100  (melee backup in Wraith Form)
+#   Tactics       100
+#   ─────────────
+#   Total         700
+#
+# Gear  : Full bone armour (exceptional), Bone Harvester,
+#         GM spellbook + Necro spellbook, full reagents both types,
+#         Greater Heal pots x4, Greater Cure pots x4
+# Spells: Full: Strangle + Wither + Flamestrike + EBolt, Animate Dead
+# Loot  : 800–2500 gold, bone armour, both spellbooks, potions, rare 20%
+# Fame  : 15000  |  Karma : -15000
+# AI    : AI_Mage, rotates: Wraith Form → Strangle → Explosion + EBolt
+#         Animates corpses mid-fight, drinks pots at 35% HP
+#
+#
+# ================================================================
+# ARCHETYPE 4 — NINJA DEXXER
+# ================================================================
+#
+# Description:
+#   An SE-era favourite. Uses Ninjitsu's Death Strike for massive
+#   burst damage after moves, Mirror Image for confusion, and
+#   Hiding/Stealth for ambush re-engagement. Fast, slippery,
+#   and extremely dangerous in 1v1 combat.
+#
+# ─────────────────────────────────────────
+# NEWBIE NINJA  |  StatCap 150  SkillCap 450
+# ─────────────────────────────────────────
+# Spawn Name  : "a cutthroat" / "a shadow stalker"
+# Str/Dex/Int : 50 / 70 / 30
+# HP/Stam/Mana: 50 / 70 / 30
+#
+# Skills:
+#   Fencing        75
+#   Tactics        70
+#   Ninjitsu       75
+#   Hiding         75
+#   Stealth        75
+#   Anatomy        40
+#   Healing        40
+#   ─────────────
+#   Total         450
+#
+# Gear  : Kasa, dark hakama, Kryss or Assassin Spike, smoke bomb
+# Loot  : 50–150 gold, smoke bombs x3, ninja outfit
+# Fame  : 1500  |  Karma : -1500
+# AI    : AI_Melee, will hide and re-engage from stealth
+#
+# ─────────────────────────────────────────
+# ADVANCED NINJA  |  StatCap 180  SkillCap 600
+# ─────────────────────────────────────────
+# Spawn Name  : "a shadow blade" / "a phantom"
+# Str/Dex/Int : 55 / 85 / 40
+# HP/Stam/Mana: 55 / 85 / 40
+#
+# Skills:
+#   Fencing       100
+#   Tactics       100
+#   Ninjitsu      100
+#   Hiding        100
+#   Stealth       100
+#   Anatomy        60
+#   Healing        40
+#   ─────────────
+#   Total         600
+#
+# Gear  : Ninjitsu outfit (dyed black), dual Kryss or Tekagi,
+#         smoke bombs x5, mirror shards
+# Loot  : 200–600 gold, ninja consumables, fencing weapon
+# Fame  : 5000  |  Karma : -5000
+# AI    : AI_Melee, uses Death Strike after 5 tiles moved, Mirror Image
+#
+# ─────────────────────────────────────────
+# EXPERT NINJA  |  StatCap 225  SkillCap 700
+# ─────────────────────────────────────────
+# Spawn Name  : "a phantom lord" / "a shadow master"
+# Str/Dex/Int : 60 / 110 / 55
+# HP/Stam/Mana: 60 / 110 / 55
+#
+# Skills:
+#   Fencing       100
+#   Tactics       100
+#   Ninjitsu      100
+#   Hiding        100
+#   Stealth       100
+#   Anatomy       100
+#   Healing        50
+#   Focus          50
+#   ─────────────
+#   Total         700
+#
+# Gear  : Exceptional ninja suit, GM Tekagi or Kryss, smoke bombs x8
+#         Shuriken x20 (ranged opener), lesser poison potions x2
+# Loot  : 600–1800 gold, GM fencing weapon, ninja gear, shuriken
+# Fame  : 12500  |  Karma : -12500
+# AI    : AI_Melee, throws shuriken to open, hides mid-fight,
+#         Death Strike after repositioning from stealth
+#
+#
+# ================================================================
+# ARCHETYPE 5 — PALADIN (Chivalry Dexxer)
+# ================================================================
+#
+# Description:
+#   An AoS-era warrior who uses Chivalry for holy damage, Divine
+#   Fury for stamina, Enemy of One for massive single-target burst,
+#   and Consecrate Weapon. Very tanky due to self-healing through
+#   Close Wounds. Excels at sustained 1v1 pressure.
+#
+# ─────────────────────────────────────────
+# NEWBIE PALADIN  |  StatCap 150  SkillCap 450
+# ─────────────────────────────────────────
+# Spawn Name  : "a fallen knight" / "a corrupt guard"
+# Str/Dex/Int : 70 / 50 / 30
+# HP/Stam/Mana: 70 / 50 / 30
+#
+# Skills:
+#   Swords         75
+#   Tactics        70
+#   Chivalry       80
+#   Healing        70
+#   Anatomy        70
+#   Parry          55
+#   Hiding         30
+#   ─────────────
+#   Total         450
+#
+# Gear  : Studded chest, leather arms/legs, Broadsword, Wooden Shield
+#         Book of Chivalry (basic spells)
+# Spells: Close Wounds, Consecrate Weapon, Divine Fury
+# Loot  : 75–250 gold, studded armour, Book of Chivalry
+# Fame  : 1500  |  Karma : -1500
+# AI    : AI_Melee, opens with Divine Fury, heals via Close Wounds
+#
+# ─────────────────────────────────────────
+# ADVANCED PALADIN  |  StatCap 180  SkillCap 600
+# ─────────────────────────────────────────
+# Spawn Name  : "a black knight" / "a fallen paladin"
+# Str/Dex/Int : 80 / 60 / 40
+# HP/Stam/Mana: 80 / 60 / 40
+#
+# Skills:
+#   Swords        100
+#   Tactics       100
+#   Chivalry      100
+#   Healing        90
+#   Anatomy        90
+#   Parry          70
+#   Focus          50
+#   ─────────────
+#   Total         600
+#
+# Gear  : Ringmail set, Broadsword or Longsword (GM), Metal Shield
+#         Full Book of Chivalry, Bandages x30
+# Spells: Enemy of One, Holy Light, Consecrate Weapon, Close Wounds
+# Loot  : 250–700 gold, ringmail pieces, Book of Chivalry, bandages
+# Fame  : 5000  |  Karma : -5000
+# AI    : AI_Melee, uses Enemy of One to target a single player,
+#         rotates Close Wounds and Healing for sustain
+#
+# ─────────────────────────────────────────
+# EXPERT PALADIN  |  StatCap 225  SkillCap 700
+# ─────────────────────────────────────────
+# Spawn Name  : "a dark crusader" / "a blood paladin"
+# Str/Dex/Int : 95 / 75 / 55
+# HP/Stam/Mana: 95 / 75 / 55
+#
+# Skills:
+#   Swords        100
+#   Tactics       100
+#   Chivalry      100
+#   Healing       100
+#   Anatomy       100
+#   Parry         100
+#   Focus         100
+#   ─────────────
+#   Total         700
+#
+# Gear  : Platemail (exceptional, dark-dyed), GM Broadsword or Katana,
+#         Heater Shield, Full Book of Chivalry, Greater Heal pots x3
+# Spells: Full Chivalry — Enemy of One + Consecrate + Holy Light + Remove Curse
+# Loot  : 700–2000 gold, platemail pieces, exceptional weapon, potions, rare 12%
+# Fame  : 12500  |  Karma : -12500
+# AI    : AI_Melee, opens Enemy of One immediately, tanks damage while
+#         sustaining via Chivalry + Healing alternation
+#
+#
+# ================================================================
+# ARCHETYPE 6 — ARCHER
+# ================================================================
+#
+# Description:
+#   The classic ranged PK. Uses Archery for damage at distance,
+#   Hiding/Stealth to engage from concealment, and either Healing
+#   or Tactics for sustained damage. Mobile and hard to pin down.
+#   Dominant in open-world Felucca PvP where terrain matters.
+#
+# ─────────────────────────────────────────
+# NEWBIE ARCHER  |  StatCap 150  SkillCap 450
+# ─────────────────────────────────────────
+# Spawn Name  : "a road archer" / "a poacher"
+# Str/Dex/Int : 50 / 75 / 25
+# HP/Stam/Mana: 50 / 75 / 25
+#
+# Skills:
+#   Archery        80
+#   Tactics        75
+#   Anatomy        70
+#   Healing        75
+#   Hiding         75
+#   Stealth        75
+#   ─────────────
+#   Total         450
+#
+# Gear  : Leather chest, Leather Arms, Bow, Arrows x50
+# Loot  : 50–150 gold, arrows x30, leather pieces
+# Fame  : 1500  |  Karma : -1500
+# AI    : AI_Archer, stays at range, hides after kill
+#
+# ─────────────────────────────────────────
+# ADVANCED ARCHER  |  StatCap 180  SkillCap 600
+# ─────────────────────────────────────────
+# Spawn Name  : "a sniper" / "a marksman"
+# Str/Dex/Int : 60 / 90 / 30
+# HP/Stam/Mana: 60 / 90 / 30
+#
+# Skills:
+#   Archery       100
+#   Tactics       100
+#   Anatomy        90
+#   Healing        90
+#   Hiding        100
+#   Stealth       100
+#   Resisting      20
+#   ─────────────
+#   Total         600
+#
+# Gear  : Studded leather set, Composite Bow (GM), Arrows x100
+#         Bodysash, dark cloak
+# Loot  : 200–600 gold, arrows, studded pieces, GM bow
+# Fame  : 5000  |  Karma : -5000
+# AI    : AI_Archer, opens from stealth, flees to re-hide when engaged melee
+#
+# ─────────────────────────────────────────
+# EXPERT ARCHER  |  StatCap 225  SkillCap 700
+# ─────────────────────────────────────────
+# Spawn Name  : "a deadeye" / "a shadow archer"
+# Str/Dex/Int : 70 / 110 / 45
+# HP/Stam/Mana: 70 / 110 / 45
+#
+# Skills:
+#   Archery       100
+#   Tactics       100
+#   Anatomy       100
+#   Healing       100
+#   Hiding        100
+#   Stealth       100
+#   Ninjitsu      100  (Death Strike + Mirror Image)
+#   ─────────────
+#   Total         700
+#
+# Gear  : Kasa, ninja outfit, Elven Composite Longbow (exceptional),
+#         Arrows x150 (some poisoned), Shuriken x20
+# Loot  : 600–1800 gold, exceptional bow, poisoned arrows, ninja items
+# Fame  : 12500  |  Karma : -12500
+# AI    : AI_Archer, uses Death Strike combo from stealth, throws
+#         shuriken if bow is interrupted, Mirror Image when cornered
+#
+#
+# ================================================================
+# ARCHETYPE 7 — SAMPIRE (Vampire Warrior)
+# ================================================================
+#
+# Description:
+#   A post-SE hybrid warrior using Bushido's Lightning Strike for
+#   high hit chance, Necromancy's Vampiric Embrace for massive
+#   life leech on every hit, and Chivalry for Consecrate Weapon
+#   stacking. Nearly unkillable when landing hits. One of the most
+#   powerful sustained DPS builds in UO history.
+#
+# ─────────────────────────────────────────
+# NEWBIE SAMPIRE  |  StatCap 150  SkillCap 450
+# ─────────────────────────────────────────
+# Spawn Name  : "a blood warrior" / "a cursed fighter"
+# Str/Dex/Int : 65 / 60 / 25
+# HP/Stam/Mana: 65 / 60 / 25
+#
+# Skills:
+#   Swords         80
+#   Tactics        75
+#   Bushido        80
+#   Necromancy     80
+#   Spirit Speak   75
+#   Parry          60
+#   ─────────────
+#   Total         450
+#
+# Gear  : Leather armour, Katana, Bokuto (alternate)
+#         Necromancer spellbook (Vampiric Embrace, Strangle)
+# Spells: Vampiric Embrace (maintained), Strangle (opener)
+# Loot  : 75–200 gold, leather pieces, necro reagents
+# Fame  : 2000  |  Karma : -2000
+# AI    : AI_Melee, opens in Vampiric Embrace — heals on every hit
+#
+# ─────────────────────────────────────────
+# ADVANCED SAMPIRE  |  StatCap 180  SkillCap 600
+# ─────────────────────────────────────────
+# Spawn Name  : "a blood knight" / "a vampiric warrior"
+# Str/Dex/Int : 75 / 75 / 30
+# HP/Stam/Mana: 75 / 75 / 30
+#
+# Skills:
+#   Swords        100
+#   Tactics       100
+#   Bushido       100
+#   Necromancy    100
+#   Spirit Speak  100
+#   Parry         100
+#   ─────────────
+#   Total         600
+#
+# Gear  : Ringmail or studded set, GM Katana or Bokuto,
+#         Necro spellbook (Vampiric Embrace, Strangle, Pain Spike)
+#         Necro reagents (full set)
+# Loot  : 300–800 gold, weapon, armour, necro reagents
+# Fame  : 7000  |  Karma : -7000
+# AI    : AI_Melee, maintains Vampiric Embrace, uses Lightning Strike
+#         (Bushido) for high accuracy hits, Strangle if mana user
+#
+# ─────────────────────────────────────────
+# EXPERT SAMPIRE  |  StatCap 225  SkillCap 700
+# ─────────────────────────────────────────
+# Spawn Name  : "a vampire lord" / "a sanguine knight"
+# Str/Dex/Int : 90 / 85 / 50
+# HP/Stam/Mana: 90 / 85 / 50
+#
+# Skills:
+#   Swords        100
+#   Tactics       100
+#   Bushido       100
+#   Necromancy    100
+#   Spirit Speak  100
+#   Parry         100
+#   Chivalry      100  (Consecrate Weapon for holy damage stacking)
+#   ─────────────
+#   Total         700
+#
+# Gear  : Exceptional studded or platemail (dark-dyed), GM Katana,
+#         Necro spellbook, Book of Chivalry,
+#         Full necro reagents, Greater Heal pots x3
+# Spells: Vampiric Embrace + Consecrate Weapon (stacked), Strangle,
+#         Enemy of One (Chivalry), Lightning Strike (Bushido)
+# Loot  : 800–2500 gold, exceptional weapon, armour, both spellbooks,
+#         potions, rare item 20%
+# Fame  : 15000  |  Karma : -15000
+# AI    : AI_Melee, opens with Vampiric Embrace + Consecrate Weapon,
+#         uses Lightning Strike for near-guaranteed hits,
+#         stacks Enemy of One to demolish single target,
+#         almost impossible to kill while landing blows
+#
+#
+# ================================================================
+# SUMMARY TABLE
+# ================================================================
+#
+# Archetype            | Tier     | StatCap | SkillCap | Fame  | Karma
+# ---------------------+----------+---------+----------+-------+-------
+# Classic Dexxer       | Newbie   |   150   |    450   |  1500 |  -1500
+# Classic Dexxer       | Advanced |   180   |    600   |  5000 |  -5000
+# Classic Dexxer       | Expert   |   225   |    700   | 12500 | -12500
+# Pure Mage            | Newbie   |   150   |    450   |  2000 |  -2000
+# Pure Mage            | Advanced |   180   |    600   |  5000 |  -5000
+# Pure Mage            | Expert   |   225   |    700   | 12500 | -12500
+# NecroMage            | Newbie   |   150   |    450   |  2000 |  -2000
+# NecroMage            | Advanced |   180   |    600   |  6000 |  -6000
+# NecroMage            | Expert   |   225   |    700   | 15000 | -15000
+# Ninja Dexxer         | Newbie   |   150   |    450   |  1500 |  -1500
+# Ninja Dexxer         | Advanced |   180   |    600   |  5000 |  -5000
+# Ninja Dexxer         | Expert   |   225   |    700   | 12500 | -12500
+# Paladin (Chivalry)   | Newbie   |   150   |    450   |  1500 |  -1500
+# Paladin (Chivalry)   | Advanced |   180   |    600   |  5000 |  -5000
+# Paladin (Chivalry)   | Expert   |   225   |    700   | 12500 | -12500
+# Archer               | Newbie   |   150   |    450   |  1500 |  -1500
+# Archer               | Advanced |   180   |    600   |  5000 |  -5000
+# Archer               | Expert   |   225   |    700   | 12500 | -12500
+# Sampire              | Newbie   |   150   |    450   |  2000 |  -2000
+# Sampire              | Advanced |   180   |    600   |  7000 |  -7000
+# Sampire              | Expert   |   225   |    700   | 15000 | -15000
+#
+#
+# ================================================================
+# IMPLEMENTATION NOTES
+# ================================================================
+#
+# File location   : Scripts/Custom/PlayerKillerNPCs.cs
+# One file, 21 classes — or split by archetype (7 files x 3 classes)
+#
+# ServUO pattern for all PKs:
+#   : base(AIType.AI_Melee, FightMode.Closest, 10, 1, 0.2, 0.4)
+#   Mage archetypes: AIType.AI_Mage
+#   Archer archetype: AIType.AI_Archer
+#
+# Key points:
+#   - SetStr / SetDex / SetInt must respect tier stat caps
+#   - Set skills in constructor via SetSkill(SkillName.X, value)
+#   - Karma = -X set in constructor ensures murderer flag
+#   - Generate loot in GenerateLoot() override
+#   - Speech: override OnGaveMeleeAttack / OnDeath for taunts
+#   - Use AI_Mage for Necromage/Mage but add weapon as backup
+#   - Expert Sampire: must cast Vampiric Embrace at spawn start
+#
+# Taunt speech per archetype:
+#   Dexxer  : "Taste steel!", "Nowhere to run!"
+#   Mage    : "In Vas Flam!", "You cannot resist!"
+#   Necro   : "Your soul is mine.", "Kal Vas Xen Corp Ort!"
+#   Ninja   : "You never saw me.", "Death Strike!"
+#   Paladin : "For the darkness!", "Your light fades here."
+#   Archer  : "Bull's-eye.", "You should have stayed home."
+#   Sampire : "I feed on your pain.", "Your blood sustains me."
+#
+# ================================================================
+# RELATED DOCUMENTS
+# ================================================================
+#
+# PKNPCDesignDoc.txt        — Original single-archetype design doc
+# SkillSynergies.cs         — Weapon bonuses apply to PK NPCs
+# CHANGELOG.md              — Update on implementation

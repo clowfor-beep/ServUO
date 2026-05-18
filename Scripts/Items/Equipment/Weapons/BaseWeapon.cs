@@ -1266,6 +1266,8 @@ namespace Server.Items
 
             if (canSwing && attacker.HarmfulCheck(damageable))
             {
+                // Capture hidden state BEFORE DisruptiveAction reveals the attacker
+                Server.Custom.SkillSynergies.RegisterBackstab(attacker);
                 attacker.DisruptiveAction();
 
                 if (attacker.NetState != null)
@@ -3145,15 +3147,22 @@ namespace Server.Items
             }
             #endregion
 
+            double synergyBonus = Server.Custom.SkillSynergies.GetWeaponDamageBonus(attacker, this);
             double totalBonus = strengthBonus + anatomyBonus + tacticsBonus + lumberBonus +
-                                (damageBonus / 100.0);
+                                synergyBonus + (damageBonus / 100.0);
 
             return damage + (int)(damage * totalBonus);
         }
 
         public virtual int ComputeDamageAOS(Mobile attacker, Mobile defender)
         {
-            return (int)ScaleDamageAOS(attacker, GetBaseDamage(attacker), true);
+            int damage = (int)ScaleDamageAOS(attacker, GetBaseDamage(attacker), true);
+
+            double backstab = Server.Custom.SkillSynergies.GetBackstabBonus(attacker, defender);
+            if (backstab > 0.0)
+                damage = (int)(damage * (1.0 + backstab));
+
+            return damage;
         }
 
         public virtual int ScaleDamageByDurability(int damage)

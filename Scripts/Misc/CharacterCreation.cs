@@ -1,4 +1,4 @@
-#region References
+﻿#region References
 using Server.Accounting;
 using Server.Items;
 using Server.Mobiles;
@@ -46,6 +46,7 @@ namespace Server.Misc
             }
 
             PackItem(new Gold(1000)); // Starting gold can be customized here
+            PackItem(new Server.Items.WorldAtlas()); // World Atlas - blessed travel guide
         }
 
         private static void AddShirt(Mobile m, int shirtHue)

@@ -1,0 +1,320 @@
+# Player Killer NPC — Design Document
+# Shard: Fun Stuff | ServUO + ClassicUO
+# Created: 2026-05-18
+# Status: Design Phase — Not Yet Implemented
+#
+# ============================================================
+# OVERVIEW
+# ============================================================
+#
+# Player Killer (PK) NPCs are human-bodied BaseCreature
+# enemies that behave like aggressive PKs from classic UO.
+# They carry standard PvP gear, use real PvP skill templates,
+# and have negative karma (murderer-flagged) so players receive
+# Justice virtue points for killing them.
+#
+# Three tiers are defined. Each tier scales stats, skills, gear
+# quality, AI aggressiveness, and loot accordingly.
+#
+# ============================================================
+# DESIGN GOALS
+# ============================================================
+#
+# - Feel like human PKs, not generic monsters
+# - Use historically authentic UO PvP templates
+# - Provide a progression-friendly challenge curve
+# - Reward players with virtue points and contextual loot
+# - Serve as test targets for the shard's PvP systems
+#   (skill synergies, backstab, cooldown HUD, etc.)
+#
+# ============================================================
+# GLOBAL RULES (all tiers)
+# ============================================================
+#
+# FightMode   : FightMode.Closest       (attacks nearest player)
+# AI Type     : AI_Melee or AI_Mage depending on template
+# Body        : 0x190 (male human) or 0x191 (female human)
+# Karma       : -10000 (murderer — grants Justice virtue on kill)
+# Fame        : scaled by tier (affects loot and Justice gain)
+# Alignment   : Chaotic Evil (not initiallyInnocent)
+# Loot        : Carrying consumables + gold + tier-appropriate gear
+# Respawn     : Defined by spawner — not built into the NPC
+# Speech      : Random PK taunts on aggro and on kill
+#
+# ============================================================
+# TIER 1 — NOVICE PLAYER KILLER
+# ============================================================
+#
+# Class Name  : NovicePlayerKiller
+# Spawn Name  : "a ruffian" / "a thug" / "a cutpurse"
+# Concept     : A fresh murderer — dangerous to new players,
+#               manageable for anyone who has gotten their footing.
+#               Classic dexxer build. No magic.
+#
+# --- STAT CAPS ---
+# Total Stat Cap : 150
+# Strength       : 75   (HP ~75, carry weight)
+# Dexterity      : 50   (swing speed, stamina)
+# Intelligence   : 25   (mana — not a caster)
+# Hit Points     : 75
+# Stamina        : 50
+# Mana           : 25
+#
+# --- SKILL CAP: 450 ---
+# Skill              Value   Notes
+# ----------------   -----   ---------------------------
+# Swords             80      Primary weapon skill
+# Tactics            75      Core damage multiplier
+# Anatomy            70      Damage + healing bonus
+# Healing            75      Self-bandage during combat
+# Parry              70      Defensive skill with shield
+# Hiding             50      May attempt to hide if losing
+# Stealth            30      Supports hiding escape
+#                    ---
+# Total              450
+#
+# --- TEMPLATE ARCHETYPE ---
+# Classic Warrior / Novice Dexxer
+# Inspired by early T2A-era newbie PKs
+# No magic, no poison, no ranged — pure melee
+#
+# --- EQUIPMENT ---
+# Weapon  : Katana (GM quality, no mods)
+# Armour  : Leather chest, leather legs, leather arms, leather gorget
+# Shield  : Wooden shield
+# Misc    : Bandages (10-20), 50-150 gold, minor reagents
+#
+# --- BEHAVIOUR ---
+# - Attacks nearest player on sight (range 10)
+# - Will attempt to heal self with bandages when HP < 40%
+# - May say a taunt on aggro
+# - Attempts to hide if HP drops below 20% (flee behaviour)
+#
+# --- LOOT ---
+# Gold     : 50 – 200
+# Items    : Leather armour pieces (worn quality, breakable)
+#            Katana (worn, may be damaged)
+#            Bandages (small amount)
+# Fame     : 1500
+# Karma    : -1500
+#
+# --- SPAWN SUGGESTIONS ---
+# Felucca roads near Britain, Trinsic outskirts, Covetous entrance
+# Spawner count: 1-2 per spawn point
+#
+# ============================================================
+# TIER 2 — ADVANCED PLAYER KILLER
+# ============================================================
+#
+# Class Name  : AdvancedPlayerKiller
+# Spawn Name  : "a brigand" / "a murderer" / "a bandit"
+# Concept     : A seasoned PK who has killed many. Uses the
+#               classic tank-mage hybrid. Dangerous to solo.
+#               Represents mid-era AoS/SE UO PvP.
+#
+# --- STAT CAPS ---
+# Total Stat Cap : 180
+# Strength       : 80   (HP ~80)
+# Dexterity      : 60   (fast swing + high stamina)
+# Intelligence   : 40   (enough mana for utility spells)
+# Hit Points     : 80
+# Stamina        : 60
+# Mana           : 40
+#
+# --- SKILL CAP: 600 ---
+# Skill              Value   Notes
+# ----------------   -----   ---------------------------
+# Swords             100     GM weapon skill
+# Tactics            100     GM tactics
+# Anatomy            80      Damage + healing boost
+# Healing            80      Reliable self-heal
+# Parry              90      Strong shield defence
+# Magery             60      Utility: heal, cure, recall
+# Magic Resist       60      Resist spells from mages
+# Hiding             30      Situational escape
+#                    ---
+# Total              600
+#
+# --- TEMPLATE ARCHETYPE ---
+# Tank Warrior with Utility Magery
+# Based on classic "warrior with a blue book" PK template
+# Can cast heals, cures, recall (escape), and low-damage spells
+#
+# --- EQUIPMENT ---
+# Weapon  : Katana or Halberd (GM, occasional +damage mod)
+# Armour  : Ringmail chest + chainmail legs + leather arms/gorget
+# Shield  : Metal shield or heater shield
+# Spell   : Spellbook with Circles 1-4 (heal, cure, recall, fireball)
+# Misc    : Bandages (20-40), 200-500 gold, full reagent set (basic)
+#
+# --- BEHAVIOUR ---
+# - Attacks nearest player (range 12)
+# - Casts Heal on self when HP < 50% (if mana available)
+# - Casts Cure when poisoned
+# - Casts Fireball as opener if target is far
+# - Will attempt Recall to escape if HP < 15%
+# - Shouts PK taunts more aggressively
+#
+# --- LOOT ---
+# Gold     : 200 – 600
+# Items    : Ringmail/chainmail pieces (good quality)
+#            GM Katana or Halberd
+#            Spellbook (Circles 1-4)
+#            Reagents (partial set)
+#            Bandages
+# Fame     : 5000
+# Karma    : -5000
+#
+# --- SPAWN SUGGESTIONS ---
+# Felucca wilderness between towns, champion spawn approaches,
+# contested dungeon entrances (Despise, Wrong, Covetous)
+# Spawner count: 1-3 per spawn point
+#
+# ============================================================
+# TIER 3 — EXPERT PLAYER KILLER
+# ============================================================
+#
+# Class Name  : ExpertPlayerKiller
+# Spawn Name  : "a dread lord" / "a slayer" / "a warlord"
+# Concept     : A veteran PK at the peak of their power.
+#               Uses the most dangerous classic PvP template:
+#               the full Necromancer Mage hybrid (NecroMage).
+#               A genuine threat even to experienced players.
+#               Represents post-AoS high-end PvP.
+#
+# --- STAT CAPS ---
+# Total Stat Cap : 225
+# Strength       : 90    (high HP pool)
+# Dexterity      : 65    (fast, hard to interrupt)
+# Intelligence   : 70    (large mana pool for sustained casting)
+# Hit Points     : 90
+# Stamina        : 65
+# Mana           : 70
+#
+# --- SKILL CAP: 700 ---
+# Skill              Value   Notes
+# ----------------   -----   ---------------------------
+# Magery             100     Full spell access
+# Evaluating Int     100     Maximises spell damage
+# Magic Resist       100     Hard to disrupt with spells
+# Necromancy         100     Wraith Form, Strangle, Wither
+# Spirit Speak       100     Necro mana regen + power
+# Swords             100     Weapon backup (katana/bokuto)
+# Tactics            100     Maximises all damage
+#                    ---
+# Total              700
+#
+# --- TEMPLATE ARCHETYPE ---
+# Pure NecroMage
+# The most feared PvP archetype in classic UO history.
+# Combines devastating spells (Explosion + Energy Bolt combo),
+# Necromancy debuffs (Strangle cuts mana, Wither AoE), and
+# Wraith Form for mana drain on hit plus near immunity to
+# poison. Can switch to melee if cornered.
+#
+# --- EQUIPMENT ---
+# Weapon  : Katana or Bone Harvester (GM, blessed by karma)
+# Armour  : Bone armour set (head, chest, arms, legs, gloves)
+# Spells  : Spellbook (all 8 circles), Necromancer spellbook
+#           (Animate Dead, Strangle, Wither, Pain Spike, Wraith Form)
+# Misc    : Bandages (40-60), 500-1500 gold
+#           Full reagent set (black pearl, mandrake, nightshade etc.)
+#           Full necro reagent set (batwing, nox crystal etc.)
+#           Greater Heal potions (2-4)
+#           Greater Cure potions (2-4)
+#
+# --- BEHAVIOUR ---
+# - Attacks nearest player (range 14)
+# - Opens combat in Wraith Form (drains mana on melee hit)
+# - Casts Strangle on target to cut mana regeneration
+# - Follows up with Explosion + Energy Bolt combo
+# - Casts Wither when multiple players are nearby
+# - Uses Pain Spike to interrupt fleeing targets
+# - Drinks Greater Heal potion if HP < 35%
+# - Casts Animate Dead on nearby corpses during combat
+# - Casts Recall to escape only if HP < 10% and mana > 20
+# - Speaks threatening battle speech, references past kills
+#
+# --- LOOT ---
+# Gold     : 600 – 2000
+# Items    : Bone armour set (good to exceptional quality)
+#            GM weapon (occasional magic mod)
+#            Both spellbooks
+#            Full reagent set
+#            Greater Heal and Cure potions
+#            Rare chance: minor magic item (ring, bracelet)
+# Fame     : 12500
+# Karma    : -12500
+#
+# --- SPAWN SUGGESTIONS ---
+# Deep Felucca dungeons (Hythloth, Deceit level 3+),
+# Champion spawn areas, near moongate camping spots,
+# Tier 2-3 contested zones (as per shard tier design)
+# Spawner count: 1 per spawn point (elite encounter)
+#
+# ============================================================
+# IMPLEMENTATION NOTES (ServUO)
+# ============================================================
+#
+# File Location : Scripts/Custom/PlayerKillerNPCs.cs
+#
+# BaseCreature constructor pattern for all tiers:
+#   : base(AIType.AI_Melee, FightMode.Closest, 10, 1, 0.2, 0.4)
+#   Mage tiers use: AIType.AI_Mage
+#
+# Key overrides needed:
+#   - InitBody()         : Human body, random skin/hair
+#   - InitOutfit()       : Equip gear per tier spec
+#   - SetSkills()        : Set skill values per tier spec
+#   - GenerateLoot()     : LootPack + AddLoot calls
+#   - OnGaveMeleeAttack(): Trigger necro spells / taunt speech
+#   - Karma              : Set negative on constructor
+#   - Fame               : Set per tier on constructor
+#
+# Speech strings — suggested taunts:
+#   Novice  : "Your gold is mine!", "Run while you can!"
+#   Advanced: "I've killed a hundred like you.", "Recall won't save you."
+#   Expert  : "Your soul feeds my power.", "Strangle...",
+#             "In Vas Nox!", "Kal Vas Xen Corp Ort!"
+#
+# ============================================================
+# STAT SUMMARY TABLE
+# ============================================================
+#
+# Tier       | Name              | Stat Cap | Skill Cap | Fame  | Karma
+# -----------+-------------------+----------+-----------+-------+--------
+# Novice     | NovicePlayerKiller|   150    |    450    |  1500 |  -1500
+# Advanced   | AdvancedPlayerKill|   180    |    600    |  5000 |  -5000
+# Expert     | ExpertPlayerKiller|   225    |    700    | 12500 | -12500
+#
+# ============================================================
+# FUTURE CONSIDERATIONS
+# ============================================================
+#
+# - Add a rare "Named PK" variant per tier with a unique name,
+#   higher stats, and a chance to drop a named magic item
+#   (e.g. "Gareth the Slayer's Katana")
+#
+# - Consider a group PK encounter: 1 Expert + 2 Novice as
+#   a pre-scripted ambush pack spawner
+#
+# - PK NPCs could drop "Bounty Tokens" redeemable at a
+#   justice NPC for rewards — ties into virtue system
+#
+# - Test all three tiers against the shard's skill synergy
+#   system to ensure backstab, weapon bonuses etc. apply
+#   correctly to NPC attackers
+#
+# - Consider whether Expert PKs should be able to detect
+#   hidden players (DetectHidden skill) to counter stealth
+#   builds — add 50 DetectHidden in place of a lesser skill
+#   if desired
+#
+# ============================================================
+# RELATED FILES
+# ============================================================
+#
+# Scripts/Custom/SkillSynergies.cs    — weapon damage bonuses apply to PKs
+# Scripts/Custom/CooldownSystem.cs    — cooldowns show on player HUD in PK fights
+# Scripts/Custom/WorldAtlas.cs        — PKs do NOT carry atlases
+# CHANGELOG.md                        — update when implemented
