@@ -32,9 +32,10 @@ namespace Server.Custom
         protected virtual string[] KillLines  => new string[0];
 
         protected BasePKNPC(AIType ai, FightMode mode, int range)
-            : base(ai, mode, range, 1, 0.2, 0.4)
+            : base(ai, mode, range, 1, 0.1, 0.2)
         {
             SetupAppearance();
+            Kills = 5; // murderer flag — red name
         }
 
         protected BasePKNPC(Serial serial) : base(serial) { }
@@ -163,6 +164,9 @@ namespace Server.Custom
             PackGold(50, 200);
             PackItem(new Bandage(10));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class ClassicDexxerAdvanced : BasePKNPC
@@ -221,6 +225,9 @@ namespace Server.Custom
             PackGold(200, 600);
             PackItem(new Bandage(25));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class ClassicDexxerExpert : BasePKNPC
@@ -283,6 +290,9 @@ namespace Server.Custom
             PackGold(600, 2000);
             PackItem(new Bandage(Utility.RandomMinMax(10, 30)));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
 
@@ -343,6 +353,9 @@ namespace Server.Custom
             PackItem(new BlackPearl(15));
             PackItem(new SulfurousAsh(15));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class PureMageAdvanced : BasePKNPC
@@ -400,6 +413,9 @@ namespace Server.Custom
             PackItem(new SulfurousAsh(25));
             PackItem(new Nightshade(25));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class PureMageExpert : BasePKNPC
@@ -462,6 +478,9 @@ namespace Server.Custom
             PackItem(new Ginseng(40));
             PackItem(new SpidersSilk(40));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
 
@@ -523,6 +542,9 @@ namespace Server.Custom
             PackItem(new NoxCrystal(15));
             PackItem(new PigIron(15));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class NecroMageAdvanced : BasePKNPC
@@ -582,6 +604,9 @@ namespace Server.Custom
             PackItem(new PigIron(25));
             PackItem(new GraveDust(25));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class NecroMageExpert : BasePKNPC
@@ -652,6 +677,9 @@ namespace Server.Custom
             PackItem(new PigIron(40));
             PackItem(new GraveDust(40));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
 
@@ -711,6 +739,9 @@ namespace Server.Custom
             AddLoot(LootPack.Poor);
             PackGold(50, 150);
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class NinjaDexxerAdvanced : BasePKNPC
@@ -769,6 +800,9 @@ namespace Server.Custom
             AddLoot(LootPack.Meager);
             PackGold(200, 600);
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class NinjaDexxerExpert : BasePKNPC
@@ -831,6 +865,9 @@ namespace Server.Custom
             PackGold(600, 1800);
             PackItem(new Shuriken(Utility.RandomMinMax(5, 15)));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
 
@@ -893,6 +930,9 @@ namespace Server.Custom
             PackGold(75, 250);
             PackItem(new BookOfChivalry());
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class PaladinAdvanced : BasePKNPC
@@ -953,6 +993,9 @@ namespace Server.Custom
             PackGold(250, 700);
             PackItem(new BookOfChivalry());
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class PaladinExpert : BasePKNPC
@@ -1024,6 +1067,9 @@ namespace Server.Custom
             PackGold(700, 2000);
             PackItem(new BookOfChivalry());
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
 
@@ -1082,6 +1128,9 @@ namespace Server.Custom
             PackGold(50, 150);
             PackItem(new Arrow(30));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class ArcherAdvanced : BasePKNPC
@@ -1138,6 +1187,9 @@ namespace Server.Custom
             PackGold(200, 600);
             PackItem(new Arrow(50));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class ArcherExpert : BasePKNPC
@@ -1199,6 +1251,9 @@ namespace Server.Custom
             PackItem(new Arrow(Utility.RandomMinMax(20, 60)));
             PackItem(new Shuriken(Utility.RandomMinMax(5, 15)));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
 
@@ -1267,6 +1322,9 @@ namespace Server.Custom
             PackItem(new BatWing(10));
             PackItem(new PigIron(10));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class SampireAdvanced : BasePKNPC
@@ -1332,6 +1390,9 @@ namespace Server.Custom
             PackItem(new NoxCrystal(20));
             PackItem(new PigIron(20));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 
     public class SampireExpert : BasePKNPC
@@ -1410,5 +1471,8 @@ namespace Server.Custom
             PackItem(new NoxCrystal(30));
             PackItem(new PigIron(30));
         }
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); }
+
     }
 }
