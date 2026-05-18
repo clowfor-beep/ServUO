@@ -74,6 +74,35 @@ namespace Server.Custom
             });
         }
 
+        public override void OnThink()
+        {
+            // Cache combatant before base call — some AI paths can clear it
+            Mobile target = Combatant;
+
+            base.OnThink();
+
+            if (Deleted || !Alive)
+                return;
+
+            // Restore combatant if base cleared it while we still have a valid target
+            if (target != null && !target.Deleted && target.Alive && Combatant == null)
+                Combatant = target;
+
+            if (Combatant == null)
+                return;
+
+            // Out of melee range: drop warmode so the client shows running animation
+            // Back into warmode the moment we're adjacent so attacks land normally
+            if (!InRange(Combatant.Location, 1))
+            {
+                if (Warmode) Warmode = false;
+            }
+            else
+            {
+                if (!Warmode) Warmode = true;
+            }
+        }
+
         public override void OnGotMeleeAttack(Mobile attacker)
         {
             base.OnGotMeleeAttack(attacker);
