@@ -877,13 +877,12 @@ namespace Server
 			return "...";
 		}
 
-		public static Action<Mobile, string, double> OnSkillUsed;
-		public static bool UseSkill(Mobile from, SkillName name)
+		public static Action<Mobile, string, double> OnSkillUsed;public static bool UseSkill(Mobile from, SkillName name)
 		{
 			return UseSkill(from, (int)name);
 		}
 
-		public static bool UseSkill(Mobile from, int skillID)
+		public static Action<Mobile, string, double> OnSkillUsed;public static bool UseSkill(Mobile from, int skillID)
 		{
 			if (!from.CheckAlive())
 			{
