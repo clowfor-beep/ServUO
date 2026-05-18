@@ -38,7 +38,7 @@ namespace Server.Custom
             Kills = 5; // murderer flag — red name
         }
 
-        protected BasePKNPC(Serial serial) : base(serial) { }
+        public BasePKNPC(Serial serial) : base(serial) { }
 
         protected void SetupAppearance()
         {
@@ -64,6 +64,7 @@ namespace Server.Custom
                     Say(AggroLines[Utility.Random(AggroLines.Length)]);
 
                 Combatant = target;
+                Activate(); // wake up the AI loop — without this the NPC stands idle after spawn
 
                 // Auto-delete after 5 min if the player escapes
                 Timer.DelayCall(TimeSpan.FromMinutes(5.0), () =>
@@ -77,7 +78,7 @@ namespace Server.Custom
         public override void OnThink()
         {
             // Cache combatant before base call — some AI paths can clear it
-            Mobile target = Combatant;
+            Mobile target = Combatant as Mobile;
 
             base.OnThink();
 

@@ -1,3 +1,4 @@
+using Server.Custom;
 using Server.Engines.Despise;
 using Server.Gumps;
 using Server.Mobiles;
@@ -503,6 +504,9 @@ namespace Server.Items
 
                     double toHeal = min + (Utility.RandomDouble() * (max - min));
 
+                    // Skill synergy: Anatomy + Healing mastery multiplies final heal amount
+                    toHeal *= 1.0 + SkillSynergies.GetHealBonus(m_Healer);
+
                     if (m_Patient.Body.IsMonster || m_Patient.Body.IsAnimal)
                     {
                         toHeal += m_Patient.HitsMax / 100;
@@ -643,6 +647,9 @@ namespace Server.Items
                 }
 
                 TimeSpan delay = GetDelay(healer, patient);
+
+                // Cooldown HUD: show the bandage application time as a Healing cooldown
+                CooldownSystem.Start(healer, "Healing", delay.TotalSeconds);
 
                 if (patient is PlayerMobile)
                     BuffInfo.AddBuff(healer, new BuffInfo(BuffIcon.Healing, 1002082, 1151400, delay, healer, string.Format("{0}", patient.Name)));

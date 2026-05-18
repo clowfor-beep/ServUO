@@ -1,0 +1,263 @@
+# ================================================================
+# COWORK HANDOVER DOCUMENT
+# Project: UO Private Shard "Fun Stuff"
+# Created: 2026-05-18
+# Purpose: Full context for continuing development in Cowork
+# ================================================================
+
+
+# ================================================================
+# ENVIRONMENT
+# ================================================================
+
+Server software : ServUO (.NET, Windows)
+Client          : ClassicUO connecting to localhost:2593
+Expansion       : EJ (Endless Journey) — all expansions included
+Shard name      : "Fun Stuff" (Config/Server.cfg)
+
+Server path     : C:\UO\SERVUO\
+Google Drive    : G:\Mit drev\  (syncs to C:\UO\SERVUO\)
+GitHub          : https://github.com/clowfor-beep/ServUO (read-only for Claude)
+
+Compile command : Run Compile.WIN - Debug.bat from C:\UO\SERVUO\
+PowerShell      : ExecutionPolicy RemoteSigned (already set)
+
+
+# ================================================================
+# WORKFLOW
+# ================================================================
+
+New .cs files      → Create directly in Google Drive → auto-syncs to C:\UO\SERVUO\
+File modifications → Cowork edits directly in C:\UO\SERVUO\ (preferred going forward)
+Patch scripts      → Naming convention: Patch_[Description]_YYYYMMDD_HHMM.ps1
+                     Run from VS Code terminal: .\Patch_Name.ps1
+
+Google Drive folder IDs (for Drive API calls if needed):
+  SERVUO root        : 15Yt7Xik5IyHoM_B83B_Mza2UDGhxNspb
+  Scripts/Custom     : 1brxrmE-g28zHhmBH8VljL9XcHIe1-tX-
+  Scripts/Skills     : 1q2qYTyuQXkvffJV6C-5c1YA2Oi3lb5aQ
+  Scripts/Items/.../Weapons : 1wR8WW0VrTZJok0lW-eve1ZMMPIzUKTU1
+  Server folder      : 1pHrFgUUIUHVRGIkwvoq38Q2qnjFu2AQH
+  Config folder      : 1drX2xxsSSSN_QCx1NWHore0rtKoTpRQX
+
+
+# ================================================================
+# COMPLETED WORK
+# ================================================================
+
+# ── 1. SKILL SYNERGY SYSTEM ──────────────────────────────────
+# File: Scripts/Custom/SkillSynergies.cs
+# Status: COMPLETE and compiling
+
+Universal weapon bonuses (all weapons):
+  Camping       +10%
+  Forensic Eval +10%
+  Tracking      +10%
+
+Metal weapon bonuses:
+  Blacksmithy   +10%
+
+Wooden weapon bonuses:
+  Carpentry     +10%
+
+Bashing weapon bonuses:
+  Mining        +10%
+
+Axe weapon bonuses:
+  Lumberjacking +10% (stacks with Blacksmithy)
+
+Backstab system:
+  StealthBackstabBonus = 2.00 (+200% damage)
+  PvM only (defender not PlayerMobile)
+  Requires 80+ Hiding AND Stealth
+  Uses PendingBackstab HashSet to capture hidden state
+  BEFORE DisruptiveAction() reveals the attacker
+
+Hooks wired into:
+  BaseWeapon.cs → ScaleDamageAOS (synergy bonus)
+  BaseWeapon.cs → ComputeDamageAOS (backstab multiplier)
+  BaseWeapon.cs → OnSwing (registers backstab BEFORE DisruptiveAction)
+
+Also defined but NOT YET HOOKED:
+  GetHealBonus()   → needs wiring into bandage apply logic
+  GetBardingBonus() → needs wiring into Discordance, Peacemaking, Provocation
+
+
+# ── 2. COOLDOWN HUD SYSTEM ───────────────────────────────────
+# File: Scripts/Custom/CooldownSystem.cs
+# Status: COMPLETE and compiling
+
+How it works:
+  CooldownSystem.Start(mobile, skillName, seconds) — call from anywhere
+  CooldownGump updates every 0.5s
+  Shows skill name + X.X countdown + progress bar
+  Colors: green (>3s) → orange (1-3s) → red (<1s)
+  Gump position: x=250, y=600 (configurable in CooldownConfig)
+  Draggable, non-closable, auto-removes when timer expires
+
+Hook architecture:
+  Skills.cs (Server/Skills.cs) has a static delegate:
+    public static Action<Mobile, string, double> OnSkillUsed;
+  CooldownSystem.Initialize() hooks into this delegate at startup
+  This fires for ALL player-activated skills with cooldown >= 1.0s
+
+Known limitation:
+  Begging and ItemID set NextSkillTime internally, bypassing the hook
+  PENDING FIX: add CooldownSystem.Start directly inside those skill files
+
+
+# ── 3. WORLD ATLAS ───────────────────────────────────────────
+# File: Scripts/Custom/WorldAtlas.cs
+# Status: COMPLETE and compiling
+
+Blessed item (0x14ED graphic, hue 2213 antique gold)
+Double-click opens book-style gump
+Left page: Towns / Dungeons / Moongates category buttons
+Right page: Location list with gem teleport buttons
+Click gem → 3-second freeze with cooldown HUD countdown
+Portal VFX at origin and destination on teleport
+Pagination (14 locations per page)
+
+All coordinates sourced from Regions.xml:
+  Towns (21)    : All Z values verified, Delucia z=37, Luna z=-50, etc.
+  Dungeons (28) : All entrance coords from <entrance> or <go> tags
+  Moongates (11): All rect-centre coords verified
+
+PENDING: In-game coordinate testing — some towns/dungeons may still
+need Z adjustment after live testing (especially underground cities)
+
+Added to new character starting backpack:
+  CharacterCreation.cs patched — every new character gets a WorldAtlas
+
+
+# ── 4. PLAYER KILLER NPC SYSTEM ─────────────────────────────
+# File: Scripts/Custom/NovicePlayerKiller.cs
+# File: Scripts/Custom/GraveyardPKEncounter.cs
+# Status: ONE COMPILE ERROR REMAINING (see below)
+
+NovicePlayerKiller:
+  Human body, random name/gender/skin
+  StatCap 150: Str 75, Dex 50, Int 25
+  SkillCap 450: Swords 80, Tactics 75, Anatomy 70, Healing 75, Parry 70,
+                Hiding 30, MagicResist 50
+  Karma -1500, Fame 1500
+  Equipment: Leather armour, Katana, Wooden Shield
+  Loot: 50-150 gold, bandages
+  Two modes:
+    Static spawn: FightMode.Aggressor (only retaliates when hit)
+    Encounter spawn: FightMode.Closest (hunts assigned target)
+
+GraveyardPKEncounter (EventSink.Movement hook):
+  Monitors Britain Graveyard rect: (1333,1441) to (1417,1523), Felucca
+  Player enters → moongate VFX → 1.2s delay → PK portals in
+  PK immediately hunts the player who triggered it
+  3-minute per-player cooldown
+  Max 1 active PK per player at a time
+  PK auto-deletes after 5 minutes if player escapes
+  GMs/staff ignored
+
+!! COMPILE ERROR TO FIX FIRST !!
+  Error: CS0507 in NovicePlayerKiller.cs line ~153
+  "cannot change access modifiers when overriding public member OnDeath"
+  Fix: change 'protected override void OnDeath' to 'public override void OnDeath'
+  Patch script ready: Patch_FixNovicePKOnDeath_20260518_1700.ps1
+  OR just edit the file directly in Cowork
+
+
+# ================================================================
+# DESIGN DOCUMENTS (in C:\UO\SERVUO\)
+# ================================================================
+
+PKNPCDesignDoc.txt
+  Original single-archetype PK design doc
+  Covers global rules, behaviour patterns, spawn suggestions
+
+PKNPCTemplates_AllArchetypes.txt
+  Full 21-template document (7 archetypes × 3 tiers)
+  Archetypes: Classic Dexxer, Pure Mage, NecroMage, Ninja,
+              Paladin, Archer, Sampire
+  Each has: stats, skills, gear, AI behaviour, loot, fame/karma
+  Implementation notes for ServUO BaseCreature pattern
+
+
+# ================================================================
+# PENDING / NEXT STEPS
+# ================================================================
+
+IMMEDIATE:
+  [ ] Fix NovicePlayerKiller.cs CS0507 error (OnDeath public/protected)
+  [ ] Compile and test the full PK encounter in Britain graveyard
+  [ ] Verify Atlas teleport coordinates in-game (especially Z values)
+      Known suspects: Luna z=-50, Umbra z=-85, Zento z=30, Mistas z=-30
+
+SHORT TERM:
+  [ ] Hook GetHealBonus() from SkillSynergies into bandage/healing logic
+  [ ] Hook GetBardingBonus() into Discordance, Peacemaking, Provocation
+  [ ] Fix cooldown HUD for Begging and ItemID skills (internal NextSkillTime)
+  [ ] Test all skill cooldowns in-game and verify HUD visibility
+  [ ] Implement Advanced and Expert PK NPCs (templates documented)
+  [ ] Consider named PK variants with unique loot (see design doc)
+
+LONG TERM:
+  [ ] Skill template / combination system (combos unlock abilities)
+  [ ] Codex / progression system
+  [ ] Tier 1/2/3 zone design (Safe Lands, Contested, Cursed)
+  [ ] Bounty Token system for PK kills
+  [ ] VPS setup for public server
+
+
+# ================================================================
+# KNOWN ISSUES / GOTCHAS
+# ================================================================
+
+Skills.cs assembly boundary:
+  Server/Skills.cs compiles BEFORE Scripts/Custom/
+  Cannot reference Server.Custom directly from Skills.cs
+  Solution: static delegate (OnSkillUsed) — already implemented
+
+PowerShell on Windows (Danish locale):
+  Unicode characters (→ ✓ etc.) in Write-Host strings cause errors
+  Always use plain ASCII in PS scripts
+
+Google Drive sync delay:
+  Files take 10-30 seconds to sync after creation
+  Run 'ls C:\UO\SERVUO\' to confirm file appeared before running
+
+Patch scripts accumulate with (1)(2) suffixes:
+  Always use timestamped names: Patch_Description_YYYYMMDD_HHMM.ps1
+
+ServUO gump limitations confirmed:
+  AddImageTiledPart does NOT exist — use two AddImageTiled calls
+  AddHtml hex colors work: <BASEFONT COLOR=#RRGGBB>
+
+
+# ================================================================
+# FILE INVENTORY (custom files created this session)
+# ================================================================
+
+C:\UO\SERVUO\Scripts\Custom\
+  SkillSynergies.cs           — Skill synergy + backstab system
+  CooldownSystem.cs           — Cooldown HUD gump system
+  WorldAtlas.cs               — Blessed world atlas item + gump
+  NovicePlayerKiller.cs       — Newbie PK NPC (HAS COMPILE ERROR)
+  GraveyardPKEncounter.cs     — Britain GY portal-in encounter system
+
+C:\UO\SERVUO\Server\
+  Skills.cs                   — Patched: OnSkillUsed delegate added
+
+C:\UO\SERVUO\Scripts\Misc\
+  CharacterCreation.cs        — Patched: WorldAtlas in starting backpack
+
+C:\UO\SERVUO\Scripts\Items\Equipment\Weapons\
+  BaseWeapon.cs               — Patched: synergy + backstab hooks
+
+C:\UO\SERVUO\ (root — docs and patch scripts)
+  PKNPCDesignDoc.txt
+  PKNPCTemplates_AllArchetypes.txt
+  CHANGELOG.md
+  Patch_AtlasTowns_20260518_1530.ps1
+  Patch_AtlasMoongatesAndStygian_20260518_1600.ps1
+  Patch_AtlasItemAndStartingPack_20260518_1630.ps1
+  Patch_FixNovicePKOnDeath_20260518_1700.ps1
+  Patch_Cleanup_20260518_1500.ps1
+  (older patch scripts — can be deleted after Cleanup runs)
