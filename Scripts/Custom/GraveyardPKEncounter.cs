@@ -101,6 +101,14 @@ namespace Server.Custom
         }
 
         // -------------------------------------------------------
+        // Public entry point for the [pktest command — skips all checks
+        // -------------------------------------------------------
+        public static void ForceEncounter(PlayerMobile target)
+        {
+            TriggerEncounter(target);
+        }
+
+        // -------------------------------------------------------
         // Trigger: portal VFX then spawn the PK
         // -------------------------------------------------------
         private static void TriggerEncounter(PlayerMobile target)
