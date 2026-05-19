@@ -51,8 +51,32 @@ nav {
 }
 .hero-bg {
   position: absolute; inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='0.8' fill='%23c9a84c' opacity='0.1'/%3E%3C/svg%3E");
-  background-size: 60px 60px;
+  background: url('images/banner_homepage.png') center 55% / cover no-repeat;
+  opacity: 0.18;
+}
+
+/* PROMO STRIP */
+.promo-strip {
+  background: var(--bg-3);
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  overflow: hidden;
+}
+.promo-strip-inner {
+  display: flex;
+  gap: 1px;
+  max-width: 1140px;
+  margin: 0 auto;
+}
+.promo-strip-inner a {
+  flex: 1; display: block; overflow: hidden; position: relative;
+}
+.promo-strip-inner img {
+  width: 100%; height: auto; display: block;
+  opacity: 0.82; transition: opacity 0.25s, transform 0.35s;
+}
+.promo-strip-inner a:hover img {
+  opacity: 1; transform: scale(1.03);
 }
 .hero-content { position: relative; max-width: 760px; }
 .hero-eyebrow { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); margin-bottom: 1.5rem; }
@@ -310,7 +334,9 @@ footer {
 
 <!-- NAV -->
 <nav>
-  <a href="#" class="nav-logo">⚔ Fun Stuff UO</a>
+  <a href="#" class="nav-logo">
+    <img src="images/logo.png" alt="Fun Stuff UO" style="height:38px;width:38px;object-fit:cover;vertical-align:middle;margin-right:8px;border-radius:2px;">Fun Stuff UO
+  </a>
   <ul class="nav-links">
     <li><a href="#features">Features</a></li>
     <li><a href="#hunters">Hunters</a></li>
@@ -429,6 +455,9 @@ footer {
         <br><br>— Inscription found on a headstone, Britain Graveyard
       </p>
     </div>
+    <div style="margin-bottom:2rem;border:0.5px solid var(--border);overflow:hidden;">
+      <img src="images/classes.png" alt="Character Classes — Warrior, Mage, Ranger, Thief, Bard, Tamer" style="width:100%;height:auto;display:block;opacity:0.85;">
+    </div>
     <div class="hunters-grid">
       <div class="hunter-card"><span class="hunter-sigil">⚔</span><p class="hunter-name">Classic Dexxer</p><p class="hunter-role">Warrior</p><p class="hunter-tier">AI Controlled</p></div>
       <div class="hunter-card"><span class="hunter-sigil">🔮</span><p class="hunter-name">Pure Mage</p><p class="hunter-role">Spellcaster</p><p class="hunter-tier">AI Controlled</p></div>
@@ -450,50 +479,38 @@ footer {
     <p class="section-lead">A world twenty-five years old and still alive. Every dungeon has a story. Every road has a risk.</p>
     <div class="gallery-grid">
       <div class="gallery-item gallery-item-tall">
-        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/0/05/Ultima_Online_-_cover.jpg/220px-Ultima_Online_-_cover.jpg" alt="Ultima Online" loading="lazy">
-        <span class="gallery-caption">The World of Britannia</span>
+        <img src="images/section_challenge.png" alt="Challenge Your Enemies" loading="lazy">
+        <span class="gallery-caption">Challenge Your Enemies</span>
       </div>
       <div class="gallery-item">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Camponotus_flavomarginatus_ant.jpg/320px-Camponotus_flavomarginatus_ant.jpg" alt="" loading="lazy" style="display:none">
-        <div style="width:100%;height:100%;background:linear-gradient(135deg,#1a0a0a 0%,#2a1010 50%,#0a0a1a 100%);display:flex;align-items:center;justify-content:center;">
-          <div style="text-align:center;padding:1rem;">
-            <div style="font-size:2rem;margin-bottom:0.5rem;">⚔</div>
-            <p style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--gold-dark);letter-spacing:0.1em;">PvP Encounters</p>
-          </div>
-        </div>
-        <span class="gallery-caption">Felucca Combat</span>
+        <img src="images/section_pvp.png" alt="PvP Encounters" loading="lazy">
+        <span class="gallery-caption">PvP Encounters</span>
       </div>
       <div class="gallery-item">
-        <div style="width:100%;height:100%;background:linear-gradient(135deg,#0a1a0a 0%,#0d2a1a 50%,#0a0a10 100%);display:flex;align-items:center;justify-content:center;">
-          <div style="text-align:center;padding:1rem;">
-            <div style="font-size:2rem;margin-bottom:0.5rem;">🌿</div>
-            <p style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--gold-dark);letter-spacing:0.1em;">The Wilderness</p>
-          </div>
-        </div>
-        <span class="gallery-caption">Open World</span>
-      </div>
-      <div class="gallery-item">
-        <div style="width:100%;height:100%;background:linear-gradient(135deg,#0a0a2a 0%,#1a0a2a 50%,#0a0a1a 100%);display:flex;align-items:center;justify-content:center;">
-          <div style="text-align:center;padding:1rem;">
-            <div style="font-size:2rem;margin-bottom:0.5rem;">💀</div>
-            <p style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--gold-dark);letter-spacing:0.1em;">The Dungeons</p>
-          </div>
-        </div>
+        <img src="images/section_dungeons.png" alt="The Dungeons" loading="lazy">
         <span class="gallery-caption">Dungeon Delving</span>
       </div>
       <div class="gallery-item">
-        <div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1200 0%,#2a1e00 50%,#0a0a00 100%);display:flex;align-items:center;justify-content:center;">
-          <div style="text-align:center;padding:1rem;">
-            <div style="font-size:2rem;margin-bottom:0.5rem;">🏰</div>
-            <p style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--gold-dark);letter-spacing:0.1em;">Britain</p>
-          </div>
-        </div>
-        <span class="gallery-caption">The Capital City</span>
+        <img src="images/section_worldmap.png" alt="Britannia" loading="lazy">
+        <span class="gallery-caption">Britannia</span>
+      </div>
+      <div class="gallery-item">
+        <img src="images/section_cities.png" alt="Cities of the Realm" loading="lazy">
+        <span class="gallery-caption">Cities of the Realm</span>
       </div>
     </div>
-    <p style="font-family:'Crimson Text',serif;font-size:0.9rem;color:var(--text-dim);margin-top:1.25rem;text-align:right;">Screenshots coming soon as the server fills with life.</p>
   </div>
 </section>
+
+<!-- PROMO STRIP -->
+<div class="promo-strip">
+  <div class="promo-strip-inner">
+    <a href="#connect"><img src="images/promo_join.png" alt="Join Now — Become a Legend"></a>
+    <a href="#gallery"><img src="images/promo_dungeons.png" alt="Dangerous Dungeons — Rich Loot"></a>
+    <a href="#hunters"><img src="images/promo_pvp.png" alt="Epic PvP — Real Players"></a>
+    <a href="#connect"><img src="images/promo_trueuo.png" alt="A True UO Experience"></a>
+  </div>
+</div>
 
 <!-- UPDATES & CHANGELOG -->
 <section id="updates">
