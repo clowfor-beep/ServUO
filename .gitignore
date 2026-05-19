@@ -45,6 +45,7 @@
 *.exe.config
 *.sh
 !deploy.sh
+!restart.sh
 *.suo
 *.idea
 *.log
