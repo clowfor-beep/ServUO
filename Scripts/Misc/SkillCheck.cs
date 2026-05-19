@@ -378,13 +378,15 @@ namespace Server.Misc
                     toGain = Utility.Random(4) + 1;
 
                 #region Custom Skill Gain Boost
-                // 2x gain below 50, 1.5x gain from 50 to 80
+                // 0-20: 0.5 (5x), 20-50: 0.4 (4x), 50-80: 0.2 (2x), 80+: normal
                 if (from is PlayerMobile)
                 {
-                    if (skill.Base < 50.0)
-                        toGain = (int)Math.Max(1, toGain * 2.0);
+                    if (skill.Base < 20.0)
+                        toGain = (int)Math.Max(1, toGain * 5.0);
+                    else if (skill.Base < 50.0)
+                        toGain = (int)Math.Max(1, toGain * 4.0);
                     else if (skill.Base < 80.0)
-                        toGain = (int)Math.Max(1, toGain * 1.5);
+                        toGain = (int)Math.Max(1, toGain * 2.0);
                 }
                 #endregion
 
