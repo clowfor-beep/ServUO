@@ -44,25 +44,23 @@ fi
 
 echo "Waiting for ServUO to finish loading..."
 
-# Wait up to 3 minutes for the server to stabilise
-# ServUO is ready when the mono process drops below 20% CPU (world load complete)
+# Wait up to 3 minutes for the server to accept connections on port 2593
 for i in $(seq 1 90); do
     sleep 2
-    CPU=$(ps aux | grep "mono ServUO" | grep -v grep | awk '{print $3}' | head -1)
-    CPU_INT=${CPU%.*}
 
-    if [ -z "$CPU_INT" ]; then
+    if ! pgrep -f "mono ServUO.exe" > /dev/null; then
         echo "ERROR: ServUO process died. Check: docker exec servuo tail -30 /home/servuo/servuo.log"
         exit 1
     fi
 
-    echo "  loading... (CPU: ${CPU}%)"
-
-    if [ "$CPU_INT" -lt 5 ] 2>/dev/null; then
+    # Check if port 2593 is open and accepting connections
+    if ss -tlnp 2>/dev/null | grep -q ':2593' || netstat -tlnp 2>/dev/null | grep -q ':2593'; then
         echo ""
         echo "ServUO is online and ready."
         exit 0
     fi
+
+    echo "  loading... ($((i*2))s)"
 done
 
 echo ""
