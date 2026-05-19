@@ -67,13 +67,15 @@ nav {
   gap: 1px;
   max-width: 1140px;
   margin: 0 auto;
+  height: 120px;
 }
 .promo-strip-inner a {
-  flex: 1; display: block; overflow: hidden; position: relative;
+  flex: 1; display: block; overflow: hidden; position: relative; height: 100%;
 }
 .promo-strip-inner img {
-  width: 100%; height: auto; display: block;
+  width: 100%; height: 100%; object-fit: cover; display: block;
   opacity: 0.82; transition: opacity 0.25s, transform 0.35s;
+  image-rendering: pixelated; image-rendering: crisp-edges;
 }
 .promo-strip-inner a:hover img {
   opacity: 1; transform: scale(1.03);
@@ -141,7 +143,7 @@ section { position: relative; z-index: 1; padding: 6rem 2rem; }
   aspect-ratio: 4/3; overflow: hidden; position: relative;
   background: var(--surface); cursor: pointer;
 }
-.gallery-item img { width: 100%; height: 100%; object-fit: cover; opacity: 0.75; transition: opacity 0.3s, transform 0.4s; display: block; }
+.gallery-item img { width: 100%; height: 100%; object-fit: cover; object-position: center center; opacity: 0.75; transition: opacity 0.3s, transform 0.4s; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
 .gallery-item:hover img { opacity: 1; transform: scale(1.04); }
 .gallery-caption {
   position: absolute; bottom: 0; left: 0; right: 0;
