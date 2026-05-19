@@ -1,4 +1,5 @@
 #region References
+using Server.Custom;
 using Server.Engines.Quests;
 using Server.Items;
 using Server.Mobiles;
@@ -168,6 +169,7 @@ namespace Server.SkillHandlers
                     else if (!targ.Player || (from is BaseCreature && ((BaseCreature)from).CanDiscord) || (targ.Player && from.Player && CanDiscordPVP(from)))
                     {
                         double diff = m_Instrument.GetDifficultyFor(targ) - 10.0;
+                        diff -= SkillSynergies.GetBardingBonus(from); // skill synergy: Forensics/Tracking/Carpentry reduce difficulty
                         double music = from.Skills[SkillName.Musicianship].Value;
 
                         if (from is BaseCreature)
@@ -262,6 +264,7 @@ namespace Server.SkillHandlers
 
                             m_Table[targ] = info;
                             from.NextSkillTime = Core.TickCount + (8000 - ((masteryBonus / 5) * 1000));
+                            CooldownSystem.Start(from, "Discordance", (8000 - ((masteryBonus / 5) * 1000)) / 1000.0);
                         }
                         else
                         {
@@ -277,6 +280,7 @@ namespace Server.SkillHandlers
                             m_Instrument.ConsumeUse(from);
 
                             from.NextSkillTime = Core.TickCount + 5000;
+                            CooldownSystem.Start(from, "Discordance", 5.0);
                         }
                     }
                     else

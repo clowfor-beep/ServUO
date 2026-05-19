@@ -1,4 +1,5 @@
 #region References
+using Server.Custom;
 using Server.Engines.Quests;
 using Server.Items;
 using Server.Mobiles;
@@ -87,6 +88,7 @@ namespace Server.SkillHandlers
                             m_Instrument.ConsumeUse(from);
 
                             from.NextSkillTime = Core.TickCount + (10000 - ((masteryBonus / 5) * 1000));
+                            CooldownSystem.Start(from, "Peacemaking", (10000 - ((masteryBonus / 5) * 1000)) / 1000.0);
                         }
                         else if (!from.CheckSkill(SkillName.Peacemaking, 0.0, 120.0))
                         {
@@ -95,10 +97,12 @@ namespace Server.SkillHandlers
                             m_Instrument.ConsumeUse(from);
 
                             from.NextSkillTime = Core.TickCount + (10000 - ((masteryBonus / 5) * 1000));
+                            CooldownSystem.Start(from, "Peacemaking", (10000 - ((masteryBonus / 5) * 1000)) / 1000.0);
                         }
                         else
                         {
                             from.NextSkillTime = Core.TickCount + 5000;
+                            CooldownSystem.Start(from, "Peacemaking", 5.0);
                             m_Instrument.PlayInstrumentWell(from);
                             m_Instrument.ConsumeUse(from);
 
@@ -167,12 +171,14 @@ namespace Server.SkillHandlers
                         {
                             from.SendLocalizedMessage(500612); // You play poorly, and there is no effect.
                             from.NextSkillTime = Core.TickCount + 5000;
+                            CooldownSystem.Start(from, "Peacemaking", 5.0);
                             m_Instrument.PlayInstrumentBadly(from);
                             m_Instrument.ConsumeUse(from);
                         }
                         else
                         {
                             double diff = m_Instrument.GetDifficultyFor(targ) - 10.0;
+                            diff -= SkillSynergies.GetBardingBonus(from); // skill synergy: Forensics/Tracking/Carpentry reduce difficulty
                             double music = from.Skills[SkillName.Musicianship].Value;
 
                             if (music > 100.0)
@@ -190,6 +196,7 @@ namespace Server.SkillHandlers
                                 m_Instrument.ConsumeUse(from);
 
                                 from.NextSkillTime = Core.TickCount + (10000 - ((masteryBonus / 5) * 1000));
+                                CooldownSystem.Start(from, "Peacemaking", (10000 - ((masteryBonus / 5) * 1000)) / 1000.0);
                             }
                             else
                             {
@@ -197,6 +204,7 @@ namespace Server.SkillHandlers
                                 m_Instrument.ConsumeUse(from);
 
                                 from.NextSkillTime = Core.TickCount + (5000 - ((masteryBonus / 5) * 1000));
+                                CooldownSystem.Start(from, "Peacemaking", (5000 - ((masteryBonus / 5) * 1000)) / 1000.0);
 
                                 if (targ is BaseCreature)
                                 {

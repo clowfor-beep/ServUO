@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fun Stuff UO — A Free Ultima Online Shard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --gold: #c9a84c; --gold-light: #e8c97a; --gold-dark: #8a6e28;
+  --blood: #8b1a1a; --blood-light: #b02222;
+  --green-ok: #3a7d44; --green-text: #7ec88a;
+  --blue-wip: #1a4a7a; --blue-text: #7ab3e8;
+  --gray-plan: #2a2a3a; --gray-text: #9090a8;
+  --bg: #080810; --bg-2: #0e0e1a; --bg-3: #141428;
+  --surface: #12121e; --surface-2: #1a1a2e;
+  --border: rgba(201,168,76,0.15); --border-2: rgba(201,168,76,0.3);
+  --text: #e8e0d0; --text-muted: #9990a0; --text-dim: #6a6478;
+}
+html { scroll-behavior: smooth; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(139,26,26,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(201,168,76,0.07) 0%, transparent 50%);
+}
+
+/* NAV */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 0 2rem; height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(8,8,16,0.9); backdrop-filter: blur(12px);
+  border-bottom: 0.5px solid var(--border);
+}
+.nav-logo { font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: 900; color: var(--gold); text-decoration: none; letter-spacing: 0.05em; }
+.nav-links { display: flex; gap: 2rem; list-style: none; }
+.nav-links a { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+.nav-links a:hover { color: var(--gold); }
+.nav-cta { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.1em; padding: 0.5rem 1.25rem; border: 1px solid var(--gold-dark); color: var(--gold); text-decoration: none; transition: all 0.2s; }
+.nav-cta:hover { background: var(--gold); color: var(--bg); }
+@media (max-width: 640px) { .nav-links { display: none; } }
+
+/* HERO */
+.hero {
+  position: relative; min-height: 100vh; z-index: 1;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  padding: 8rem 2rem 4rem;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='0.8' fill='%23c9a84c' opacity='0.1'/%3E%3C/svg%3E");
+  background-size: 60px 60px;
+}
+.hero-content { position: relative; max-width: 760px; }
+.hero-eyebrow { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); margin-bottom: 1.5rem; }
+.hero-title { font-family: 'Cinzel', serif; font-size: clamp(3.5rem, 9vw, 6.5rem); font-weight: 900; line-height: 1.0; color: var(--text); }
+.hero-title span { color: var(--gold); }
+.hero-subtitle { font-family: 'Cinzel', serif; font-size: clamp(0.85rem, 2vw, 1.1rem); font-weight: 400; color: var(--text-muted); letter-spacing: 0.15em; margin-top: 0.5rem; }
+.hero-rule { width: 100px; height: 1px; background: linear-gradient(to right, transparent, var(--gold-dark), transparent); margin: 2rem auto; }
+.hero-desc { font-family: 'Crimson Text', serif; font-size: 1.2rem; color: var(--text-muted); max-width: 540px; margin: 0 auto 2.5rem; line-height: 1.85; }
+.hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.btn-primary { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.12em; padding: 1rem 2.5rem; background: var(--gold); color: #080810; text-decoration: none; text-transform: uppercase; transition: all 0.2s; font-weight: 600; display: inline-block; }
+.btn-primary:hover { background: var(--gold-light); }
+.btn-secondary { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.12em; padding: 1rem 2.5rem; border: 1px solid var(--border-2); color: var(--text-muted); text-decoration: none; text-transform: uppercase; transition: all 0.2s; display: inline-block; }
+.btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+.hero-status {
+  margin-top: 3rem; display: inline-flex; align-items: center; gap: 2rem;
+  padding: 0.85rem 2rem; border: 0.5px solid var(--border); background: rgba(8,8,16,0.7);
+  flex-wrap: wrap; justify-content: center;
+}
+.status-item { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+.status-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); }
+.status-value { font-family: 'Cinzel', serif; font-size: 0.95rem; color: var(--gold); }
+.status-pip { display: flex; align-items: center; gap: 0.5rem; }
+.pip { width: 7px; height: 7px; border-radius: 50%; background: #4caf50; box-shadow: 0 0 6px #4caf50; }
+.status-divider { width: 0.5px; height: 32px; background: var(--border); }
+
+/* SECTION COMMONS */
+section { position: relative; z-index: 1; padding: 6rem 2rem; }
+.section-inner { max-width: 1140px; margin: 0 auto; }
+.section-label { font-family: 'Cinzel', serif; font-size: 0.62rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.6rem; }
+.section-title { font-family: 'Cinzel', serif; font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 900; color: var(--text); margin-bottom: 0.75rem; }
+.section-lead { font-family: 'Crimson Text', serif; font-size: 1.15rem; color: var(--text-muted); max-width: 520px; line-height: 1.85; }
+.gold-rule { width: 50px; height: 1px; background: var(--gold-dark); margin: 1.25rem 0; }
+
+/* FEATURES */
+#features { background: var(--bg-2); }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1px; margin-top: 3.5rem; border: 1px solid var(--border); }
+.feature-card { padding: 2rem; background: var(--surface); transition: background 0.2s; }
+.feature-card:hover { background: var(--surface-2); }
+.feature-icon { width: 36px; height: 36px; margin-bottom: 1.25rem; color: var(--gold); opacity: 0.8; }
+.feature-icon svg { width: 100%; height: 100%; }
+.feature-title { font-family: 'Cinzel', serif; font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 0.6rem; letter-spacing: 0.05em; }
+.feature-desc { font-family: 'Crimson Text', serif; font-size: 1.05rem; color: var(--text-muted); line-height: 1.75; }
+
+/* HUNTERS */
+#hunters { background: var(--bg); }
+.hunters-top { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; margin-bottom: 3.5rem; }
+@media (max-width: 680px) { .hunters-top { grid-template-columns: 1fr; gap: 2rem; } }
+.hunters-lore { font-family: 'Crimson Text', serif; font-size: 1.1rem; color: var(--text-muted); line-height: 1.9; font-style: italic; border-left: 2px solid var(--gold-dark); padding-left: 1.5rem; }
+.hunters-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 1px; border: 1px solid var(--border); }
+.hunter-card { padding: 1.75rem 1rem; background: var(--surface); text-align: center; transition: background 0.2s; }
+.hunter-card:hover { background: var(--surface-2); }
+.hunter-sigil { font-size: 1.6rem; margin-bottom: 0.85rem; display: block; }
+.hunter-name { font-family: 'Cinzel', serif; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; color: var(--gold); margin-bottom: 0.3rem; text-transform: uppercase; }
+.hunter-role { font-family: 'Crimson Text', serif; font-size: 0.95rem; color: var(--text-muted); }
+.hunter-tier { display: inline-block; margin-top: 0.4rem; font-size: 0.58rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--blood-light); }
+
+/* GALLERY */
+#gallery { background: var(--bg-2); }
+.gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 3.5rem; border: 1px solid var(--border); }
+@media (max-width: 640px) { .gallery-grid { grid-template-columns: 1fr 1fr; } }
+.gallery-item {
+  aspect-ratio: 4/3; overflow: hidden; position: relative;
+  background: var(--surface); cursor: pointer;
+}
+.gallery-item img { width: 100%; height: 100%; object-fit: cover; opacity: 0.75; transition: opacity 0.3s, transform 0.4s; display: block; }
+.gallery-item:hover img { opacity: 1; transform: scale(1.04); }
+.gallery-caption {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 0.6rem 0.85rem;
+  background: linear-gradient(transparent, rgba(8,8,16,0.9));
+  font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gold); opacity: 0;
+  transition: opacity 0.3s;
+}
+.gallery-item:hover .gallery-caption { opacity: 1; }
+.gallery-item-tall { grid-row: span 2; aspect-ratio: unset; }
+
+/* CHANGELOG + NEWS LAYOUT */
+#updates { background: var(--bg); }
+.updates-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 4rem;
+  margin-top: 3.5rem;
+}
+@media (max-width: 900px) { .updates-layout { grid-template-columns: 1fr; gap: 3rem; } }
+
+/* NEWS / PATCH NOTES */
+.news-list { display: flex; flex-direction: column; gap: 0; }
+.news-item {
+  padding: 1.75rem 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.news-item:first-child { border-top: 0.5px solid var(--border); }
+.news-meta { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; }
+.news-date { font-size: 0.62rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); }
+.news-tag {
+  font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 0.2rem 0.6rem; border: 0.5px solid var(--gold-dark); color: var(--gold);
+}
+.news-tag.fix { border-color: var(--blood); color: #c06060; }
+.news-tag.system { border-color: #1a4a7a; color: var(--blue-text); }
+.news-title { font-family: 'Cinzel', serif; font-size: 0.95rem; color: var(--text); margin-bottom: 0.5rem; font-weight: 600; letter-spacing: 0.03em; }
+.news-body { font-family: 'Crimson Text', serif; font-size: 1.05rem; color: var(--text-muted); line-height: 1.75; }
+
+/* CHANGELOG PANEL */
+.changelog-panel {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  padding: 2rem;
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+.changelog-panel::-webkit-scrollbar { width: 4px; }
+.changelog-panel::-webkit-scrollbar-track { background: transparent; }
+.changelog-panel::-webkit-scrollbar-thumb { background: var(--gold-dark); }
+.changelog-header {
+  font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.25em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: 1.5rem;
+  padding-bottom: 1rem; border-bottom: 0.5px solid var(--border);
+}
+.cl-section { margin-bottom: 1.75rem; }
+.cl-section-label {
+  font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase;
+  margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.cl-section-label.done { color: var(--green-text); }
+.cl-section-label.wip { color: var(--blue-text); }
+.cl-section-label.planned { color: var(--gray-text); }
+.cl-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.cl-dot.done { background: var(--green-text); }
+.cl-dot.wip { background: var(--blue-text); }
+.cl-dot.planned { background: var(--gray-text); }
+.cl-items { display: flex; flex-direction: column; gap: 0.6rem; }
+.cl-item {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  font-family: 'Crimson Text', serif; font-size: 0.95rem;
+}
+.cl-item.done { background: rgba(58,125,68,0.08); color: var(--text-muted); }
+.cl-item.wip { background: rgba(26,74,122,0.1); color: var(--text-muted); }
+.cl-item.planned { color: var(--text-dim); }
+.cl-item-icon { font-size: 0.75rem; flex-shrink: 0; margin-top: 0.15rem; }
+.cl-item-icon.done { color: var(--green-text); }
+.cl-item-icon.wip { color: var(--blue-text); }
+.cl-item-icon.planned { color: var(--gray-text); }
+.cl-divider { height: 0.5px; background: var(--border); margin: 1.25rem 0; }
+
+/* FEEDBACK */
+#feedback { background: var(--bg-2); }
+.feedback-layout { display: grid; grid-template-columns: 1fr 380px; gap: 4rem; margin-top: 3.5rem; }
+@media (max-width: 900px) { .feedback-layout { grid-template-columns: 1fr; gap: 2rem; } }
+.fb-form { display: flex; flex-direction: column; gap: 1rem; }
+.fb-toggle { display: flex; gap: 1px; border: 0.5px solid var(--border); margin-bottom: 0.5rem; }
+.fb-toggle-btn { flex: 1; padding: 0.7rem; font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; background: transparent; border: none; color: var(--text-dim); cursor: pointer; transition: all 0.2s; }
+.fb-toggle-btn.active { background: var(--surface-2); color: var(--gold); }
+.fb-toggle-btn:hover:not(.active) { color: var(--text-muted); }
+.fb-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.fb-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); }
+.fb-input, .fb-textarea, .fb-select {
+  background: var(--surface); border: 0.5px solid var(--border); color: var(--text);
+  padding: 0.65rem 0.85rem; font-family: 'Crimson Text', serif; font-size: 1rem;
+  outline: none; transition: border-color 0.2s; width: 100%;
+}
+.fb-input:focus, .fb-textarea:focus { border-color: var(--gold-dark); }
+.fb-textarea { min-height: 120px; resize: vertical; }
+.fb-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 560px) { .fb-row { grid-template-columns: 1fr; } }
+.fb-submit { font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.12em; padding: 1rem; background: var(--gold); color: #080810; border: none; text-transform: uppercase; cursor: pointer; transition: all 0.2s; font-weight: 600; width: 100%; }
+.fb-submit:hover { background: var(--gold-light); }
+.fb-msg { font-family: 'Crimson Text', serif; font-size: 1rem; padding: 0.75rem 1rem; margin-top: 0.5rem; display: none; }
+.fb-msg.ok { background: rgba(58,125,68,0.15); border: 0.5px solid rgba(126,200,138,0.3); color: var(--green-text); }
+.fb-msg.err { background: rgba(139,26,26,0.15); border: 0.5px solid rgba(176,34,34,0.3); color: #c06060; }
+.tracker-panel { background: var(--surface); border: 0.5px solid var(--border); padding: 1.75rem; }
+.tracker-header { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 0.5px solid var(--border); }
+.tracker-empty { font-family: 'Crimson Text', serif; font-size: 1rem; color: var(--text-dim); font-style: italic; padding: 1rem 0; }
+.tracker-item { padding: 1rem 0; border-bottom: 0.5px solid var(--border); cursor: pointer; }
+.tracker-item:last-child { border-bottom: none; }
+.tracker-item:hover .tracker-title { color: var(--gold); }
+.tracker-meta { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
+.tracker-badge { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.2rem 0.55rem; }
+.tracker-badge.bug { border: 0.5px solid var(--blood); color: #c06060; }
+.tracker-badge.suggestion { border: 0.5px solid var(--gold-dark); color: var(--gold); }
+.tracker-date { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.08em; }
+.tracker-status { font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.15rem 0.45rem; border: 0.5px solid; margin-left: auto; }
+.tracker-status.open         { border-color: #444; color: #888; }
+.tracker-status.investigating{ border-color: #1a4a7a; color: #7ab3e8; }
+.tracker-status.fixed        { border-color: #3a7d44; color: #7ec88a; }
+.tracker-status.wontfix      { border-color: #5a2a2a; color: #c06060; }
+.tracker-status.planned      { border-color: var(--gold-dark); color: var(--gold); }
+.tracker-status.implemented  { border-color: #3a7d44; color: #7ec88a; }
+.tracker-status.rejected     { border-color: #5a2a2a; color: #c06060; }
+.tracker-title { font-family: 'Cinzel', serif; font-size: 0.82rem; color: var(--text); letter-spacing: 0.03em; transition: color 0.2s; }
+.tracker-char { font-family: 'Crimson Text', serif; font-size: 0.9rem; color: var(--text-dim); margin-top: 0.2rem; }
+.tracker-desc { font-family: 'Crimson Text', serif; font-size: 0.95rem; color: var(--text-muted); margin-top: 0.6rem; line-height: 1.5; display: none; padding-top: 0.5rem; border-top: 0.5px solid var(--border); white-space: pre-wrap; }
+.tracker-item.open .tracker-desc { display: block; }
+.tracker-expand { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.08em; margin-left: auto; transition: transform 0.2s; }
+.tracker-item.open .tracker-expand { transform: rotate(180deg); }
+/* Modal overlay */
+.submission-modal { display: none; position: fixed; inset: 0; z-index: 200; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+.submission-modal.open { display: flex; }
+.modal-box { background: var(--surface-2); border: 0.5px solid var(--border-2); padding: 2.5rem; max-width: 560px; width: 90%; position: relative; max-height: 80vh; overflow-y: auto; }
+.modal-close { position: absolute; top: 1rem; right: 1.25rem; background: none; border: none; color: var(--text-dim); font-size: 1.2rem; cursor: pointer; }
+.modal-close:hover { color: var(--gold); }
+.modal-type { font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1rem; }
+.modal-type.bug { color: #c06060; }
+.modal-type.suggestion { color: var(--gold); }
+.modal-title { font-family: 'Cinzel', serif; font-size: 1.15rem; color: var(--text); margin-bottom: 1.25rem; line-height: 1.4; }
+.modal-desc { font-family: 'Crimson Text', serif; font-size: 1.05rem; color: var(--text-muted); line-height: 1.65; white-space: pre-wrap; }
+.modal-meta { margin-top: 1.5rem; padding-top: 1rem; border-top: 0.5px solid var(--border); font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.06em; }
+
+/* CONNECT */
+#connect { background: var(--bg); }
+.connect-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; margin-top: 3.5rem; }
+@media (max-width: 680px) { .connect-grid { grid-template-columns: 1fr; gap: 2rem; } }
+.connect-steps { counter-reset: steps; }
+.connect-step { display: flex; gap: 1.25rem; margin-bottom: 2rem; counter-increment: steps; }
+.step-num {
+  flex-shrink: 0; width: 30px; height: 30px;
+  border: 1px solid var(--gold-dark);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cinzel', serif; font-size: 0.72rem; color: var(--gold);
+}
+.step-num::before { content: counter(steps); }
+.step-title { font-family: 'Cinzel', serif; font-size: 0.82rem; color: var(--text); margin-bottom: 0.35rem; letter-spacing: 0.04em; }
+.step-desc { font-family: 'Crimson Text', serif; font-size: 1rem; color: var(--text-muted); line-height: 1.75; }
+.step-desc a { color: var(--gold); text-decoration: none; }
+.step-desc a:hover { text-decoration: underline; }
+.connect-card { background: var(--surface); border: 0.5px solid var(--border); padding: 2.5rem; }
+.connect-card-label { font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 1.5rem; }
+.connect-field { margin-bottom: 1.1rem; }
+.field-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.3rem; }
+.field-value { font-family: 'Cinzel', serif; font-size: 1.4rem; color: var(--gold); letter-spacing: 0.04em; }
+.field-value.sm { font-size: 0.95rem; }
+.field-value.ok { color: #4caf50; font-size: 0.95rem; }
+.c-divider { height: 0.5px; background: var(--border); margin: 1.5rem 0; }
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  padding: 2.5rem 2rem;
+  border-top: 0.5px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+}
+.footer-logo { font-family: 'Cinzel', serif; font-size: 0.85rem; font-weight: 900; color: var(--gold-dark); letter-spacing: 0.08em; }
+.footer-note { font-family: 'Crimson Text', serif; font-size: 0.9rem; color: var(--text-dim); }
+.footer-links { display: flex; gap: 1.5rem; }
+.footer-links a { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); text-decoration: none; transition: color 0.2s; }
+.footer-links a:hover { color: var(--gold); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">⚔ Fun Stuff UO</a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#hunters">Hunters</a></li>
+    <li><a href="#gallery">Gallery</a></li>
+    <li><a href="#updates">Updates</a></li>
+    <li><a href="#feedback">Feedback</a></li>
+    <li><a href="#connect">Connect</a></li>
+  </ul>
+  <a href="#connect" class="nav-cta">Play Free</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">A Free Ultima Online Shard</p>
+    <h1 class="hero-title">Fun <span>Stuff</span></h1>
+    <p class="hero-subtitle">Felucca · Full Loot · Classic Danger</p>
+    <div class="hero-rule"></div>
+    <p class="hero-desc">
+      The world remembers when death had weight and every stranger was a threat.
+      Step into Britannia the way it was meant to be — dangerous, alive,
+      and entirely unforgiving.
+    </p>
+    <div class="hero-actions">
+      <a href="#connect" class="btn-primary">Enter Britannia</a>
+      <a href="#features" class="btn-secondary">See What's New</a>
+    </div>
+    <div class="hero-status">
+      <div class="status-item">
+        <span class="status-label">Server</span>
+        <span class="status-value status-pip"><span class="pip"></span> Online</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label">Address</span>
+        <span class="status-value">178.105.173.80</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label">Port</span>
+        <span class="status-value">2593</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label">Players Online</span>
+        <span class="status-value" id="player-count">—</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-inner">
+    <p class="section-label">Custom Systems</p>
+    <h2 class="section-title">Built Different</h2>
+    <div class="gold-rule"></div>
+    <p class="section-lead">Every mechanic has been designed to reward mastery and make every encounter matter.</p>
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+        <p class="feature-title">Skill Synergies</p>
+        <p class="feature-desc">Related skills amplify each other. Anatomy and Healing push bandage heals beyond vanilla limits. Forensics, Tracking, and Carpentry reduce barding difficulty. Your skill choices compound.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <p class="feature-title">Cooldown HUD</p>
+        <p class="feature-desc">A live heads-up display tracks every active skill cooldown in real time. Provocation, peacemaking, discordance, healing, hiding, and more — always visible, always accurate.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <p class="feature-title">Graveyard Encounters</p>
+        <p class="feature-desc">Enter the Britain graveyard in Felucca and a Player Killer portals through to hunt you down. Portal VFX, voice lines, a 3-minute cooldown, and five minutes to escape or die.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <p class="feature-title">7 PK Archetypes</p>
+        <p class="feature-desc">Classic Dexxer, Pure Mage, Necro Mage, Ninja, Paladin, Archer, Sampire — each with distinct tactics, gear, and speech. No two encounters play the same.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        <p class="feature-title">Three Tiers of Danger</p>
+        <p class="feature-desc">PKs come in Newbie, Advanced, and Expert tiers. Stats, skills, and equipment all scale up. Survival against a Newbie is an achievement. Surviving an Expert is a story.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <p class="feature-title">Active Development</p>
+        <p class="feature-desc">New systems ship regularly. Check the changelog to see what's implemented, what's being built, and what's planned. The shard grows with its players.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- HUNTERS -->
+<section id="hunters">
+  <div class="section-inner">
+    <div class="hunters-top">
+      <div>
+        <p class="section-label">Scripted Threats</p>
+        <h2 class="section-title">The NPC Hunters</h2>
+        <div class="gold-rule"></div>
+        <p class="section-lead">Seven AI-controlled archetypes portal in to hunt you. Each has its own tactics, gear, and voice. None of them forgive mistakes.</p>
+      </div>
+      <p class="hunters-lore">
+        "Step into the graveyard at dusk and you will feel it — a shimmer in the air,
+        a sound like wind through a gate that isn't there. Then one of them walks through.
+        It is not a player. It has no mercy. It has only purpose."
+        <br><br>— Inscription found on a headstone, Britain Graveyard
+      </p>
+    </div>
+    <div class="hunters-grid">
+      <div class="hunter-card"><span class="hunter-sigil">⚔</span><p class="hunter-name">Classic Dexxer</p><p class="hunter-role">Warrior</p><p class="hunter-tier">AI Controlled</p></div>
+      <div class="hunter-card"><span class="hunter-sigil">🔮</span><p class="hunter-name">Pure Mage</p><p class="hunter-role">Spellcaster</p><p class="hunter-tier">AI Controlled</p></div>
+      <div class="hunter-card"><span class="hunter-sigil">💀</span><p class="hunter-name">Necro Mage</p><p class="hunter-role">Necromancer</p><p class="hunter-tier">AI Controlled</p></div>
+      <div class="hunter-card"><span class="hunter-sigil">🌑</span><p class="hunter-name">Ninja Dexxer</p><p class="hunter-role">Shadow Blade</p><p class="hunter-tier">AI Controlled</p></div>
+      <div class="hunter-card"><span class="hunter-sigil">✝</span><p class="hunter-name">Paladin</p><p class="hunter-role">Holy Warrior</p><p class="hunter-tier">AI Controlled</p></div>
+      <div class="hunter-card"><span class="hunter-sigil">🏹</span><p class="hunter-name">Archer</p><p class="hunter-role">Marksman</p><p class="hunter-tier">AI Controlled</p></div>
+      <div class="hunter-card"><span class="hunter-sigil">🧛</span><p class="hunter-name">Sampire</p><p class="hunter-role">Vampiric Warrior</p><p class="hunter-tier">AI Controlled</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section id="gallery">
+  <div class="section-inner">
+    <p class="section-label">The World</p>
+    <h2 class="section-title">Britannia</h2>
+    <div class="gold-rule"></div>
+    <p class="section-lead">A world twenty-five years old and still alive. Every dungeon has a story. Every road has a risk.</p>
+    <div class="gallery-grid">
+      <div class="gallery-item gallery-item-tall">
+        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/0/05/Ultima_Online_-_cover.jpg/220px-Ultima_Online_-_cover.jpg" alt="Ultima Online" loading="lazy">
+        <span class="gallery-caption">The World of Britannia</span>
+      </div>
+      <div class="gallery-item">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Camponotus_flavomarginatus_ant.jpg/320px-Camponotus_flavomarginatus_ant.jpg" alt="" loading="lazy" style="display:none">
+        <div style="width:100%;height:100%;background:linear-gradient(135deg,#1a0a0a 0%,#2a1010 50%,#0a0a1a 100%);display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center;padding:1rem;">
+            <div style="font-size:2rem;margin-bottom:0.5rem;">⚔</div>
+            <p style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--gold-dark);letter-spacing:0.1em;">PvP Encounters</p>
+          </div>
+        </div>
+        <span class="gallery-caption">Felucca Combat</span>
+      </div>
+      <div class="gallery-item">
+        <div style="width:100%;height:100%;background:linear-gradient(135deg,#0a1a0a 0%,#0d2a1a 50%,#0a0a10 100%);display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center;padding:1rem;">
+            <div style="font-size:2rem;margin-bottom:0.5rem;">🌿</div>
+            <p style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--gold-dark);letter-spacing:0.1em;">The Wilderness</p>
+          </div>
+        </div>
+        <span class="gallery-caption">Open World</span>
+      </div>
+      <div class="gallery-item">
+        <div style="width:100%;height:100%;background:linear-gradient(135deg,#0a0a2a 0%,#1a0a2a 50%,#0a0a1a 100%);display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center;padding:1rem;">
+            <div style="font-size:2rem;margin-bottom:0.5rem;">💀</div>
+            <p style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--gold-dark);letter-spacing:0.1em;">The Dungeons</p>
+          </div>
+        </div>
+        <span class="gallery-caption">Dungeon Delving</span>
+      </div>
+      <div class="gallery-item">
+        <div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1200 0%,#2a1e00 50%,#0a0a00 100%);display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center;padding:1rem;">
+            <div style="font-size:2rem;margin-bottom:0.5rem;">🏰</div>
+            <p style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--gold-dark);letter-spacing:0.1em;">Britain</p>
+          </div>
+        </div>
+        <span class="gallery-caption">The Capital City</span>
+      </div>
+    </div>
+    <p style="font-family:'Crimson Text',serif;font-size:0.9rem;color:var(--text-dim);margin-top:1.25rem;text-align:right;">Screenshots coming soon as the server fills with life.</p>
+  </div>
+</section>
+
+<!-- UPDATES & CHANGELOG -->
+<section id="updates">
+  <div class="section-inner">
+    <p class="section-label">What's Happening</p>
+    <h2 class="section-title">News &amp; Updates</h2>
+    <div class="gold-rule"></div>
+
+    <div class="updates-layout">
+
+      <!-- NEWS / PATCH NOTES -->
+      <div class="news-list">
+
+        <div class="news-item">
+          <div class="news-meta">
+            <span class="news-date">May 2026</span>
+            <span class="news-tag system">Launch</span>
+          </div>
+          <p class="news-title">Server is Live</p>
+          <p class="news-body">Fun Stuff UO is officially open. The server is running on Hetzner hardware in Nuremberg. Connect now and be among the first players in the world. All custom systems are active — cooldown HUD, skill synergies, and graveyard encounters are all running.</p>
+        </div>
+
+        <div class="news-item">
+          <div class="news-meta">
+            <span class="news-date">May 2026</span>
+            <span class="news-tag">Feature</span>
+          </div>
+          <p class="news-title">Graveyard PK Encounters Active</p>
+          <p class="news-body">The Britain Graveyard in Felucca is now a dangerous place. Wander in and one of seven PK archetypes portals through to hunt you. Each has its own combat style, voice lines, and playstyle. Three tiers of difficulty based on your prowess.</p>
+        </div>
+
+        <div class="news-item">
+          <div class="news-meta">
+            <span class="news-date">May 2026</span>
+            <span class="news-tag system">System</span>
+          </div>
+          <p class="news-title">Skill Synergies &amp; Cooldown HUD Shipped</p>
+          <p class="news-body">All barding skills now benefit from the synergy system — Forensics, Tracking, and Carpentry reduce difficulty on Provocation, Peacemaking, and Discordance. Anatomy + Healing boosts bandage heal output. The cooldown HUD tracks all of it live on screen.</p>
+        </div>
+
+        <div class="news-item">
+          <div class="news-meta">
+            <span class="news-date">Coming Soon</span>
+            <span class="news-tag fix">Planned</span>
+          </div>
+          <p class="news-title">More Encounter Locations</p>
+          <p class="news-body">The graveyard is just the beginning. Additional dangerous zones are being designed — dungeons, abandoned towns, and roads at night will all have their own encounter logic and unique hunter variants.</p>
+        </div>
+
+      </div>
+
+      <!-- CHANGELOG PANEL -->
+      <div class="changelog-panel">
+        <p class="changelog-header">⚙ Changelog</p>
+
+        <div class="cl-section">
+          <p class="cl-section-label done"><span class="cl-dot done"></span> Implemented</p>
+          <div class="cl-items">
+            <div class="cl-item done"><span class="cl-item-icon done">✓</span>Skill Synergy system (Anatomy/Healing, Barding, Backstab)</div>
+            <div class="cl-item done"><span class="cl-item-icon done">✓</span>Cooldown HUD — live timers for all skills</div>
+            <div class="cl-item done"><span class="cl-item-icon done">✓</span>Graveyard PK Encounters (Britain, Felucca)</div>
+            <div class="cl-item done"><span class="cl-item-icon done">✓</span>7 PK archetypes with speech &amp; AI</div>
+            <div class="cl-item done"><span class="cl-item-icon done">✓</span>3-tier PK system (Newbie → Expert)</div>
+            <div class="cl-item done"><span class="cl-item-icon done">✓</span>Barding skill synergies (Provocation, Peacemaking, Discordance)</div>
+            <div class="cl-item done"><span class="cl-item-icon done">✓</span>Bandage healing boost from Anatomy + Healing</div>
+            <div class="cl-item done"><span class="cl-item-icon done">✓</span>Linux server on Hetzner — server live</div>
+            <div class="cl-item done"><span class="cl-item-icon done">✓</span>Shard website</div>
+          </div>
+        </div>
+
+        <div class="cl-divider"></div>
+
+        <div class="cl-section">
+          <p class="cl-section-label wip"><span class="cl-dot wip"></span> In Progress</p>
+          <div class="cl-items">
+            <div class="cl-item wip"><span class="cl-item-icon wip">◎</span>Live player count on website</div>
+            <div class="cl-item wip"><span class="cl-item-icon wip">◎</span>Additional encounter locations</div>
+            <div class="cl-item wip"><span class="cl-item-icon wip">◎</span>In-game screenshots for gallery</div>
+          </div>
+        </div>
+
+        <div class="cl-divider"></div>
+
+        <div class="cl-section">
+          <p class="cl-section-label planned"><span class="cl-dot planned"></span> Planned</p>
+          <div class="cl-items">
+            <div class="cl-item planned"><span class="cl-item-icon planned">○</span>Dungeon-specific encounter events</div>
+            <div class="cl-item planned"><span class="cl-item-icon planned">○</span>Custom quest system</div>
+            <div class="cl-item planned"><span class="cl-item-icon planned">○</span>PK bounty board</div>
+            <div class="cl-item planned"><span class="cl-item-icon planned">○</span>World boss encounters</div>
+            <div class="cl-item planned"><span class="cl-item-icon planned">○</span>Seasonal events</div>
+            <div class="cl-item planned"><span class="cl-item-icon planned">○</span>Guild leaderboard</div>
+            <div class="cl-item planned"><span class="cl-item-icon planned">○</span>Domain name &amp; Discord</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEEDBACK -->
+<section id="feedback">
+  <div class="section-inner">
+    <p class="section-label">Community</p>
+    <h2 class="section-title">Feedback</h2>
+    <div class="gold-rule"></div>
+    <p class="section-lead">Found a bug or have an idea? Tell us. Every report is read. Good suggestions make it into the changelog.</p>
+
+    <div class="feedback-layout">
+
+      <div>
+        <div class="fb-toggle">
+          <button class="fb-toggle-btn active" onclick="setType('bug',this)">🐛 Report a Bug</button>
+          <button class="fb-toggle-btn" onclick="setType('suggestion',this)">💡 Suggest Something</button>
+        </div>
+        <form class="fb-form" id="fb-form" onsubmit="submitForm(event)">
+          <input type="hidden" id="fb-type" value="bug">
+          <div class="fb-row">
+            <div class="fb-field">
+              <label class="fb-label" for="fb-name">Your name (optional)</label>
+              <input class="fb-input" id="fb-name" name="name" type="text" placeholder="Anonymous">
+            </div>
+            <div class="fb-field">
+              <label class="fb-label" for="fb-char">Character name (optional)</label>
+              <input class="fb-input" id="fb-char" name="char" type="text" placeholder="In-game name">
+            </div>
+          </div>
+          <div class="fb-field">
+            <label class="fb-label" for="fb-title" id="fb-title-label">Bug title — what went wrong?</label>
+            <input class="fb-input" id="fb-title" name="title" type="text" placeholder="Short description" required>
+          </div>
+          <div class="fb-field">
+            <label class="fb-label" for="fb-desc" id="fb-desc-label">Steps to reproduce / details</label>
+            <textarea class="fb-textarea" id="fb-desc" name="desc" placeholder="Describe what happened and how to reproduce it..." required></textarea>
+          </div>
+          <button class="fb-submit" type="submit">Submit Report</button>
+          <div class="fb-msg" id="fb-msg"></div>
+        </form>
+      </div>
+
+      <div>
+        <div class="tracker-panel">
+          <p class="tracker-header">Recent Submissions</p>
+          <div id="tracker-list"><p class="tracker-empty">No submissions yet — be the first.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- CONNECT -->
+<section id="connect">
+  <div class="section-inner">
+    <p class="section-label">How to Play</p>
+    <h2 class="section-title">Connect to the Shard</h2>
+    <div class="gold-rule"></div>
+    <div class="connect-grid">
+
+      <div class="connect-steps">
+        <div class="connect-step">
+          <div class="step-num"></div>
+          <div>
+            <p class="step-title">Download ClassicUO</p>
+            <p class="step-desc">Get the free ClassicUO client from <a href="https://github.com/ClassicUO/ClassicUO/releases" target="_blank">github.com/ClassicUO</a>. Runs on Windows, Mac, and Linux.</p>
+          </div>
+        </div>
+        <div class="connect-step">
+          <div class="step-num"></div>
+          <div>
+            <p class="step-title">Get the UO Client Files</p>
+            <p class="step-desc">Download the free Ultima Online Classic Client from <a href="https://uo.com/client-download/" target="_blank">uo.com/client-download</a> and install it. ClassicUO needs these data files.</p>
+          </div>
+        </div>
+        <div class="connect-step">
+          <div class="step-num"></div>
+          <div>
+            <p class="step-title">Add the Server</p>
+            <p class="step-desc">In ClassicUO click <strong style="color:var(--text);font-weight:500;">Add Server</strong> and enter the address and port shown. Type any username and password — your account is created automatically on first login.</p>
+          </div>
+        </div>
+        <div class="connect-step">
+          <div class="step-num"></div>
+          <div>
+            <p class="step-title">Enter the World</p>
+            <p class="step-desc">Create your character and step into Britannia. The world is open. Watch your back in Felucca.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="connect-card">
+        <p class="connect-card-label">Server Details</p>
+        <div class="connect-field">
+          <p class="field-label">Address</p>
+          <p class="field-value">178.105.173.80</p>
+        </div>
+        <div class="connect-field">
+          <p class="field-label">Port</p>
+          <p class="field-value">2593</p>
+        </div>
+        <div class="c-divider"></div>
+        <div class="connect-field">
+          <p class="field-label">Recommended Client</p>
+          <p class="field-value sm">ClassicUO</p>
+        </div>
+        <div class="connect-field">
+          <p class="field-label">Ruleset</p>
+          <p class="field-value sm">Felucca · Full Loot · Open PvP</p>
+        </div>
+        <div class="connect-field">
+          <p class="field-label">Account Creation</p>
+          <p class="field-value sm">Automatic on first login</p>
+        </div>
+        <div class="connect-field">
+          <p class="field-label">Cost</p>
+          <p class="field-value ok">Free — Always</p>
+        </div>
+        <div class="c-divider"></div>
+        <a href="#" class="btn-primary" style="display:block;text-align:center;">Start Playing</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-logo">⚔ Fun Stuff UO</span>
+  <p class="footer-note">An unofficial fan shard. Ultima Online is a trademark of Electronic Arts.</p>
+  <div class="footer-links">
+    <a href="#features">Features</a>
+    <a href="#hunters">Hunters</a>
+    <a href="#updates">Updates</a>
+    <a href="#connect">Connect</a>
+  </div>
+</footer>
+
+<!-- Submission detail modal -->
+<div class="submission-modal" id="submission-modal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="document.getElementById('submission-modal').classList.remove('open')">✕</button>
+    <p class="modal-type" id="modal-type"></p>
+    <h3 class="modal-title" id="modal-title"></h3>
+    <p class="modal-desc" id="modal-desc"></p>
+    <p class="modal-meta" id="modal-meta"></p>
+  </div>
+</div>
+
+<script>
+fetch('/playercount.json')
+  .then(r => r.json())
+  .then(d => { const el = document.getElementById('player-count'); if (el && d.count !== undefined) el.textContent = d.count; })
+  .catch(() => {});
+
+function setType(type, btn) {
+  document.getElementById('fb-type').value = type;
+  document.querySelectorAll('.fb-toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const isBug = type === 'bug';
+  document.getElementById('fb-title-label').textContent = isBug ? 'Bug title — what went wrong?' : 'Suggestion title';
+  document.getElementById('fb-title').placeholder = isBug ? 'Short description' : 'What would you like to see?';
+  document.getElementById('fb-desc-label').textContent = isBug ? 'Steps to reproduce / details' : 'Describe your idea';
+  document.getElementById('fb-desc').placeholder = isBug ? 'Describe what happened and how to reproduce it...' : 'How would this work? Why would it be fun?';
+  document.querySelector('.fb-submit').textContent = isBug ? 'Submit Report' : 'Submit Suggestion';
+}
+
+async function submitForm(e) {
+  e.preventDefault();
+  const form = document.getElementById('fb-form');
+  const msg  = document.getElementById('fb-msg');
+  const btn  = document.querySelector('.fb-submit');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  msg.style.display = 'none';
+
+  const data = new FormData();
+  data.append('type',  document.getElementById('fb-type').value);
+  data.append('title', document.getElementById('fb-title').value);
+  data.append('desc',  document.getElementById('fb-desc').value);
+  data.append('name',  document.getElementById('fb-name').value);
+  data.append('char',  document.getElementById('fb-char').value);
+
+  try {
+    const res  = await fetch('/submit.php', { method: 'POST', body: data });
+    const json = await res.json();
+    if (json.ok) {
+      msg.className = 'fb-msg ok'; msg.textContent = 'Thank you — your submission has been received.';
+      form.reset(); document.getElementById('fb-type').value = 'bug';
+      loadTracker();
+    } else {
+      throw new Error(json.error || 'Unknown error');
+    }
+  } catch(err) {
+    msg.className = 'fb-msg err'; msg.textContent = 'Something went wrong: ' + err.message;
+  }
+  msg.style.display = 'block';
+  btn.disabled = false;
+  btn.textContent = document.getElementById('fb-type').value === 'bug' ? 'Submit Report' : 'Submit Suggestion';
+}
+
+function openModal(item) {
+  document.getElementById('modal-type').className = 'modal-type ' + item.type;
+  document.getElementById('modal-type').textContent = item.type === 'bug' ? '🐛 Bug Report' : '💡 Suggestion';
+  document.getElementById('modal-title').textContent = item.title;
+  document.getElementById('modal-desc').textContent = item.desc;
+  const parts = [];
+  if (item.name) parts.push('Submitted by ' + item.name);
+  if (item.char) parts.push('Character: ' + item.char);
+  parts.push(item.date);
+  document.getElementById('modal-meta').textContent = parts.join('  ·  ');
+  document.getElementById('submission-modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('submission-modal'))
+    document.getElementById('submission-modal').classList.remove('open');
+}
+
+function loadTracker() {
+  fetch('/submissions.json?t=' + Date.now())
+    .then(r => r.json())
+    .then(items => {
+      const el = document.getElementById('tracker-list');
+      if (!items.length) { el.innerHTML = '<p class="tracker-empty">No submissions yet — be the first.</p>'; return; }
+      const statusLabel = {
+        open:'Open', investigating:'Investigating', fixed:'Fixed', wontfix:"Won't Fix",
+        planned:'Planned', implemented:'Implemented', rejected:'Rejected'
+      };
+      el.innerHTML = items.slice(0, 8).map((item, i) => {
+        const status = item.status || 'open';
+        return `
+        <div class="tracker-item" onclick="openModal(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+          <div class="tracker-meta">
+            <span class="tracker-badge ${item.type}">${item.type === 'bug' ? '🐛 Bug' : '💡 Suggestion'}</span>
+            <span class="tracker-date">${item.date}</span>
+            <span class="tracker-status ${status}">${statusLabel[status] || status}</span>
+          </div>
+          <p class="tracker-title">${item.title}</p>
+          ${item.char ? `<p class="tracker-char">— ${item.char}</p>` : ''}
+        </div>`;
+      }).join('');
+    })
+    .catch(() => {});
+}
+
+loadTracker();
+</script>
+</body>
+</html>

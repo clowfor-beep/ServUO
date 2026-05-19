@@ -1,4 +1,5 @@
 #region References
+using Server.Custom;
 using Server.Engines.Quests;
 using Server.Items;
 using Server.Mobiles;
@@ -121,8 +122,10 @@ namespace Server.SkillHandlers
                     else if (m_Creature != target)
                     {
                         from.NextSkillTime = Core.TickCount + 10000;
+                        CooldownSystem.Start(from, "Provocation", 10.0); // covers success; overridden below on failure
 
                         double diff = ((m_Instrument.GetDifficultyFor(m_Creature) + m_Instrument.GetDifficultyFor(target)) * 0.5) - 5.0;
+                        diff -= SkillSynergies.GetBardingBonus(from); // skill synergy: Forensics/Tracking/Carpentry reduce difficulty
                         double music = from.Skills[SkillName.Musicianship].Value;
                         int masteryBonus = 0;
 
@@ -142,6 +145,7 @@ namespace Server.SkillHandlers
                             if (from.Player && !BaseInstrument.CheckMusicianship(from))
                             {
                                 from.NextSkillTime = Core.TickCount + (10000 - ((masteryBonus / 5) * 1000));
+                                CooldownSystem.Start(from, "Provocation", (10000 - ((masteryBonus / 5) * 1000)) / 1000.0);
                                 from.SendLocalizedMessage(500612); // You play poorly, and there is no effect.
                                 m_Instrument.PlayInstrumentBadly(from);
                                 m_Instrument.ConsumeUse(from);
@@ -151,6 +155,7 @@ namespace Server.SkillHandlers
                                 if (!from.CheckTargetSkill(SkillName.Provocation, target, diff - 25.0, diff + 25.0))
                                 {
                                     from.NextSkillTime = Core.TickCount + (10000 - ((masteryBonus / 5) * 1000));
+                                    CooldownSystem.Start(from, "Provocation", (10000 - ((masteryBonus / 5) * 1000)) / 1000.0);
                                     from.SendLocalizedMessage(501599); // Your music fails to incite enough anger.
                                     m_Instrument.PlayInstrumentBadly(from);
                                     m_Instrument.ConsumeUse(from);

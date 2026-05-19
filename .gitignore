@@ -3,7 +3,7 @@
 /Server.dll
 /Server/bin
 /Server/obj
-/Scripts.dll
+# /Scripts.dll  — committed to git so server can pull it directly
 /Scripts/bin
 /Scripts/obj
 /Application/bin
@@ -35,6 +35,8 @@
 
 # Custom Files
 /TotalAccountGold.txt
+/Config/Server.cfg
+/Config/DataPath.cfg
 
 # Wildcard Files
 *.pdb
@@ -42,6 +44,8 @@
 *.exe.mdb
 *.exe.config
 *.sh
+!deploy.sh
+!restart.sh
 *.suo
 *.idea
 *.log
