@@ -46,6 +46,7 @@
 *.sh
 !deploy.sh
 !restart.sh
+!deploy-test.sh
 *.suo
 *.idea
 *.log
