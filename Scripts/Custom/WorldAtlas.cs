@@ -156,14 +156,14 @@ namespace Server.Items
             new AtlasLocation("Bedlam",           2068, 1372,  0, Map.Malas),
 
             // ---- Ilshenar ----
-            new AtlasLocation("Exodus Dungeon",    827,  777,  0, Map.Ilshenar),
-            new AtlasLocation("Spectre Dungeon",  1362, 1031,  0, Map.Ilshenar),
-            new AtlasLocation("Spider Cave",      1420,  910,  0, Map.Ilshenar),
-            new AtlasLocation("Rock Dungeon",     1788,  571,  0, Map.Ilshenar),
+            new AtlasLocation("Exodus Dungeon",    827,  777,-80, Map.Ilshenar),
+            new AtlasLocation("Spectre Dungeon",  1362, 1031,-13, Map.Ilshenar),
+            new AtlasLocation("Spider Cave",      1419,  909,-10, Map.Ilshenar),
+            new AtlasLocation("Rock Dungeon",     2189,  320, -7, Map.Ilshenar),
 
             // ---- Tokuno ----
-            new AtlasLocation("Yomotsu Mines",     259,  783,  0, Map.Tokuno),
-            new AtlasLocation("Fan Dancer's Dojo", 977,  223,  0, Map.Tokuno),
+            new AtlasLocation("Yomotsu Mines",     259,  783, 63, Map.Tokuno),
+            new AtlasLocation("Fan Dancer's Dojo", 988,  194, 15, Map.Tokuno),
 
             // ---- Ter Mur ----
             new AtlasLocation("Stygian Abyss",     985,  366,-11, Map.TerMur),
