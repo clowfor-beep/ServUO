@@ -250,27 +250,20 @@ namespace Server.Misc
                 newChar.BankBox.DropItem(ticket);
             }
 
-            CityInfo city = args.City;
+            // All new characters start in New Haven regardless of the city chosen
+            // in the client.  New Haven is the newbie learning area on Trammel.
+            // Once the player is ready they travel to Felucca via the moongate.
+            Point3D newHavenLoc = new Point3D(3503, 2574, 2);
+            Map     newHavenMap = Map.Trammel;
 
-            // This shard runs on Felucca. All starting cities are redirected there,
-            // except New Haven which stays on Trammel as the newbie learning area.
-            Map map = city.Map;
-            if (map == Map.Trammel)
-            {
-                bool isNewHaven = (city.Location.X >= 3400 && city.Location.X <= 3510 &&
-                                   city.Location.Y >= 2640 && city.Location.Y <= 2730);
-                if (!isNewHaven)
-                    map = Map.Felucca;
-            }
-
-            newChar.MoveToWorld(city.Location, map);
+            newChar.MoveToWorld(newHavenLoc, newHavenMap);
 
             Utility.PushColor(ConsoleColor.Green);
             Console.WriteLine("Login: {0}: New character being created (account={1})", state, args.Account.Username);
             Utility.PopColor();
             Utility.PushColor(ConsoleColor.DarkGreen);
             Console.WriteLine(" - Character: {0} (serial={1})", newChar.Name, newChar.Serial);
-            Console.WriteLine(" - Started: {0} {1} in {2}", city.City, city.Location, city.Map);
+            Console.WriteLine(" - Started: New Haven {0} in {1}", newHavenLoc, newHavenMap);
             Utility.PopColor();
         }
 

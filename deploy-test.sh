@@ -7,7 +7,7 @@ set -e
 cd /home/servuo
 
 echo "Pulling latest from git..."
-git pull
+git pull --no-edit
 
 echo "Building Server.dll..."
 dotnet build Server/Server.csproj -c Release --nologo -v minimal
@@ -21,7 +21,20 @@ echo "Scripts.dll built."
 
 chmod +x /home/servuo-test/restart.sh 2>/dev/null || true
 
-echo "Restarting TEST server (port 2594)..."
-docker exec servuo-test /home/servuo/restart.sh
+echo "Saving world before restart..."
+docker exec servuo-test screen -S servuo -X stuff "worldsave$(printf '\r')" 2>/dev/null || true
+sleep 15
+
+echo "Applying test config..."
+cp Config/env/test/Server.cfg /home/servuo-test/Config/Server.cfg
+cp Config/env/test/DataPath.cfg /home/servuo-test/Config/DataPath.cfg
+
+echo "Killing existing test server..."
+docker exec servuo-test bash -c "pkill -9 -f mono 2>/dev/null; sleep 2" 2>/dev/null || true
+
+echo "Starting TEST server (port 2594)..."
+docker exec -d servuo-test bash -c "cd /home/servuo && mono ServUO.exe -noconsole < /dev/null >> /home/servuo/servuo.log 2>&1"
+
+echo "Deploy-test complete. Production server untouched."
 
 echo "Deploy-test complete. Production server untouched."

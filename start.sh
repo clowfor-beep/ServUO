@@ -11,9 +11,6 @@
 
 cd /home/servuo
 
-# Delete cached script assembly — forces clean recompile on startup
-rm -f Scripts.dll Scripts.pdb
-
 # Start server in a detached screen session
 screen -dmS servuo bash -c \
   "mono ServUO.exe -noconsole < /dev/null 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | tee -a /home/servuo/servuo.log"

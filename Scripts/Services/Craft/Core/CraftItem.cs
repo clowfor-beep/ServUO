@@ -1866,7 +1866,7 @@ namespace Server.Engines.Craft
                         PlayerMobile px = from as PlayerMobile;
 
                         if (!QuestHelper.CheckItem(px, item))
-                            from.SendLocalizedMessage(1072355, null, 0x23); // That item does not match any of your quest criteria	
+                            from.SendLocalizedMessage(1072355, null, 0x23); // That item does not match any of your quest criteria
                     }
 
                     context.RequiredPigmentHue = PlantPigmentHue.None;
@@ -1882,6 +1882,8 @@ namespace Server.Engines.Craft
                     {
                         Caddellite.TryInfuse(from, item, craftSystem);
                     }
+
+                    int craftedAmount = item.Amount; // capture before AddToBackpack may stack/delete the item
 
                     if (tool is Item && ((Item)tool).Parent is Container)
                     {
@@ -1899,6 +1901,11 @@ namespace Server.Engines.Craft
                     {
                         from.AddToBackpack(item);
                     }
+
+                    // Auto-register crafted items toward active ObtainObjective quests (e.g. Andric's arrow quest).
+                    // This fires even without Quest Item mode, so players don't need to know about that toggle.
+                    if (context.QuestOption != CraftQuestOption.QuestItem && from is PlayerMobile craftPm)
+                        QuestHelper.AutoRegisterQuestItem(craftPm, item, craftedAmount);
 
                     EventSink.InvokeCraftSuccess(new CraftSuccessEventArgs(from, item, tool is Item ? (Item)tool : null));
 

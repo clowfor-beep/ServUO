@@ -6,7 +6,7 @@ set -e
 cd /home/servuo
 
 echo "Pulling latest from git..."
-git pull
+git pull --no-edit
 
 echo "Building Server.dll..."
 dotnet build Server/Server.csproj -c Release --nologo -v minimal
@@ -26,7 +26,15 @@ cp website/update-status.php /var/www/html/update-status.php
 
 chmod +x /home/servuo/restart.sh 2>/dev/null || true
 
+echo "Saving world before restart..."
+docker exec servuo screen -S servuo -X stuff "worldsave$(printf '\r')" 2>/dev/null || true
+sleep 15
+
+echo "Applying prod config..."
+cp Config/env/prod/Server.cfg Config/Server.cfg
+cp Config/env/prod/DataPath.cfg Config/DataPath.cfg
+
 echo "Restarting ServUO..."
-docker exec servuo /home/servuo/restart.sh
+docker exec servuo bash /home/servuo/restart.sh
 
 echo "Deploy complete."

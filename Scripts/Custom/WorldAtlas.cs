@@ -118,11 +118,6 @@ namespace Server.Items
             new AtlasLocation("Papua",           5769, 3176,  0, Map.Felucca),
             new AtlasLocation("Delucia",         5228, 3978, 37, Map.Felucca),
             new AtlasLocation("New Haven",       3503, 2574, 14, Map.Trammel),
-            new AtlasLocation("Luna",             989,  520,-50, Map.Malas),
-            new AtlasLocation("Umbra",           2049, 1344,-85, Map.Malas),
-            new AtlasLocation("Zento",            736, 1256, 30, Map.Tokuno),
-            new AtlasLocation("Makoto-Jima",      802, 1204, 25, Map.Tokuno),
-            new AtlasLocation("Mistas",           818, 1073,-30, Map.Ilshenar),
         };
 
         // -------------------------------------------------------
@@ -151,23 +146,6 @@ namespace Server.Items
             new AtlasLocation("Painted Caves",    1716,  892,  0, Map.Felucca),
             new AtlasLocation("Terathan Keep",    5426, 3120,  0, Map.Felucca),
 
-            // ---- Malas ----
-            new AtlasLocation("Doom",             2357, 1268,  0, Map.Malas),
-            new AtlasLocation("Bedlam",           2068, 1372,  0, Map.Malas),
-
-            // ---- Ilshenar ----
-            new AtlasLocation("Exodus Dungeon",    827,  777,-80, Map.Ilshenar),
-            new AtlasLocation("Spectre Dungeon",  1362, 1031,-13, Map.Ilshenar),
-            new AtlasLocation("Spider Cave",      1419,  909,-10, Map.Ilshenar),
-            new AtlasLocation("Rock Dungeon",     2189,  320, -7, Map.Ilshenar),
-
-            // ---- Tokuno ----
-            new AtlasLocation("Yomotsu Mines",     259,  783, 63, Map.Tokuno),
-            new AtlasLocation("Fan Dancer's Dojo", 988,  194, 15, Map.Tokuno),
-
-            // ---- Ter Mur ----
-            new AtlasLocation("Stygian Abyss",     985,  366,-11, Map.TerMur),
-            new AtlasLocation("Underworld",       1128, 1207, -2, Map.TerMur),
         };
 
         // -------------------------------------------------------
@@ -183,9 +161,6 @@ namespace Server.Items
             new AtlasLocation("Trinsic",         1867, 2780,  0, Map.Felucca),
             new AtlasLocation("Skara Brae",       632, 2233,  0, Map.Felucca),
             new AtlasLocation("Magincia",        3714, 2220, 20, Map.Felucca),
-            new AtlasLocation("Ilshenar Gate",    1223,  475,-16, Map.Ilshenar),
-            new AtlasLocation("Malas Gate",        989,  520,-50, Map.Malas),
-            new AtlasLocation("Tokuno Gate",      1169,  998,  0, Map.Tokuno),
         };
 
         // -------------------------------------------------------

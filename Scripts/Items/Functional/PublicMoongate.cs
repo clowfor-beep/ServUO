@@ -35,13 +35,16 @@ namespace Server.Items
 
             int count = 0;
 
-            // Trammel moongates are intentionally omitted — this shard is Felucca-only.
-            // New Haven (Trammel) is the only Trammel area players use, and it has no moongate.
             count += MoonGen(PMList.Felucca);
             count += MoonGen(PMList.Ilshenar);
             count += MoonGen(PMList.Malas);
             count += MoonGen(PMList.Tokuno);
             count += MoonGen(PMList.TerMur);
+
+            // Place a single moongate in New Haven (Trammel) so players can leave
+            PublicMoongate havenGate = new PublicMoongate();
+            havenGate.MoveToWorld(new Point3D(3450, 2677, 25), Map.Trammel);
+            count++;
 
             World.Broadcast(0x35, true, "{0} moongates generated.", count);
         }
@@ -331,7 +334,8 @@ namespace Server.Items
 				new PMEntry(new Point3D(643, 2067, 5), 1012009), // Skara Brae
 				/* Dynamic Z for Magincia to support both old and new maps. */
 				new PMEntry(new Point3D(3563, 2139, Map.Felucca.GetAverageZ(3563, 2139)), 1012010), // (New) Magincia
-				new PMEntry(new Point3D(2711, 2234, 0), 1019001) // Buccaneer's Den
+				new PMEntry(new Point3D(2711, 2234, 0), 1019001), // Buccaneer's Den
+				new PMEntry(new Point3D(3450, 2677, 25), 1078098, Map.Trammel) // New Haven
 			});
 
         public static readonly PMList Ilshenar = new PMList(
@@ -389,8 +393,7 @@ namespace Server.Items
 
         public static readonly PMList[] AllLists = { Trammel, Felucca, Ilshenar, Malas, Tokuno, TerMur };
 
-        // Felucca-only shard: players never see Trammel as a moongate destination.
-        // New Haven (Trammel) has no moongate so it does not need to appear here.
+        // Felucca-only shard: New Haven appears in the Felucca tab as a cross-map destination.
         public static readonly PMList[] FeluccaOnlyLists = { Felucca, Ilshenar, Malas, Tokuno, TerMur };
 
         public static PMList GetList(Map map)
