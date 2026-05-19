@@ -7,7 +7,7 @@ set -e
 cd /home/servuo
 
 echo "Pulling latest from git..."
-git pull
+git pull --no-edit
 
 echo "Building Server.dll..."
 dotnet build Server/Server.csproj -c Release --nologo -v minimal
