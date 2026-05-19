@@ -35,11 +35,8 @@ namespace Server.Items
 
             int count = 0;
 
-            if (!Siege.SiegeShard)
-            {
-                count += MoonGen(PMList.Trammel);
-            }
-
+            // Trammel moongates are intentionally omitted — this shard is Felucca-only.
+            // New Haven (Trammel) is the only Trammel area players use, and it has no moongate.
             count += MoonGen(PMList.Felucca);
             count += MoonGen(PMList.Ilshenar);
             count += MoonGen(PMList.Malas);
@@ -392,6 +389,10 @@ namespace Server.Items
 
         public static readonly PMList[] AllLists = { Trammel, Felucca, Ilshenar, Malas, Tokuno, TerMur };
 
+        // Felucca-only shard: players never see Trammel as a moongate destination.
+        // New Haven (Trammel) has no moongate so it does not need to appear here.
+        public static readonly PMList[] FeluccaOnlyLists = { Felucca, Ilshenar, Malas, Tokuno, TerMur };
+
         public static PMList GetList(Map map)
         {
             if (map == null || map == Map.Internal)
@@ -520,9 +521,8 @@ namespace Server.Items
                 }
                 else
                 {
-                    bool young = mobile is PlayerMobile && ((PlayerMobile)mobile).Young;
-
-                    checkLists = young ? PMList.ListsYoung : PMList.Lists;
+                    // Felucca-only shard — Trammel is never a moongate destination for players.
+                    checkLists = PMList.FeluccaOnlyLists;
                 }
             }
             else

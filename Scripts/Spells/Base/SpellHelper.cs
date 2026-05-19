@@ -843,6 +843,21 @@ namespace Server.Spells
                 {
                     return false;
                 }
+
+                // Felucca-only shard: block player travel TO Trammel via Recall, Gate,
+                // or Mark.  New Haven is the only permitted Trammel destination/mark.
+                if (caster.IsPlayer() && map == Map.Trammel &&
+                    (type == TravelCheckType.RecallTo || type == TravelCheckType.GateTo ||
+                     type == TravelCheckType.Mark    || type == TravelCheckType.TeleportTo))
+                {
+                    bool isNewHaven = (loc.X >= 3400 && loc.X <= 3510 &&
+                                       loc.Y >= 2640 && loc.Y <= 2730);
+                    if (!isNewHaven)
+                    {
+                        caster.SendLocalizedMessage(1019004); // You are not allowed to travel there.
+                        return false;
+                    }
+                }
             }
 
             m_TravelCaster = caster;

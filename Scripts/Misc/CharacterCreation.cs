@@ -251,7 +251,17 @@ namespace Server.Misc
             }
 
             CityInfo city = args.City;
-            Map map = Siege.SiegeShard && city.Map == Map.Trammel ? Map.Felucca : city.Map;
+
+            // This shard runs on Felucca. All starting cities are redirected there,
+            // except New Haven which stays on Trammel as the newbie learning area.
+            Map map = city.Map;
+            if (map == Map.Trammel)
+            {
+                bool isNewHaven = (city.Location.X >= 3400 && city.Location.X <= 3510 &&
+                                   city.Location.Y >= 2640 && city.Location.Y <= 2730);
+                if (!isNewHaven)
+                    map = Map.Felucca;
+            }
 
             newChar.MoveToWorld(city.Location, map);
 
