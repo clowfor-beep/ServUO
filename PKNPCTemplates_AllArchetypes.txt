@@ -674,6 +674,301 @@
 #   Sampire : "I feed on your pain.", "Your blood sustains me."
 #
 # ================================================================
+# ENCOUNTER ZONE SYSTEM
+# ================================================================
+#
+# OVERVIEW
+# --------
+# PK NPCs are divided into three tiers that map to three danger zones:
+#
+#   Newbie   — Surface hunting grounds and easy dungeon first floors
+#              Players here are generally new or lightly equipped
+#
+#   Advanced — Mid-level dungeons and mid-floors of classic dungeons
+#              Players here are experienced, grinding mid-tier monsters
+#
+#   Expert   — The deepest, most dangerous dungeon floors and end-game
+#              dungeons (Doom Gauntlet, Abyss, etc.)
+#              Players here are well-equipped veterans
+#
+# A single unified system (PKEncounterSystem.cs) replaces the
+# original GraveyardPKEncounter.cs and handles all zones across
+# all facets (Felucca, Ilshenar, Malas, Tokuno, TerMur).
+#
+# ----------------------------------------------------------------
+# TECHNICAL NOTE: DUNGEON COORDINATES IN SERVUO
+# ----------------------------------------------------------------
+#
+# ServUO places all dungeon interiors at high X coordinates on the
+# same map facet as the surface world. Dungeon floors within the
+# same dungeon are separated by Z value (vertical depth):
+#
+#   Higher Z (e.g. 0 to 60)   = upper floors / entrance area
+#   Lower Z  (e.g. -20 to -60) = deeper floors
+#   Very low Z (below -60)     = deepest floors
+#
+# The Rectangle2D coordinates below come directly from Regions.xml.
+# All rectangles use (x, y, width, height) format.
+#
+# Use [where in-game to confirm Z ranges for specific floors.
+# Tier Z splits below are approximate — tune per dungeon after testing.
+#
+# ----------------------------------------------------------------
+# NEWBIE ZONES
+# ----------------------------------------------------------------
+# Surface hunting grounds and easy first-floor dungeons.
+# Spawn pool: all 7 Newbie archetypes
+#
+# [ Felucca — Surface ]
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ  MaxZ  Chance
+#   ────────────────────────────────────────────────────────────────────────────────
+#   Britain Graveyard      Felucca   (1333, 1441,  84,  82)       -5    25    8%
+#   Orc Cave               Felucca   (5281, 1283,  92, 103)      -20    20    8%
+#                                    (5267, 1955,  97,  91)      -20    20    8%
+#                                    (5127, 1941,  37,  83)      -20    20    8%
+#
+# [ Felucca — Classic Dungeons Level 1 ]
+# Note: Dungeon interiors are at x=5000+ in the Felucca map space.
+# Z splits below divide the dungeon rectangle into floor tiers.
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ  MaxZ  Chance
+#   ────────────────────────────────────────────────────────────────────────────────
+#   Covetous  L1           Felucca   (5376, 1793, 201, 255)       20   128   10%
+#   Deceit    L1           Felucca   (5122,  518, 248, 252)       20   128   10%
+#   Despise   L1           Felucca   (5377,  516, 254, 506)       40   128   10%
+#   Destard   L1           Felucca   (5120,  770, 251, 258)       -5    25   10%
+#   Hythloth  L1           Felucca   (5898,    2, 238, 244)       20   128   10%
+#   Shame     L1           Felucca   (5377,    2, 257, 260)       20   128   10%
+#                                    (5635,    2, 260, 124)       20   128   10%
+#   Wrong     L1           Felucca   (5633,  511, 253, 510)       -5    25   10%
+#
+# [ Ilshenar — Easier Dungeons ]
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ  MaxZ  Chance
+#   ────────────────────────────────────────────────────────────────────────────────
+#   Rock Dungeon           Ilshenar  (2176,  288,  24,  40)      -20    20   10%
+#                                    (2088,    8, 160, 176)      -20    20   10%
+#   Spectre Dungeon        Ilshenar  (1936, 1000,  96, 120)      -30    20   10%
+#   Ankh Dungeon (upper)   Ilshenar  (0,   1248, 176, 344)        -5    20   10%
+#
+# ----------------------------------------------------------------
+# ADVANCED ZONES
+# ----------------------------------------------------------------
+# Mid-floors of classic dungeons and mid-tier standalone dungeons.
+# Spawn pool: all 7 Advanced archetypes
+#
+# [ Felucca — Classic Dungeons Level 2–3 ]
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ  MaxZ  Chance
+#   ────────────────────────────────────────────────────────────────────────────────
+#   Covetous  L2-3         Felucca   (5376, 1793, 201, 255)      -40    20   15%
+#   Deceit    L2-3         Felucca   (5122,  518, 248, 252)      -40    20   15%
+#   Despise   L2-3         Felucca   (5377,  516, 254, 506)      -20    40   15%
+#   Destard   L2           Felucca   (5120,  770, 251, 258)      -40    -5   15%
+#   Hythloth  L2-3         Felucca   (5898,    2, 238, 244)      -40    20   15%
+#   Shame     L2-3         Felucca   (5377,    2, 257, 260)      -40    20   15%
+#   Wrong     L2-3         Felucca   (5633,  511, 253, 510)      -40    -5   15%
+#
+# [ Felucca — Standalone Mid-Tier Dungeons ]
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ  MaxZ  Chance
+#   ────────────────────────────────────────────────────────────────────────────────
+#   Khaldun                Felucca   (5381, 1284, 247, 225)     -128   128   15%
+#   Fire Dungeon           Felucca   (5635, 1285, 245, 235)     -128   128   15%
+#   Ice Dungeon            Felucca   (5668,  130, 220, 138)     -128   128   15%
+#                                    (5800,  319,  63,  65)     -128   128   15%
+#                                    (5654,  300,  54,  40)     -128   128   15%
+#   Terathan Keep          Felucca   (5404, 3099,  77,  68)     -128   128   15%
+#                                    (5120, 1530, 254, 258)     -128   128   15%
+#   Blackthorn Dungeon     Felucca   (6151, 2301, 413, 539)     -128   128   15%
+#   Misc Dungeons          Felucca   (5886, 1281, 257, 254)     -128   128   15%
+#
+# [ Ilshenar — Mid-Tier Dungeons ]
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ  MaxZ  Chance
+#   ────────────────────────────────────────────────────────────────────────────────
+#   Spider Cave            Ilshenar  (1752,  952, 112,  48)      -40    20   15%
+#                                    (1480,  864,  48,  32)      -40    20   15%
+#   Blood Dungeon          Ilshenar  (2032,  808, 168, 256)      -40    20   15%
+#   Wisp Dungeon           Ilshenar  (616,  1480,  88,  96)      -40    20   15%
+#                                    (816,  1448,  96, 136)      -40    20   15%
+#                                    (912,  1456, 112, 128)      -40    20   15%
+#   Ankh Dungeon (lower)   Ilshenar  (0,   1248, 176, 344)      -40    -5   15%
+#   Exodus Dungeon (entry) Ilshenar  (1832,   16, 248, 200)      -10    20   15%
+#
+# [ Malas — Mid-Tier Dungeons ]
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ  MaxZ  Chance
+#   ────────────────────────────────────────────────────────────────────────────────
+#   Bedlam                 Malas     (80,  1590, 130, 100)      -128   128   15%
+#   Labyrinth              Malas     (255, 1791, 256, 256)      -128   128   15%
+#
+# [ Tokuno — Mid-Tier Dungeons ]
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ  MaxZ  Chance
+#   ────────────────────────────────────────────────────────────────────────────────
+#   Yomotsu Mines          Tokuno    (0,     0, 129, 129)       -128   128   15%
+#   Fan Dancer's Dojo      Tokuno    (40,  320, 170, 400)       -128   128   15%
+#
+# ----------------------------------------------------------------
+# EXPERT ZONES
+# ----------------------------------------------------------------
+# Deepest dungeon floors and end-game content areas.
+# Spawn pool: all 7 Expert archetypes
+#
+# [ Felucca — Classic Dungeons Level 4+ ]
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ   MaxZ  Chance
+#   ──────────────────────────────────────────────────────────────────────────────────
+#   Covetous  L4+          Felucca   (5376, 1793, 201, 255)     -128    -40   18%
+#   Deceit    L4+          Felucca   (5122,  518, 248, 252)     -128    -40   18%
+#   Despise   L4+          Felucca   (5377,  516, 254, 506)     -128    -20   18%
+#   Destard   L3+          Felucca   (5120,  770, 251, 258)     -128    -40   18%
+#   Hythloth  L4+          Felucca   (5898,    2, 238, 244)     -128    -40   18%
+#   Shame     L4+          Felucca   (5377,    2, 257, 260)     -128    -40   18%
+#   Wrong     L4+          Felucca   (5633,  511, 253, 510)     -128    -40   18%
+#
+# [ Malas — End-Game Dungeons ]
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ  MaxZ  Chance
+#   ────────────────────────────────────────────────────────────────────────────────
+#   Doom                   Malas     (256,    0, 256, 304)      -128   128   18%
+#   Doom Gauntlet          Malas     (256,  304, 256, 256)      -128   128   20%
+#   The Citadel            Malas     (65,  1865, 130, 125)      -128   128   20%
+#
+# [ Ilshenar — End-Game Dungeons ]
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ  MaxZ  Chance
+#   ────────────────────────────────────────────────────────────────────────────────
+#   Exodus Dungeon (deep)  Ilshenar  (1832,   16, 248, 200)    -128    -10   18%
+#   Sorcerer's Dungeon     Ilshenar  (see Regions.xml)          -128   128   18%
+#
+# [ TerMur — Stygian Abyss ]
+#   Zone Name              Map       Rect (x, y, w, h)          MinZ  MaxZ  Chance
+#   ────────────────────────────────────────────────────────────────────────────────
+#   Stygian Abyss          TerMur    (301,  328, 775, 474)      -128   128   20%
+#                                    (780,   32, 296, 296)      -128   128   20%
+#                                    (436,  802, 304, 178)      -128   128   20%
+#                                    (754,  881, 108,  93)      -128   128   20%
+#                                    (0,    684, 134, 176)      -128   128   20%
+#   Underworld             TerMur    (see Regions.xml for rects) -128  128   20%
+#
+# ----------------------------------------------------------------
+# SPAWN FREQUENCY
+# ----------------------------------------------------------------
+#
+# These encounters are meant to be a rare surprise — something that
+# keeps players on edge without feeling like constant harassment.
+#
+#   Spawn chance           : 15% per check (default — tunable per zone)
+#   Check interval         : Every 5 minutes per player inside a zone
+#   Cooldown after spawn   : 30 minutes before the same player can
+#                            trigger another encounter
+#   Cooldown after kill    : Same 30-minute cooldown applies. No
+#                            escalation — killing the PK ends the
+#                            encounter and the cooldown resets normally.
+#
+# Each zone entry carries its own SpawnChance (0.0–1.0) so that
+# individual dungeon levels can be tuned independently. All zones
+# start at the 15% default. Adjust per zone after playtesting.
+#
+# Example tuning intent (adjust freely):
+#   Dungeon entrance floors  — slightly lower (10–12%) — players pass
+#                              through quickly and shouldn't always get hit
+#   Mid floors               — default (15%) — players farm here longest
+#   Deep/expert floors       — slightly higher (18–20%) — high reward,
+#                              high risk feel
+#   Surface zones            — lower (8–10%) — graveyard etc. are short visits
+#
+# ----------------------------------------------------------------
+# TARGETING — MULTIPLE PLAYERS IN THE SAME AREA
+# ----------------------------------------------------------------
+#
+# If multiple players are in the same zone when an encounter triggers,
+# the PK targets the player who has been in the dungeon the longest.
+#
+# This requires tracking dungeon entry time per player:
+#   - Record timestamp when a player first enters a zone
+#   - Clear timestamp when they leave the zone or log out
+#   - On encounter trigger, sort eligible players by entry time
+#     and pick the one with the earliest (oldest) timestamp
+#
+# Rationale: rewards cautious new arrivals while punishing players
+# who have been farming unchallenged for a long time.
+#
+# ----------------------------------------------------------------
+# SPAWN BEHAVIOUR
+# ----------------------------------------------------------------
+#
+#   Spawn VFX              : Moongate portal effect + sound
+#   Spawn distance         : 3–5 tiles from the target player
+#   Spawn location         : Must be inside the same zone rectangle
+#   Opening line           : PK says a taunt from its archetype pool
+#   Combat start           : PK sets Combatant to target immediately
+#
+# ----------------------------------------------------------------
+# COMBAT BEHAVIOUR
+# ----------------------------------------------------------------
+#
+#   Target lock            : PK hunts the original target player only.
+#                            It does not switch to other players or
+#                            engage dungeon monsters unless attacked.
+#   Floor tracking         : The system tracks which dungeon floor
+#                            (Z-band) the target player is on when
+#                            the encounter spawns.
+#   Floor change — target  : If the target player moves to a different
+#                            dungeon floor (leaves the Z-band), the PK
+#                            stops chasing and enters a wait state.
+#   Wait state             : PK stops moving, idles for 2 minutes,
+#                            then despawns with no loot drop.
+#   Floor change — PK      : PK does not follow the player across floors.
+#                            It stays on the floor it spawned on.
+#
+# ----------------------------------------------------------------
+# DEATH AND LOOT
+# ----------------------------------------------------------------
+#
+#   Player kills PK        : Normal loot drops per archetype/tier
+#                            (see loot tables in each archetype section).
+#                            No escalation — a harder PK does not follow.
+#                            The 30-minute cooldown begins on death.
+#   PK kills player        : PK lingers for 60 seconds then despawns.
+#                            No new PK spawns on the same player until
+#                            they re-enter a zone after the cooldown.
+#   PK despawns (timeout)  : No loot. Cooldown still applies.
+#
+# ----------------------------------------------------------------
+# GENERAL RULES
+# ----------------------------------------------------------------
+#
+#   Max active PKs         : 1 per player at any time
+#   Staff/GMs              : Never targeted (AccessLevel > Player)
+#   Dead players           : Never targeted
+#   Trammel equivalent     : Never triggers on safe facets
+#
+# ----------------------------------------------------------------
+# IMPLEMENTATION PLAN
+# ----------------------------------------------------------------
+#
+# Step 1: Replace GraveyardPKEncounter.cs with PKEncounterSystem.cs
+#         The new file registers the same EventSink.Movement hook
+#         but checks ALL zones instead of just the graveyard rect.
+#
+# Step 2: PKEncounterSystem defines a static List<PKZone> AllZones
+#         populated at Initialize() time. Each zone has its tier.
+#         PKZone holds: Name, Rectangle2D Rect, Map Map,
+#                       int MinZ, int MaxZ, PKTier Tier.
+#
+# Step 3: OnMovement calls AllZones.Find(z => z.Contains(pm))
+#         to determine which zone (if any) the player is in.
+#         Contains() checks: correct Map, inside Rect, Z in range.
+#         The zone's Tier drives which factory method is called.
+#
+# Step 4: Three factory methods:
+#         CreateRandomNewbie()   — picks from 7 Newbie archetypes
+#         CreateRandomAdvanced() — picks from 7 Advanced archetypes
+#         CreateRandomExpert()   — picks from 7 Expert archetypes
+#
+# Step 5: PKTestCommand.cs updated with optional tier argument:
+#         [pktest           — spawns tier based on player location
+#         [pktest newbie    — forces Newbie tier
+#         [pktest advanced  — forces Advanced tier
+#         [pktest expert    — forces Expert tier
+#
+# Code file: Scripts/Custom/PKEncounterSystem.cs
+# Replaces:  Scripts/Custom/GraveyardPKEncounter.cs
+#
+# ================================================================
 # RELATED DOCUMENTS
 # ================================================================
 #
