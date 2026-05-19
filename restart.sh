@@ -34,7 +34,7 @@ fi
 screen -wipe > /dev/null 2>&1
 
 echo "Starting ServUO..."
-/home/servuo/start.sh
+bash /home/servuo/start.sh
 sleep 3
 
 if ! pgrep -f "mono ServUO.exe" > /dev/null; then
