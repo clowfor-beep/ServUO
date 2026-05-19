@@ -377,6 +377,17 @@ namespace Server.Misc
                 if (toGain == 1 && skill.Base <= 10.0)
                     toGain = Utility.Random(4) + 1;
 
+                #region Custom Skill Gain Boost
+                // 2x gain below 50, 1.5x gain from 50 to 80
+                if (from is PlayerMobile)
+                {
+                    if (skill.Base < 50.0)
+                        toGain = (int)Math.Max(1, toGain * 2.0);
+                    else if (skill.Base < 80.0)
+                        toGain = (int)Math.Max(1, toGain * 1.5);
+                }
+                #endregion
+
                 #region Mondain's Legacy
                 if (from is PlayerMobile && QuestHelper.EnhancedSkill((PlayerMobile)from, skill))
                 {
