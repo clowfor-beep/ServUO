@@ -35,6 +35,8 @@
 
 # Custom Files
 /TotalAccountGold.txt
+/Config/Server.cfg
+/Config/DataPath.cfg
 
 # Wildcard Files
 *.pdb
@@ -42,6 +44,7 @@
 *.exe.mdb
 *.exe.config
 *.sh
+!deploy.sh
 *.suo
 *.idea
 *.log
