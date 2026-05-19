@@ -3,7 +3,7 @@
 /Server.dll
 /Server/bin
 /Server/obj
-/Scripts.dll
+# /Scripts.dll  — committed to git so server can pull it directly
 /Scripts/bin
 /Scripts/obj
 /Application/bin

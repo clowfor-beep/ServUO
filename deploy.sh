@@ -1,16 +1,11 @@
 #!/bin/bash
-# deploy.sh — pull latest from git, build scripts, update website, restart ServUO
+# deploy.sh — pull latest from git, update website, restart ServUO
 set -e
 
 cd /home/servuo
 
 echo "Pulling latest from git..."
 git pull
-
-echo "Building Scripts.dll..."
-xbuild Scripts/Scripts.csproj /p:Configuration=Release /nologo /verbosity:minimal
-cp Scripts/bin/Release/Scripts.dll /home/servuo/Scripts.dll
-echo "Scripts.dll built and deployed."
 
 echo "Deploying website..."
 cp website/index.html /var/www/html/index.html
