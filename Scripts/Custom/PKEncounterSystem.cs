@@ -336,8 +336,10 @@ namespace Server.Custom
                     return p;
             }
 
-            // Fallback: right next to the player
-            return new Point3D(target.X + 2, target.Y, target.Z);
+            // Fallback: right next to the player — use GetAverageZ so the NPC
+            // lands on the actual terrain surface rather than potentially underground.
+            int fz = map.GetAverageZ(target.X + 2, target.Y);
+            return new Point3D(target.X + 2, target.Y, fz != 0 ? fz : target.Z);
         }
 
         // ── Tier factory ──────────────────────────────────────────────────
@@ -400,8 +402,15 @@ namespace Server.Custom
 
             if (zone == null)
             {
-                // Not in a registered zone — use Britain Graveyard as fallback
-                zone = AllZones[0];
+                // Not in a registered zone — build a temporary zone centred on the
+                // player using their actual map and Z, so FindSpawnPoint can always
+                // find a valid tile nearby.  Covers any facet / surface / dungeon.
+                PKTier tier = forceTier ?? PKTier.Newbie;
+                zone = new PKZone("Force Spawn", "Force", target.Map,
+                    target.Z - 10, target.Z + 20, tier, 1.0,
+                    new Rectangle2D(target.X - 8, target.Y - 8, 16, 16));
+                TriggerEncounter(target, zone);
+                return;
             }
 
             if (forceTier.HasValue && forceTier.Value != zone.Tier)
