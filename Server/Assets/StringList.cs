@@ -96,7 +96,7 @@ namespace Server
 
 					bin.ReadByte(); // flag
 
-					int length = bin.ReadInt16();
+					int length = bin.ReadUInt16();
 
 					if (length > buffer.Length)
 						buffer = new byte[(length + 1023) & ~1023];

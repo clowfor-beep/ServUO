@@ -34,38 +34,29 @@ if ! pgrep -f "mono ServUO.exe" > /dev/null; then
     exit 1
 fi
 
-echo "Compiling scripts — please wait..."
+echo "Waiting for ServUO to finish loading..."
 
-# Tail the log until we see the server is ready (up to 3 minutes)
-LOG=/home/servuo/servuo.log
-LOGSIZE=$(wc -c < "$LOG" 2>/dev/null || echo 0)
+# Wait up to 3 minutes for the server to stabilise
+# ServUO is ready when the mono process drops below 20% CPU (world load complete)
+for i in $(seq 1 90); do
+    sleep 2
+    CPU=$(ps aux | grep "mono ServUO" | grep -v grep | awk '{print $3}' | head -1)
+    CPU_INT=${CPU%.*}
 
-for i in $(seq 1 180); do
-    # Read only new lines since the restart
-    NEWLINES=$(tail -c +$LOGSIZE "$LOG" 2>/dev/null | strings)
-
-    if echo "$NEWLINES" | grep -q "Scripts: Compilation"; then
-        echo "  [compiling scripts...]"
+    if [ -z "$CPU_INT" ]; then
+        echo "ERROR: ServUO process died. Check: docker exec servuo tail -30 /home/servuo/servuo.log"
+        exit 1
     fi
 
-    if echo "$NEWLINES" | grep -q "World: Loading"; then
-        echo "  [loading world...]"
-    fi
+    echo "  loading... (CPU: ${CPU}%)"
 
-    if echo "$NEWLINES" | grep -q "Listening on\|Server is now online"; then
+    if [ "$CPU_INT" -lt 5 ] 2>/dev/null; then
         echo ""
         echo "ServUO is online and ready."
         exit 0
     fi
-
-    if echo "$NEWLINES" | grep -qi "error\|exception" && echo "$NEWLINES" | grep -qi "scripts"; then
-        echo ""
-        echo "WARNING: Script errors detected — check the log:"
-        tail -c +$LOGSIZE "$LOG" | strings | grep -i "error" | head -5
-    fi
-
-    sleep 1
 done
 
-echo "Timed out waiting — ServUO may still be starting. Check with:"
-echo "  docker exec servuo tail -f /home/servuo/servuo.log"
+echo ""
+echo "ServUO is running (still loading or high load). Check with:"
+echo "  docker exec servuo ps aux | grep mono"
