@@ -231,15 +231,32 @@ section { position: relative; z-index: 1; padding: 6rem 2rem; }
 .tracker-panel { background: var(--surface); border: 0.5px solid var(--border); padding: 1.75rem; }
 .tracker-header { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 0.5px solid var(--border); }
 .tracker-empty { font-family: 'Crimson Text', serif; font-size: 1rem; color: var(--text-dim); font-style: italic; padding: 1rem 0; }
-.tracker-item { padding: 1rem 0; border-bottom: 0.5px solid var(--border); }
+.tracker-item { padding: 1rem 0; border-bottom: 0.5px solid var(--border); cursor: pointer; }
 .tracker-item:last-child { border-bottom: none; }
+.tracker-item:hover .tracker-title { color: var(--gold); }
 .tracker-meta { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
 .tracker-badge { font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.2rem 0.55rem; }
 .tracker-badge.bug { border: 0.5px solid var(--blood); color: #c06060; }
 .tracker-badge.suggestion { border: 0.5px solid var(--gold-dark); color: var(--gold); }
 .tracker-date { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.08em; }
-.tracker-title { font-family: 'Cinzel', serif; font-size: 0.82rem; color: var(--text); letter-spacing: 0.03em; }
+.tracker-title { font-family: 'Cinzel', serif; font-size: 0.82rem; color: var(--text); letter-spacing: 0.03em; transition: color 0.2s; }
 .tracker-char { font-family: 'Crimson Text', serif; font-size: 0.9rem; color: var(--text-dim); margin-top: 0.2rem; }
+.tracker-desc { font-family: 'Crimson Text', serif; font-size: 0.95rem; color: var(--text-muted); margin-top: 0.6rem; line-height: 1.5; display: none; padding-top: 0.5rem; border-top: 0.5px solid var(--border); white-space: pre-wrap; }
+.tracker-item.open .tracker-desc { display: block; }
+.tracker-expand { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.08em; margin-left: auto; transition: transform 0.2s; }
+.tracker-item.open .tracker-expand { transform: rotate(180deg); }
+/* Modal overlay */
+.submission-modal { display: none; position: fixed; inset: 0; z-index: 200; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+.submission-modal.open { display: flex; }
+.modal-box { background: var(--surface-2); border: 0.5px solid var(--border-2); padding: 2.5rem; max-width: 560px; width: 90%; position: relative; max-height: 80vh; overflow-y: auto; }
+.modal-close { position: absolute; top: 1rem; right: 1.25rem; background: none; border: none; color: var(--text-dim); font-size: 1.2rem; cursor: pointer; }
+.modal-close:hover { color: var(--gold); }
+.modal-type { font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1rem; }
+.modal-type.bug { color: #c06060; }
+.modal-type.suggestion { color: var(--gold); }
+.modal-title { font-family: 'Cinzel', serif; font-size: 1.15rem; color: var(--text); margin-bottom: 1.25rem; line-height: 1.4; }
+.modal-desc { font-family: 'Crimson Text', serif; font-size: 1.05rem; color: var(--text-muted); line-height: 1.65; white-space: pre-wrap; }
+.modal-meta { margin-top: 1.5rem; padding-top: 1rem; border-top: 0.5px solid var(--border); font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.06em; }
 
 /* CONNECT */
 #connect { background: var(--bg); }
@@ -706,6 +723,17 @@ footer {
   </div>
 </footer>
 
+<!-- Submission detail modal -->
+<div class="submission-modal" id="submission-modal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="document.getElementById('submission-modal').classList.remove('open')">✕</button>
+    <p class="modal-type" id="modal-type"></p>
+    <h3 class="modal-title" id="modal-title"></h3>
+    <p class="modal-desc" id="modal-desc"></p>
+    <p class="modal-meta" id="modal-meta"></p>
+  </div>
+</div>
+
 <script>
 fetch('/playercount.json')
   .then(r => r.json())
@@ -757,17 +785,36 @@ async function submitForm(e) {
   btn.textContent = document.getElementById('fb-type').value === 'bug' ? 'Submit Report' : 'Submit Suggestion';
 }
 
+function openModal(item) {
+  document.getElementById('modal-type').className = 'modal-type ' + item.type;
+  document.getElementById('modal-type').textContent = item.type === 'bug' ? '🐛 Bug Report' : '💡 Suggestion';
+  document.getElementById('modal-title').textContent = item.title;
+  document.getElementById('modal-desc').textContent = item.desc;
+  const parts = [];
+  if (item.name) parts.push('Submitted by ' + item.name);
+  if (item.char) parts.push('Character: ' + item.char);
+  parts.push(item.date);
+  document.getElementById('modal-meta').textContent = parts.join('  ·  ');
+  document.getElementById('submission-modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('submission-modal'))
+    document.getElementById('submission-modal').classList.remove('open');
+}
+
 function loadTracker() {
   fetch('/submissions.json?t=' + Date.now())
     .then(r => r.json())
     .then(items => {
       const el = document.getElementById('tracker-list');
       if (!items.length) { el.innerHTML = '<p class="tracker-empty">No submissions yet — be the first.</p>'; return; }
-      el.innerHTML = items.slice(0, 8).map(item => `
-        <div class="tracker-item">
+      el.innerHTML = items.slice(0, 8).map((item, i) => `
+        <div class="tracker-item" onclick="openModal(${JSON.stringify(item).replace(/"/g, '&quot;')})">
           <div class="tracker-meta">
             <span class="tracker-badge ${item.type}">${item.type === 'bug' ? '🐛 Bug' : '💡 Suggestion'}</span>
             <span class="tracker-date">${item.date}</span>
+            <span class="tracker-expand">▾</span>
           </div>
           <p class="tracker-title">${item.title}</p>
           ${item.char ? `<p class="tracker-char">— ${item.char}</p>` : ''}
