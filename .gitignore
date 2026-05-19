@@ -9,6 +9,9 @@
 /Application/bin
 /Application/obj
 
+# Website runtime data
+website/submissions.json
+
 # Common Directories
 /.vs
 /Honesty
