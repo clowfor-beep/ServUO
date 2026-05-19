@@ -50,6 +50,10 @@
 *.DotSettings.user
 *.ini
 
+# Include shell scripts
+!/start.sh
+!/deploy.sh
+
 # Include Data Files
 !/Data/*
 
