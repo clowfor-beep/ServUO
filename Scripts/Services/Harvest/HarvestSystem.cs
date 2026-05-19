@@ -311,8 +311,16 @@ namespace Server.Engines.Harvest
 
         public virtual bool Give(Mobile m, Item item, bool placeAtFeet)
         {
+            int amount = item.Amount; // capture before PlaceInBackpack may stack/delete the item
+
             if (m.PlaceInBackpack(item))
+            {
+                // Auto-register harvested items toward active ObtainObjective quests (e.g. Hargrove's lumberjack quest).
+                if (m is PlayerMobile pm)
+                    QuestHelper.AutoRegisterQuestItem(pm, item, amount);
+
                 return true;
+            }
 
             if (!placeAtFeet)
                 return false;

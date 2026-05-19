@@ -588,6 +588,63 @@ namespace Server.Engines.Quests
             return true;
         }
 
+        /// <summary>
+        /// Silently auto-registers an item toward any active ObtainObjective quest the player has.
+        /// Used by the harvest and craft systems so players don't need to manually toggle Quest Item mode.
+        /// If the item was stacked into an existing pile (item.Deleted == true), pass the original
+        /// harvested/crafted amount in <paramref name="amount"/>; otherwise pass -1 to use item.Amount.
+        /// </summary>
+        public static bool AutoRegisterQuestItem(PlayerMobile player, Item item, int amount = -1)
+        {
+            if (player == null || player.Quests == null)
+                return false;
+
+            int registerAmount = amount >= 0 ? amount : item.Amount;
+
+            foreach (BaseQuest quest in player.Quests)
+            {
+                foreach (BaseObjective baseObj in quest.Objectives)
+                {
+                    if (!(baseObj is ObtainObjective obj) || obj.Completed || !obj.IsObjective(item))
+                        continue;
+
+                    // If the item was stacked and deleted, find the stack it merged into.
+                    Item target = item;
+                    if (item.Deleted && player.Backpack != null)
+                    {
+                        foreach (Item stack in player.Backpack.FindItemsByType(item.GetType()))
+                        {
+                            if (!stack.QuestItem && obj.IsObjective(stack))
+                            {
+                                target = stack;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (target == null || target.Deleted)
+                        return false;
+
+                    if (!target.QuestItem)
+                    {
+                        obj.CurProgress += registerAmount;
+                        target.QuestItem = true;
+
+                        quest.OnObjectiveUpdate(target);
+
+                        if (quest.Completed)
+                            quest.OnCompleted();
+                        else if (obj.Completed)
+                            player.PlaySound(quest.UpdateSound);
+                    }
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public static int CountQuestItems(PlayerMobile from, Type type)
         {
             int count = 0;

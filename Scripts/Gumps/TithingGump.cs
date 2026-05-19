@@ -1,3 +1,4 @@
+using Server.Items;
 using Server.Mobiles;
 using Server.Network;
 using System.Globalization;
@@ -8,10 +9,37 @@ namespace Server.Gumps
     {
         private readonly int MaxTithing = 100000;
 
+        // Returns gold available for tithing: bank box + backpack combined.
+        private static int GetTitheBalance(Mobile from)
+        {
+            int bank = Banker.GetBalance(from);
+            int pack = from.Backpack != null ? from.Backpack.GetAmount(typeof(Gold)) : 0;
+            return bank + pack;
+        }
+
+        // Withdraws gold for tithing: takes from bank first, then backpack.
+        private static bool WithdrawTithe(Mobile from, int amount)
+        {
+            int bankBalance = Banker.GetBalance(from);
+            int fromBank    = Math.Min(amount, bankBalance);
+            int fromPack    = amount - fromBank;
+
+            if (fromPack > 0 && (from.Backpack == null || from.Backpack.GetAmount(typeof(Gold)) < fromPack))
+                return false;
+
+            if (fromBank > 0 && !Banker.Withdraw(from, fromBank, true))
+                return false;
+
+            if (fromPack > 0)
+                from.Backpack.ConsumeTotal(typeof(Gold), fromPack);
+
+            return true;
+        }
+
         public TithingGump(Mobile from, int offer)
             : base(100, 100)
         {
-            int totalGold = Banker.GetBalance(from);
+            int totalGold = GetTitheBalance(from);
 
             string gold = totalGold >= MaxTithing ? "100,000+" : totalGold.ToString("N0", CultureInfo.GetCultureInfo("en-US"));
 
@@ -57,7 +85,7 @@ namespace Server.Gumps
                             break;
                         }
 
-                        int totalGold = Banker.GetBalance(from);
+                        int totalGold = GetTitheBalance(from);
 
                         if (totalGold <= 0)
                         {
@@ -83,7 +111,7 @@ namespace Server.Gumps
                             break;
                         }
 
-                        int totalGold = Banker.GetBalance(from);
+                        int totalGold = GetTitheBalance(from);
 
                         if (totalGold <= 0)
                         {
@@ -109,7 +137,7 @@ namespace Server.Gumps
                                 if ((from.TithingPoints + m_Offer) > MaxTithing)
                                     m_Offer = MaxTithing - from.TithingPoints;
 
-                                if (Banker.Withdraw(from, m_Offer, true))
+                                if (WithdrawTithe(from, m_Offer))
                                 {
                                     // You tithe gold to the shrine as a sign of devotion.
                                     from.LocalOverheadMessage(MessageType.Regular, 0x3B2, 1060195);
