@@ -9,6 +9,11 @@ cd /home/servuo
 echo "Pulling latest from git..."
 git pull
 
+echo "Building Server.dll..."
+dotnet build Server/Server.csproj -c Release --nologo -v minimal
+cp Server/bin/Release/Server.dll /home/servuo-test/Server.dll
+echo "Server.dll built."
+
 echo "Building Scripts.dll..."
 dotnet build Scripts/Scripts.csproj -c Release --nologo -v minimal
 cp Scripts/bin/Release/Scripts.dll /home/servuo-test/Scripts.dll
