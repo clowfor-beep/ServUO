@@ -14,3 +14,6 @@ cp website/admin.php /var/www/html/admin.php
 cp website/update-status.php /var/www/html/update-status.php
 
 echo "Done. Website is up to date."
+
+# Keep restart script executable
+chmod +x /home/servuo/restart.sh 2>/dev/null || true
