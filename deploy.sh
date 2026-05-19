@@ -26,6 +26,10 @@ cp website/update-status.php /var/www/html/update-status.php
 
 chmod +x /home/servuo/restart.sh 2>/dev/null || true
 
+echo "Saving world before restart..."
+docker exec servuo screen -S servuo -X stuff "worldsave$(printf '\r')" 2>/dev/null || true
+sleep 15
+
 echo "Restarting ServUO..."
 docker exec servuo /home/servuo/restart.sh
 

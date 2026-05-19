@@ -21,6 +21,10 @@ echo "Scripts.dll built."
 
 chmod +x /home/servuo-test/restart.sh 2>/dev/null || true
 
+echo "Saving world before restart..."
+docker exec servuo-test screen -S servuo -X stuff "worldsave$(printf '\r')" 2>/dev/null || true
+sleep 15
+
 echo "Restarting TEST server (port 2594)..."
 docker exec servuo-test /home/servuo/restart.sh
 
