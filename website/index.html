@@ -239,6 +239,14 @@ section { position: relative; z-index: 1; padding: 6rem 2rem; }
 .tracker-badge.bug { border: 0.5px solid var(--blood); color: #c06060; }
 .tracker-badge.suggestion { border: 0.5px solid var(--gold-dark); color: var(--gold); }
 .tracker-date { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.08em; }
+.tracker-status { font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.15rem 0.45rem; border: 0.5px solid; margin-left: auto; }
+.tracker-status.open         { border-color: #444; color: #888; }
+.tracker-status.investigating{ border-color: #1a4a7a; color: #7ab3e8; }
+.tracker-status.fixed        { border-color: #3a7d44; color: #7ec88a; }
+.tracker-status.wontfix      { border-color: #5a2a2a; color: #c06060; }
+.tracker-status.planned      { border-color: var(--gold-dark); color: var(--gold); }
+.tracker-status.implemented  { border-color: #3a7d44; color: #7ec88a; }
+.tracker-status.rejected     { border-color: #5a2a2a; color: #c06060; }
 .tracker-title { font-family: 'Cinzel', serif; font-size: 0.82rem; color: var(--text); letter-spacing: 0.03em; transition: color 0.2s; }
 .tracker-char { font-family: 'Crimson Text', serif; font-size: 0.9rem; color: var(--text-dim); margin-top: 0.2rem; }
 .tracker-desc { font-family: 'Crimson Text', serif; font-size: 0.95rem; color: var(--text-muted); margin-top: 0.6rem; line-height: 1.5; display: none; padding-top: 0.5rem; border-top: 0.5px solid var(--border); white-space: pre-wrap; }
@@ -809,16 +817,23 @@ function loadTracker() {
     .then(items => {
       const el = document.getElementById('tracker-list');
       if (!items.length) { el.innerHTML = '<p class="tracker-empty">No submissions yet — be the first.</p>'; return; }
-      el.innerHTML = items.slice(0, 8).map((item, i) => `
+      const statusLabel = {
+        open:'Open', investigating:'Investigating', fixed:'Fixed', wontfix:"Won't Fix",
+        planned:'Planned', implemented:'Implemented', rejected:'Rejected'
+      };
+      el.innerHTML = items.slice(0, 8).map((item, i) => {
+        const status = item.status || 'open';
+        return `
         <div class="tracker-item" onclick="openModal(${JSON.stringify(item).replace(/"/g, '&quot;')})">
           <div class="tracker-meta">
             <span class="tracker-badge ${item.type}">${item.type === 'bug' ? '🐛 Bug' : '💡 Suggestion'}</span>
             <span class="tracker-date">${item.date}</span>
-            <span class="tracker-expand">▾</span>
+            <span class="tracker-status ${status}">${statusLabel[status] || status}</span>
           </div>
           <p class="tracker-title">${item.title}</p>
           ${item.char ? `<p class="tracker-char">— ${item.char}</p>` : ''}
-        </div>`).join('');
+        </div>`;
+      }).join('');
     })
     .catch(() => {});
 }
