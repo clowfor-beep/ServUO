@@ -7,7 +7,6 @@ set -e
 cd /home/servuo
 
 echo "Pulling latest from git..."
-git checkout Config/DataPath.cfg 2>/dev/null || true
 git pull
 
 echo "Building Server.dll..."
@@ -26,12 +25,9 @@ echo "Saving world before restart..."
 docker exec servuo-test screen -S servuo -X stuff "worldsave$(printf '\r')" 2>/dev/null || true
 sleep 15
 
-echo "Fixing DataPath for Linux..."
-sed -i 's|CustomPath=.*|CustomPath=/home/servuo/uodata|' /home/servuo/Config/DataPath.cfg
-sed -i 's|CustomPath=.*|CustomPath=/home/servuo/uodata|' /home/servuo-test/Config/DataPath.cfg 2>/dev/null || true
-
-echo "Setting test server port to 2594..."
-sed -i 's|@\?Port=.*|Port=2594|' /home/servuo-test/Config/Server.cfg
+echo "Applying test config..."
+cp Config/env/test/Server.cfg /home/servuo-test/Config/Server.cfg
+cp Config/env/test/DataPath.cfg /home/servuo-test/Config/DataPath.cfg
 
 echo "Killing existing test server..."
 docker exec servuo-test bash -c "pkill -9 -f mono 2>/dev/null; sleep 2" 2>/dev/null || true

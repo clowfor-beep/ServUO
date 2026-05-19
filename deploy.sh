@@ -6,7 +6,6 @@ set -e
 cd /home/servuo
 
 echo "Pulling latest from git..."
-git checkout Config/DataPath.cfg 2>/dev/null || true
 git pull
 
 echo "Building Server.dll..."
@@ -31,10 +30,11 @@ echo "Saving world before restart..."
 docker exec servuo screen -S servuo -X stuff "worldsave$(printf '\r')" 2>/dev/null || true
 sleep 15
 
-echo "Fixing DataPath for Linux..."
-sed -i 's|CustomPath=.*|CustomPath=/home/servuo/uodata|' /home/servuo/Config/DataPath.cfg
+echo "Applying prod config..."
+cp Config/env/prod/Server.cfg Config/Server.cfg
+cp Config/env/prod/DataPath.cfg Config/DataPath.cfg
 
 echo "Restarting ServUO..."
-docker exec servuo /home/servuo/restart.sh
+docker exec servuo bash /home/servuo/restart.sh
 
 echo "Deploy complete."
