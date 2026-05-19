@@ -121,7 +121,7 @@ namespace Server.Items
             new AtlasLocation("Luna",             989,  520,-50, Map.Malas),
             new AtlasLocation("Umbra",           2049, 1344,-85, Map.Malas),
             new AtlasLocation("Zento",            736, 1256, 30, Map.Tokuno),
-            new AtlasLocation("Makoto-Jima",     1169,  997,  0, Map.Tokuno),
+            new AtlasLocation("Makoto-Jima",      802, 1204, 25, Map.Tokuno),
             new AtlasLocation("Mistas",           818, 1073,-30, Map.Ilshenar),
         };
 
