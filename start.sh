@@ -3,8 +3,6 @@
 # start.sh
 # ServUO startup script
 #
-# - Deletes cached Scripts.dll before launch to prevent
-#   corrupt assembly crashes on Mono/Linux
 # - Strips ANSI color codes from log so grep works cleanly
 # - Runs server inside a named screen session called "servuo"
 # ============================================================

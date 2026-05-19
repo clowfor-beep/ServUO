@@ -49,7 +49,7 @@ for i in $(seq 1 90); do
     sleep 2
 
     if ! pgrep -f "mono ServUO.exe" > /dev/null; then
-        echo "ERROR: ServUO process died. Check: docker exec servuo tail -30 /home/servuo/servuo.log"
+        echo "ERROR: ServUO process died. Check the log: tail -30 /home/servuo/servuo.log"
         exit 1
     fi
 
