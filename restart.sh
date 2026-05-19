@@ -2,6 +2,14 @@
 # restart.sh — safely restart ServUO inside Docker
 echo "Stopping ServUO..."
 
+# Send worldsave command before stopping
+if screen -list 2>/dev/null | grep -q "servuo"; then
+    echo "Saving world..."
+    screen -S servuo -p 0 -X stuff "worldsave$(printf '\r')"
+    sleep 8
+    echo "World saved."
+fi
+
 # Kill the mono process gracefully first
 pkill -f "mono ServUO.exe" 2>/dev/null
 
