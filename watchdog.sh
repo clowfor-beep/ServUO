@@ -7,7 +7,7 @@ CONTAINER="servuo"
 WATCHDOG_LOG="/home/servuo/watchdog.log"
 SAVES_DIR="/home/servuo/Saves"
 MAX_SAVE_AGE=1200  # 20 minutes — server saves every 15 min, allow some slack
-STARTUP_GRACE=300  # 5 minutes grace period after server starts before checking saves
+STARTUP_GRACE=300  # 5 minutes grace period after server starts before checking saves (port check)
 
 timestamp() { date '+%Y-%m-%d %H:%M:%S'; }
 
@@ -45,6 +45,12 @@ fi
 SAVE_MTIME=$(stat -c %Y "$SAVES_DIR" 2>/dev/null || echo 0)
 if [ "$SAVE_MTIME" -eq 0 ]; then
     echo "[$(timestamp)] WARNING: Cannot read Saves directory." >> "$WATCHDOG_LOG"
+    exit 0
+fi
+
+# If last save is older than server start, the current instance hasn't saved yet — skip
+if [ "$SAVE_MTIME" -lt "$MONO_START" ]; then
+    echo "[$(timestamp)] OK: Server started ${UPTIME}s ago, waiting for first save." >> "$WATCHDOG_LOG"
     exit 0
 fi
 
