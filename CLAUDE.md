@@ -505,3 +505,50 @@ Map.Felucca / Map.Trammel / Map.Ilshenar / Map.Malas / Map.Tokuno / Map.TerMur
 5. For config-only changes, edit the relevant file in `Config/` and restart.
 
 > **Never remove or reorder existing `reader.Read*()` calls** in `Deserialize` — this corrupts saves. Only add new reads inside `if (version >= N)` blocks.
+
+---
+
+## Server Infrastructure (Operations)
+
+**Host**: Ubuntu VPS at `178.105.173.80`  
+**Prod container**: `servuo` — external port 2593, shard name "Fun Stuff"  
+**Test container**: `servuo-test` — external port 2594, shard name "Fun Stuff test"  
+**Git repo on server**: `/home/servuo/` (also the prod server files)  
+**Test server files**: `/home/servuo-test/`  
+**UO game data**: `/home/servuo/uodata/`  
+**Server timezone**: UTC (Jacob is CEST = UTC+2)
+
+### Deploy Commands (run on server, not PC)
+```bash
+# Test
+cd /home/servuo && git pull --no-edit && bash /home/servuo/deploy-test.sh
+
+# Prod
+cd /home/servuo && bash /home/servuo/deploy.sh
+```
+
+### Essential Check Commands
+```bash
+# Is prod up?
+docker exec servuo bash -c "cat /proc/net/tcp | grep -q '00000000:0A21' && echo 'UP' || echo 'DOWN'"
+
+# Is test up?
+docker exec servuo-test bash -c "cat /proc/net/tcp | grep -q '00000000:0A22' && echo 'UP' || echo 'DOWN'"
+
+# Wait for prod to finish loading
+until docker exec servuo bash -c "cat /proc/net/tcp | grep -q '00000000:0A21'"; do echo "$(date +%H:%M:%S) — loading..."; sleep 5; done && echo "UP"
+
+# Watchdog log
+cat /home/servuo/watchdog.log | tail -10
+
+# Server log
+docker exec servuo bash -c "strings /home/servuo/servuo.log | tail -20"
+```
+
+### Key Rules
+- **Always deploy test before prod** — never touch prod without testing first
+- **Screen is broken in the test container** — test server is started via `docker exec -d`, never restart.sh
+- **Check server up** with `/proc/net/tcp` — ss and netstat are not available in containers
+- **Give commands separately** labelled "On PC:" and "On server:" — never mix them
+- **Env configs**: `Config/env/prod/` and `Config/env/test/` — deploy scripts apply these automatically, never manually patch DataPath or Server.cfg
+- **Watchdog** runs every 5 min via cron — monitors prod only, auto-restarts if hung
