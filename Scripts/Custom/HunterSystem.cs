@@ -61,12 +61,14 @@ namespace Server.Custom
         private static HashSet<Serial> _titleDeedOwners = new HashSet<Serial>();
 
         // Active hunt tracking
-        private static Serial   _activeHuntSerial  = Serial.Zero;
-        private static DateTime _huntSpawnTime      = DateTime.MinValue;
-        private static string   _activeHuntName     = string.Empty;
+        private static Serial   _activeHuntSerial    = Serial.Zero;
+        private static DateTime _huntSpawnTime        = DateTime.MinValue;
+        private static string   _activeHuntName       = string.Empty;
+        private static string   _activeHuntLocation   = string.Empty;
 
-        private static Serial   _activeWantedSerial = Serial.Zero;
-        private static string   _activeWantedName   = string.Empty;
+        private static Serial   _activeWantedSerial   = Serial.Zero;
+        private static string   _activeWantedName     = string.Empty;
+        private static string   _activeWantedLocation = string.Empty;
 
         // --------------------------------------------------------
         // STARTUP
@@ -102,7 +104,7 @@ namespace Server.Custom
         {
             Persistence.Serialize(SavePath, writer =>
             {
-                writer.Write(0); // version
+                writer.Write(1); // version
 
                 // Player points
                 writer.Write(_points.Count);
@@ -121,10 +123,12 @@ namespace Server.Custom
                 writer.Write(_activeHuntSerial);
                 writer.Write(_huntSpawnTime);
                 writer.Write(_activeHuntName);
+                writer.Write(_activeHuntLocation);
 
                 // Active wanted target
                 writer.Write(_activeWantedSerial);
                 writer.Write(_activeWantedName);
+                writer.Write(_activeWantedLocation);
             });
         }
 
@@ -151,9 +155,13 @@ namespace Server.Custom
                 _activeHuntSerial  = reader.ReadInt();
                 _huntSpawnTime     = reader.ReadDateTime();
                 _activeHuntName    = reader.ReadString();
+                if (version >= 1)
+                    _activeHuntLocation = reader.ReadString();
 
                 _activeWantedSerial = reader.ReadInt();
                 _activeWantedName   = reader.ReadString();
+                if (version >= 1)
+                    _activeWantedLocation = reader.ReadString();
             });
         }
 
@@ -255,9 +263,10 @@ namespace Server.Custom
 
             creature.MoveToWorld(entry.Location, entry.Map);
 
-            _activeHuntSerial = creature.Serial;
-            _huntSpawnTime    = DateTime.UtcNow;
-            _activeHuntName   = creature.Name.Replace("[Hunted] ", "");
+            _activeHuntSerial   = creature.Serial;
+            _huntSpawnTime      = DateTime.UtcNow;
+            _activeHuntName     = creature.Name.Replace("[Hunted] ", "");
+            _activeHuntLocation = entry.DungeonName;
 
             // World spawn broadcast
             BroadcastHuntSpawn(_activeHuntName, entry.DungeonName);
@@ -298,8 +307,9 @@ namespace Server.Custom
 
             npc.MoveToWorld(entry.Location, entry.Map);
 
-            _activeWantedSerial = npc.Serial;
-            _activeWantedName   = npc.Name.Replace("[Wanted] ", "");
+            _activeWantedSerial   = npc.Serial;
+            _activeWantedName     = npc.Name.Replace("[Wanted] ", "");
+            _activeWantedLocation = entry.DungeonName;
 
             BroadcastWantedSpawn(_activeWantedName, entry.DungeonName);
 
@@ -324,8 +334,9 @@ namespace Server.Custom
         {
             if (creature.Serial == _activeHuntSerial)
             {
-                _activeHuntSerial = Serial.Zero;
-                _activeHuntName   = string.Empty;
+                _activeHuntSerial   = Serial.Zero;
+                _activeHuntName     = string.Empty;
+                _activeHuntLocation = string.Empty;
             }
         }
 
@@ -333,15 +344,26 @@ namespace Server.Custom
         {
             if (npc.Serial == _activeWantedSerial)
             {
-                _activeWantedSerial = Serial.Zero;
-                _activeWantedName   = string.Empty;
+                _activeWantedSerial   = Serial.Zero;
+                _activeWantedName     = string.Empty;
+                _activeWantedLocation = string.Empty;
             }
         }
 
         public static string GetActiveHuntInfo()
         {
             if (!HasActiveHunt) return string.Empty;
-            return _activeHuntName;
+            return _activeHuntLocation.Length > 0
+                ? $"{_activeHuntName} — {_activeHuntLocation}"
+                : _activeHuntName;
+        }
+
+        public static string GetActiveWantedInfo()
+        {
+            if (!HasActiveWanted) return string.Empty;
+            return _activeWantedLocation.Length > 0
+                ? $"{_activeWantedName} — {_activeWantedLocation}"
+                : _activeWantedName;
         }
 
         // --------------------------------------------------------

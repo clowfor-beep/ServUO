@@ -160,25 +160,29 @@ namespace Server.Custom
             int pts   = HunterSystem.GetPoints(from);
             string rank = HunterSystem.GetRankTitle(pts);
 
-            AddPage(0);
-            AddBackground(0, 0, 340, 320, 9270);
-            AddLabel(20, 15, 0x4AA, "Hunter's Guild");
-            AddLabel(20, 35, 0xFFFF, $"Your Rank: {(rank.Length > 0 ? rank : "(Unranked)")}");
-            AddLabel(20, 55, 0xFFFF, $"Hunter Points: {pts}");
+            string huntInfo   = HunterSystem.GetActiveHuntInfo();
+            string wantedInfo = HunterSystem.GetActiveWantedInfo();
+            int extraHeight   = (huntInfo.Length > 0 ? 50 : 0) + (wantedInfo.Length > 0 ? 50 : 0);
 
-            AddLabel(20, 90, 0xFFFF, "What would you like to do?");
+            AddPage(0);
+            AddBackground(0, 0, 360, 320 + extraHeight, 9270);
+            AddLabel(20, 15, 0x4AA, "Hunter's Guild");
+            AddLabel(20, 35, 1153, $"Your Rank: {(rank.Length > 0 ? rank : "(Unranked)")}");
+            AddLabel(20, 55, 1153, $"Hunter Points: {pts}");
+
+            AddLabel(20, 90, 1, "What would you like to do?");
 
             // Button 1 — Turn in heads
             AddButton(20, 120, 4005, 4007, 1, GumpButtonType.Reply, 0);
-            AddLabel(55, 120, 0xFFFF, "Turn in Hunter Heads");
+            AddLabel(55, 120, 1, "Turn in Hunter Heads");
 
             // Button 2 — Token shop
             AddButton(20, 150, 4005, 4007, 2, GumpButtonType.Reply, 0);
-            AddLabel(55, 150, 0xFFFF, "Token Shop");
+            AddLabel(55, 150, 1, "Token Shop");
 
             // Button 3 — Hunter ranks
             AddButton(20, 180, 4005, 4007, 3, GumpButtonType.Reply, 0);
-            AddLabel(55, 180, 0xFFFF, "View Rank Table");
+            AddLabel(55, 180, 1, "View Rank Table");
 
             // Button 4 — Toggle title
             bool hasTitle = rank.Length > 0;
@@ -186,11 +190,17 @@ namespace Server.Custom
             AddLabel(55, 210, hasTitle ? 0x35 : 0x22, hasTitle ? "Toggle Hunter Title" : "No title earned yet");
 
             // Active hunt info
-            string huntInfo = HunterSystem.GetActiveHuntInfo();
+            int yInfo = 250;
             if (huntInfo.Length > 0)
             {
-                AddLabel(20, 250, 0x44, "Active Hunt:");
-                AddLabel(20, 270, 0xFFFF, huntInfo.Length > 40 ? huntInfo.Substring(0, 40) + "..." : huntInfo);
+                AddLabel(20, yInfo,      0x4AA, "Active Hunt:");
+                AddLabel(20, yInfo + 20, 1153,  huntInfo.Length > 45 ? huntInfo.Substring(0, 45) + "..." : huntInfo);
+                yInfo += 50;
+            }
+            if (wantedInfo.Length > 0)
+            {
+                AddLabel(20, yInfo,      0x22,  "Wanted:");
+                AddLabel(20, yInfo + 20, 1153,  wantedInfo.Length > 45 ? wantedInfo.Substring(0, 45) + "..." : wantedInfo);
             }
         }
 
@@ -267,7 +277,7 @@ namespace Server.Custom
                 int gold = HunterGuildmaster.ProcessHeadRewardPreview(head.HunterTier);
 
                 AddButton(20, y, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
-                AddLabel(55, y, 0xFFFF,
+                AddLabel(55, y, 1,
                     $"{head.CreatureName} [{head.TierLabel()}] — {gold:N0}gp");
             }
         }
@@ -308,14 +318,14 @@ namespace Server.Custom
             AddPage(0);
             AddBackground(0, 0, 360, 220, 9270);
             AddLabel(20, 15, 0x4AA, "Hunter Token Shop");
-            AddLabel(20, 35, 0xFFFF, $"Your tokens: {tokens}");
+            AddLabel(20, 35, 1153, $"Your tokens: {tokens}");
 
             for (int i = 0; i < ShopItems.Length; i++)
             {
                 int y = 70 + i * 30;
                 bool canAfford = tokens >= ShopItems[i].cost;
                 AddButton(20, y, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
-                AddLabel(55, y, canAfford ? 0xFFFF : 0x22,
+                AddLabel(55, y, canAfford ? 1 : 0x22,
                     $"{ShopItems[i].name} — {ShopItems[i].cost} tokens");
             }
         }
@@ -436,14 +446,14 @@ namespace Server.Custom
             AddPage(0);
             AddBackground(0, 0, 320, 260, 9270);
             AddLabel(20, 15, 0x4AA, "Hunter Rank Table");
-            AddLabel(20, 35, 0xFFFF, $"Your points: {myPts}");
+            AddLabel(20, 35, 1153, $"Your points: {myPts}");
 
             for (int i = 0; i < Ranks.Length; i++)
             {
                 int y      = 70 + i * 28;
                 bool earned = myPts >= Ranks[i].pts;
                 AddLabel(20,  y, earned ? 0x35 : 0x22, $"{Ranks[i].pts,4} pts");
-                AddLabel(80,  y, earned ? 0xFFFF : 0x22, Ranks[i].title);
+                AddLabel(80,  y, earned ? 1 : 0x22, Ranks[i].title);
                 if (earned)
                     AddLabel(240, y, 0x35, "[earned]");
             }
