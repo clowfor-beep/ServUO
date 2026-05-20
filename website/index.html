@@ -755,7 +755,7 @@ footer {
 </div>
 
 <script>
-fetch('/playercount.json')
+fetch('/playercount.json?t=' + Date.now())
   .then(r => r.json())
   .then(d => { const el = document.getElementById('player-count'); if (el && d.count !== undefined) el.textContent = d.count; })
   .catch(() => {});
@@ -792,7 +792,7 @@ async function submitForm(e) {
     const json = await res.json();
     if (json.ok) {
       msg.className = 'fb-msg ok'; msg.textContent = 'Thank you — your submission has been received.';
-      form.reset(); document.getElementById('fb-type').value = 'bug';
+      form.reset(); setType('bug', document.querySelector('.fb-toggle-btn'));
       loadTracker();
     } else {
       throw new Error(json.error || 'Unknown error');
