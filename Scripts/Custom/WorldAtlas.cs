@@ -141,7 +141,7 @@ namespace Server.Items
             new AtlasLocation("Hythloth",         4721, 3822,  0, Map.Felucca),
             new AtlasLocation("Ice Dungeon",      5875,  150, 15, Map.Felucca),
             new AtlasLocation("Fire Dungeon",     5790, 1416, 40, Map.Felucca),
-            new AtlasLocation("Wind",             1362,  896,  0, Map.Felucca),
+            new AtlasLocation("Wind",             5223,  189,  5, Map.Felucca),
             new AtlasLocation("Khaldun",          5882, 3819,  0, Map.Felucca),
             new AtlasLocation("Orc Cave",         1014, 1434,  0, Map.Felucca),
             new AtlasLocation("Blighted Grove",    586, 1643, -5, Map.Felucca),
@@ -162,8 +162,8 @@ namespace Server.Items
             new AtlasLocation("Rock Dungeon",    1788,  573, 70, Map.Ilshenar),
 
             // ---- Tokuno ----
-            new AtlasLocation("Yomotsu Mines",       6,  118,  0, Map.Tokuno),
-            new AtlasLocation("Fan Dancer's Dojo", 71,  337,  0, Map.Tokuno),
+            new AtlasLocation("Yomotsu Mines",       6,  118,  0, Map.Malas),
+            new AtlasLocation("Fan Dancer's Dojo", 71,  337,  0, Map.Malas),
 
             // ---- Ter Mur ----
             new AtlasLocation("Stygian Abyss",     985,  366,-11, Map.TerMur),
