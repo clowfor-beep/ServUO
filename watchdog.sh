@@ -4,9 +4,10 @@
 #   */5 * * * * bash /home/servuo/watchdog.sh >> /home/servuo/watchdog.log 2>&1
 
 CONTAINER="servuo"
-LOG="/home/servuo/servuo.log"
 WATCHDOG_LOG="/home/servuo/watchdog.log"
+SAVES_DIR="/home/servuo/Saves"
 MAX_SAVE_AGE=1200  # 20 minutes — server saves every 15 min, allow some slack
+STARTUP_GRACE=300  # 5 minutes grace period after server starts before checking saves
 
 timestamp() { date '+%Y-%m-%d %H:%M:%S'; }
 
@@ -23,37 +24,36 @@ if ! docker exec "$CONTAINER" bash -c "pgrep -f mono > /dev/null 2>&1"; then
     exit 1
 fi
 
-# Check if port 2593 is listening
-if ! docker exec "$CONTAINER" bash -c "cat /proc/net/tcp | grep -q '0A21'"; then
-    echo "[$(timestamp)] ERROR: Port 2593 not listening. Restarting..." >> "$WATCHDOG_LOG"
+# Check if port 2593 is listening (state 0A = LISTEN, local addr 00000000 = all interfaces)
+if ! docker exec "$CONTAINER" bash -c "cat /proc/net/tcp | grep -q '00000000:0A21'"; then
+    echo "[$(timestamp)] WARNING: Port 2593 not yet listening — server may still be loading." >> "$WATCHDOG_LOG"
+    exit 0
+fi
+
+# Check how long ago mono started
+MONO_PID=$(docker exec "$CONTAINER" bash -c "pgrep -f mono | head -1")
+MONO_START=$(docker exec "$CONTAINER" bash -c "stat -c %Y /proc/${MONO_PID}/exe 2>/dev/null || echo 0")
+NOW_SECS=$(date +%s)
+UPTIME=$((NOW_SECS - MONO_START))
+
+if [ "$UPTIME" -lt "$STARTUP_GRACE" ]; then
+    echo "[$(timestamp)] OK: Server just started (${UPTIME}s ago), skipping save check." >> "$WATCHDOG_LOG"
+    exit 0
+fi
+
+# Check time since last world save via Saves directory modification time
+SAVE_MTIME=$(stat -c %Y "$SAVES_DIR" 2>/dev/null || echo 0)
+if [ "$SAVE_MTIME" -eq 0 ]; then
+    echo "[$(timestamp)] WARNING: Cannot read Saves directory." >> "$WATCHDOG_LOG"
+    exit 0
+fi
+
+SAVE_AGE=$((NOW_SECS - SAVE_MTIME))
+
+if [ "$SAVE_AGE" -gt "$MAX_SAVE_AGE" ]; then
+    echo "[$(timestamp)] ERROR: Last world save was ${SAVE_AGE}s ago (>${MAX_SAVE_AGE}s). Server appears hung. Restarting..." >> "$WATCHDOG_LOG"
     docker exec "$CONTAINER" bash /home/servuo/restart.sh >> "$WATCHDOG_LOG" 2>&1
     exit 1
 fi
 
-# Check time since last world save in the log
-LAST_SAVE=$(docker exec "$CONTAINER" bash -c "strings $LOG | grep 'Save finished' | tail -1")
-if [ -z "$LAST_SAVE" ]; then
-    echo "[$(timestamp)] WARNING: No world save found in log yet." >> "$WATCHDOG_LOG"
-    exit 0
-fi
-
-# Extract the timestamp from the last save line and check its age
-LAST_SAVE_TIME=$(echo "$LAST_SAVE" | grep -oP '^\d{2}:\d{2}:\d{2}')
-if [ -n "$LAST_SAVE_TIME" ]; then
-    NOW_SECS=$(date +%s)
-    SAVE_SECS=$(date -d "$(date +%Y-%m-%d) $LAST_SAVE_TIME" +%s 2>/dev/null || echo 0)
-    AGE=$((NOW_SECS - SAVE_SECS))
-
-    # Handle midnight rollover
-    if [ "$AGE" -lt 0 ]; then
-        AGE=$((AGE + 86400))
-    fi
-
-    if [ "$AGE" -gt "$MAX_SAVE_AGE" ]; then
-        echo "[$(timestamp)] ERROR: Last world save was ${AGE}s ago (>${MAX_SAVE_AGE}s). Server appears hung. Restarting..." >> "$WATCHDOG_LOG"
-        docker exec "$CONTAINER" bash /home/servuo/restart.sh >> "$WATCHDOG_LOG" 2>&1
-        exit 1
-    fi
-fi
-
-echo "[$(timestamp)] OK: Server healthy. Last save: ${LAST_SAVE}" >> "$WATCHDOG_LOG"
+echo "[$(timestamp)] OK: Server healthy. Last save ${SAVE_AGE}s ago." >> "$WATCHDOG_LOG"
