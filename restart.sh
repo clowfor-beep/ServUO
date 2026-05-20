@@ -54,15 +54,17 @@ for i in $(seq 1 90); do
     fi
 
     # Check if port 2593 is open and accepting connections
-    if ss -tlnp 2>/dev/null | grep -q ':2593' || netstat -tlnp 2>/dev/null | grep -q ':2593'; then
+    if cat /proc/net/tcp 2>/dev/null | grep -q '00000000:0A21'; then
         echo ""
         echo "ServUO is online and ready."
         exit 0
     fi
 
-    echo "  loading... ($((i*2))s)"
+    # Show latest log line so user can see what the server is doing
+    LAST_LINE=$(strings /home/servuo/servuo.log 2>/dev/null | grep -v '^$' | tail -1)
+    printf "\r  [%3ds] %-80s" "$((i*2))" "${LAST_LINE:0:80}"
 done
 
 echo ""
-echo "ServUO is running (still loading or high load). Check with:"
-echo "  docker exec servuo ps aux | grep mono"
+echo "ServUO is still loading after 3 minutes. Check with:"
+echo "  strings /home/servuo/servuo.log | tail -5"
