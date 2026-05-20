@@ -102,21 +102,21 @@ namespace Server.Items
         // -------------------------------------------------------
         private static readonly List<AtlasLocation> Towns = new List<AtlasLocation>
         {
-            new AtlasLocation("Britain",         1495, 1629, 10, Map.Felucca),
-            new AtlasLocation("Trinsic",         1867, 2780,  0, Map.Felucca),
-            new AtlasLocation("Minoc",           2466,  544,  0, Map.Felucca),
-            new AtlasLocation("Vesper",          2899,  676,  0, Map.Felucca),
-            new AtlasLocation("Cove",            2275, 1210,  0, Map.Felucca),
-            new AtlasLocation("Skara Brae",       632, 2233,  0, Map.Felucca),
-            new AtlasLocation("Yew",              546,  992,  0, Map.Felucca),
-            new AtlasLocation("Jhelom",          1383, 3815,  0, Map.Felucca),
-            new AtlasLocation("Moonglow",        4467, 1284,  0, Map.Felucca),
-            new AtlasLocation("Magincia",        3714, 2220, 20, Map.Felucca),
-            new AtlasLocation("Nujel'm",        3732, 1279,  0, Map.Felucca),
-            new AtlasLocation("Ocllo",           3650, 2519,  0, Map.Felucca),
-            new AtlasLocation("Serpent's Hold", 3010, 3371, 15, Map.Felucca),
-            new AtlasLocation("Papua",           5769, 3176,  0, Map.Felucca),
-            new AtlasLocation("Delucia",         5228, 3978, 37, Map.Felucca),
+            new AtlasLocation("Britain",         1439, 1695, 20, Map.Felucca),  // West Britain Bank
+            new AtlasLocation("Trinsic",         1859, 2754,  0, Map.Felucca),  // Town center
+            new AtlasLocation("Minoc",           2526,  582,  0, Map.Felucca),  // Bank
+            new AtlasLocation("Vesper",          2893,  686,  0, Map.Felucca),  // Bank
+            new AtlasLocation("Cove",            2275, 1210,  0, Map.Felucca),  // Town
+            new AtlasLocation("Skara Brae",       586, 2150,  0, Map.Felucca),  // Bank
+            new AtlasLocation("Yew",              621, 1000,  0, Map.Felucca),  // Town center
+            new AtlasLocation("Jhelom",          1355, 3834, 20, Map.Felucca),  // Bank
+            new AtlasLocation("Moonglow",        4471, 1177,  0, Map.Felucca),  // Bank
+            new AtlasLocation("Magincia",        3714, 2190, 20, Map.Felucca),  // Town center
+            new AtlasLocation("Nujel'm",         3640, 1301,  0, Map.Felucca),  // Bank
+            new AtlasLocation("Ocllo",           3649, 2662,  0, Map.Felucca),  // Bank
+            new AtlasLocation("Serpent's Hold",  2987, 3497,  0, Map.Felucca),  // Town
+            new AtlasLocation("Papua",           5765, 3175,  0, Map.Felucca),  // Bank
+            new AtlasLocation("Delucia",         5228, 3978, 37, Map.Felucca),  // Town
             new AtlasLocation("New Haven",       3503, 2574, 14, Map.Trammel),
             new AtlasLocation("Luna",             989,  520,-50, Map.Malas),
             new AtlasLocation("Umbra",           2049, 1344,-85, Map.Malas),
@@ -132,7 +132,7 @@ namespace Server.Items
         private static readonly List<AtlasLocation> Dungeons = new List<AtlasLocation>
         {
             // ---- Felucca (classic + T2A + ML) ----
-            new AtlasLocation("Deceit",           4111,  429,  0, Map.Felucca),
+            new AtlasLocation("Deceit",           4111,  432,  5, Map.Felucca),
             new AtlasLocation("Despise",          1296, 1082,  0, Map.Felucca),
             new AtlasLocation("Destard",          1176, 2635,  0, Map.Felucca),
             new AtlasLocation("Shame",             512, 1559,  0, Map.Felucca),
