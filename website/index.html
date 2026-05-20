@@ -755,7 +755,7 @@ footer {
 </div>
 
 <script>
-fetch('/playercount.json')
+fetch('/playercount.json?t=' + Date.now())
   .then(r => r.json())
   .then(d => { const el = document.getElementById('player-count'); if (el && d.count !== undefined) el.textContent = d.count; })
   .catch(() => {});
