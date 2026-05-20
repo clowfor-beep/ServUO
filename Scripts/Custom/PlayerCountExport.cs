@@ -9,7 +9,7 @@ namespace Server.Custom
 {
     public static class PlayerCountExport
     {
-        private static readonly string OutputPath = Path.Combine(Core.BaseDirectory, "website", "playercount.json");
+        private static string OutputPath => Path.Combine(Core.BaseDirectory, "website", "playercount.json");
         private static Timer _timer;
 
         public static void Initialize()
@@ -22,15 +22,16 @@ namespace Server.Custom
             try
             {
                 int count = NetState.Instances
-                    .Count(ns => ns?.Mobile is PlayerMobile pm && pm.AccessLevel == AccessLevel.Player);
+                    .Count(ns => ns?.Mobile is PlayerMobile);
 
                 string json = $"{{\"count\":{count},\"ts\":{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}}}";
 
                 File.WriteAllText(OutputPath, json);
+                Console.WriteLine($"[PlayerCount] Wrote {count} to {OutputPath}");
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently skip if website folder isn't present (e.g. dev machine)
+                Console.WriteLine($"[PlayerCount] Failed to write: {ex.Message}");
             }
         }
     }
