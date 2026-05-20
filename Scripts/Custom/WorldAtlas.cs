@@ -134,19 +134,18 @@ namespace Server.Items
             // ---- Felucca (classic + T2A + ML) ----
             new AtlasLocation("Deceit",           4111,  432,  5, Map.Felucca),
             new AtlasLocation("Despise",          1296, 1082,  0, Map.Felucca),
-            new AtlasLocation("Destard",          1176, 2635,  0, Map.Felucca),
-            new AtlasLocation("Shame",             512, 1559,  0, Map.Felucca),
+            new AtlasLocation("Destard",          1176, 2637,  0, Map.Felucca),
+            new AtlasLocation("Shame",             514, 1561,  0, Map.Felucca),
             new AtlasLocation("Wrong",            2042,  226,  0, Map.Felucca),
-            new AtlasLocation("Covetous",         2499,  916,  0, Map.Felucca),
-            new AtlasLocation("Hythloth",         4722, 3814,  0, Map.Felucca),
-            new AtlasLocation("Ice Dungeon",      1996,   80,  0, Map.Felucca),
-            new AtlasLocation("Fire Dungeon",     2922, 3402,  0, Map.Felucca),
-            new AtlasLocation("Wind",             1997,   81,  0, Map.Felucca),
+            new AtlasLocation("Covetous",         2499,  919,  0, Map.Felucca),
+            new AtlasLocation("Hythloth",         4721, 3822,  0, Map.Felucca),
+            new AtlasLocation("Ice Dungeon",      1999,   81,  4, Map.Felucca),
+            new AtlasLocation("Fire Dungeon",     2923, 3407,  8, Map.Felucca),
             new AtlasLocation("Khaldun",          5882, 3819,  0, Map.Felucca),
             new AtlasLocation("Orc Cave",         1014, 1434,  0, Map.Felucca),
-            new AtlasLocation("Blighted Grove",    587, 1641,  0, Map.Felucca),
+            new AtlasLocation("Blighted Grove",    586, 1643, -5, Map.Felucca),
             new AtlasLocation("Sanctuary",         764, 1646,  0, Map.Felucca),
-            new AtlasLocation("Prism of Light",   3784, 1097,  0, Map.Felucca),
+            new AtlasLocation("Prism of Light",   3784, 1097, 14, Map.Felucca),
             new AtlasLocation("Solen Hives",      5774, 1896, 20, Map.Felucca),
             new AtlasLocation("Painted Caves",    1716,  892,  0, Map.Felucca),
             new AtlasLocation("Terathan Keep",    5426, 3120,  0, Map.Felucca),
@@ -156,14 +155,14 @@ namespace Server.Items
             new AtlasLocation("Bedlam",           2068, 1372,  0, Map.Malas),
 
             // ---- Ilshenar ----
-            new AtlasLocation("Exodus Dungeon",    827,  777,  0, Map.Ilshenar),
-            new AtlasLocation("Spectre Dungeon",  1362, 1031,  0, Map.Ilshenar),
-            new AtlasLocation("Spider Cave",      1420,  910,  0, Map.Ilshenar),
-            new AtlasLocation("Rock Dungeon",     1788,  571,  0, Map.Ilshenar),
+            new AtlasLocation("Exodus Dungeon",    835,  777,-80, Map.Ilshenar),
+            new AtlasLocation("Spectre Dungeon", 1363, 1033, -8, Map.Ilshenar),
+            new AtlasLocation("Spider Cave",     1420,  910,  0, Map.Ilshenar),
+            new AtlasLocation("Rock Dungeon",    1788,  573, 70, Map.Ilshenar),
 
             // ---- Tokuno ----
-            new AtlasLocation("Yomotsu Mines",     259,  783,  0, Map.Tokuno),
-            new AtlasLocation("Fan Dancer's Dojo", 977,  223,  0, Map.Tokuno),
+            new AtlasLocation("Yomotsu Mines",     259,  785, 64, Map.Tokuno),
+            new AtlasLocation("Fan Dancer's Dojo", 977,  223, 23, Map.Tokuno),
 
             // ---- Ter Mur ----
             new AtlasLocation("Stygian Abyss",     985,  366,-11, Map.TerMur),
