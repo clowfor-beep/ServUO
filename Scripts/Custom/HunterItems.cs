@@ -534,4 +534,115 @@ namespace Server.Custom
         public override void Serialize(GenericWriter writer) { base.Serialize(writer); writer.Write(0); }
         public override void Deserialize(GenericReader reader) { base.Deserialize(reader); reader.ReadInt(); }
     }
+
+    // ============================================================
+    // HUNTER'S COMPASS
+    // ============================================================
+    //
+    // Double-click to receive a directional message toward the
+    // active hunt (creature) target.  If a Wanted NPC is also up,
+    // a second line reports its direction.
+    //
+    // Purchased from the Hunter Token Shop for 8 tokens.
+    // Blessed — won't drop on death.
+    // ============================================================
+
+    public class HunterCompass : Item
+    {
+        [Constructable]
+        public HunterCompass() : base(0x14F8)   // compass/sextant graphic
+        {
+            Name     = "Hunter's Compass";
+            Hue      = 0x4AA;
+            Weight   = 1.0;
+            LootType = LootType.Blessed;
+        }
+
+        public HunterCompass(Serial serial) : base(serial) { }
+
+        public override void GetProperties(ObjectPropertyList list)
+        {
+            base.GetProperties(list);
+            list.Add("Double-click to sense the active hunt target");
+            list.Add("Points toward the current World Hunt creature");
+        }
+
+        public override void OnDoubleClick(Mobile from)
+        {
+            if (!IsChildOf(from.Backpack))
+            {
+                from.SendLocalizedMessage(1042001); // That must be in your pack.
+                return;
+            }
+
+            from.PlaySound(0x1F4);
+
+            var hunts  = HunterSystem.GetAllActiveHunts();
+            var wanted = HunterSystem.GetAllActiveWanted();
+
+            bool reported = false;
+
+            // ---- Active creature hunts ----
+            foreach (var t in hunts)
+            {
+                if (t.Map != from.Map)
+                {
+                    from.SendMessage(0x22, $"[Hunt] {t.Name} lurks on another facet ({t.Location}).");
+                }
+                else
+                {
+                    string dir = CompassDirection(from.Location, t.Position);
+                    int    dist = (int)from.GetDistanceToSqrt(t.Position);
+                    from.SendMessage(0x35,
+                        $"[Hunt] {dir} — {t.Name} is roughly {dist} paces away ({t.Location}).");
+                }
+                reported = true;
+            }
+
+            // ---- Active wanted NPCs ----
+            foreach (var t in wanted)
+            {
+                if (t.Map != from.Map)
+                {
+                    from.SendMessage(0x22, $"[Wanted] {t.Name} is on another facet ({t.Location}).");
+                }
+                else
+                {
+                    string dir = CompassDirection(from.Location, t.Position);
+                    int    dist = (int)from.GetDistanceToSqrt(t.Position);
+                    from.SendMessage(0x35,
+                        $"[Wanted] {dir} — {t.Name} is roughly {dist} paces away ({t.Location}).");
+                }
+                reported = true;
+            }
+
+            if (!reported)
+                from.SendMessage(1153, "The compass needle rests still. There is no active hunt at this time.");
+        }
+
+        private static string CompassDirection(Point3D from, Point3D to)
+        {
+            int dx = to.X - from.X;
+            int dy = to.Y - from.Y;   // positive dy = South in UO
+
+            if (dx == 0 && dy == 0)
+                return "right at your feet";
+
+            double angle = Math.Atan2(dy, dx) * 180.0 / Math.PI;
+            // Atan2 in UO coords: 0=East, 90=South, ±180=West, -90=North
+            if (angle < 0) angle += 360.0;
+
+            if (angle < 22.5  || angle >= 337.5) return "East";
+            if (angle < 67.5)  return "South-East";
+            if (angle < 112.5) return "South";
+            if (angle < 157.5) return "South-West";
+            if (angle < 202.5) return "West";
+            if (angle < 247.5) return "North-West";
+            if (angle < 292.5) return "North";
+            return "North-East";
+        }
+
+        public override void Serialize(GenericWriter writer) { base.Serialize(writer); writer.Write(0); }
+        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); reader.ReadInt(); }
+    }
 }

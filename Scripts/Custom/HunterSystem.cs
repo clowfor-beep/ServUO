@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Server;
+using Server.Commands;
 using Server.Items;
 using Server.Mobiles;
 using Server.Network;
@@ -60,15 +61,33 @@ namespace Server.Custom
         // Title deeds granted via token shop
         private static HashSet<Serial> _titleDeedOwners = new HashSet<Serial>();
 
-        // Active hunt tracking
-        private static Serial   _activeHuntSerial    = Serial.Zero;
-        private static DateTime _huntSpawnTime        = DateTime.MinValue;
-        private static string   _activeHuntName       = string.Empty;
-        private static string   _activeHuntLocation   = string.Empty;
+        // ---- Active hunt records (up to 3 concurrent) ----
 
-        private static Serial   _activeWantedSerial   = Serial.Zero;
-        private static string   _activeWantedName     = string.Empty;
-        private static string   _activeWantedLocation = string.Empty;
+        private sealed class HuntRecord
+        {
+            public readonly Serial   Serial;
+            public readonly string   Name;
+            public readonly string   Location;
+            public readonly DateTime SpawnTime;
+
+            public HuntRecord(Serial serial, string name, string location)
+            {
+                Serial    = serial;
+                Name      = name;
+                Location  = location;
+                SpawnTime = DateTime.UtcNow;
+            }
+        }
+
+        private static readonly List<HuntRecord> _activeHunts  = new List<HuntRecord>();
+        private static readonly List<HuntRecord> _activeWanted = new List<HuntRecord>();
+
+        private const int MaxConcurrentHunts = 3;
+
+        private static void PruneHunts()  =>
+            _activeHunts .RemoveAll(r => { Mobile m = World.FindMobile(r.Serial); return m == null || m.Deleted; });
+        private static void PruneWanted() =>
+            _activeWanted.RemoveAll(r => { Mobile m = World.FindMobile(r.Serial); return m == null || m.Deleted; });
 
         // --------------------------------------------------------
         // STARTUP
@@ -91,9 +110,9 @@ namespace Server.Custom
             new HunterSpawnTimer().Start();
             new WantedSpawnTimer().Start();
 
-            // Spawn one of each immediately on server start
-            SpawnHunterTarget();
-            SpawnWantedTarget();
+            // Fill all slots immediately on server start
+            for (int i = 0; i < MaxConcurrentHunts; i++) SpawnHunterTarget();
+            for (int i = 0; i < MaxConcurrentHunts; i++) SpawnWantedTarget();
         }
 
         // --------------------------------------------------------
@@ -104,7 +123,7 @@ namespace Server.Custom
         {
             Persistence.Serialize(SavePath, writer =>
             {
-                writer.Write(1); // version
+                writer.Write(2); // version
 
                 // Player points
                 writer.Write(_points.Count);
@@ -119,16 +138,27 @@ namespace Server.Custom
                 foreach (Serial s in _titleDeedOwners)
                     writer.Write(s);
 
-                // Active hunt target
-                writer.Write(_activeHuntSerial);
-                writer.Write(_huntSpawnTime);
-                writer.Write(_activeHuntName);
-                writer.Write(_activeHuntLocation);
+                // Active hunts list
+                PruneHunts();
+                writer.Write(_activeHunts.Count);
+                foreach (HuntRecord r in _activeHunts)
+                {
+                    writer.Write(r.Serial);
+                    writer.Write(r.SpawnTime);
+                    writer.Write(r.Name);
+                    writer.Write(r.Location);
+                }
 
-                // Active wanted target
-                writer.Write(_activeWantedSerial);
-                writer.Write(_activeWantedName);
-                writer.Write(_activeWantedLocation);
+                // Active wanted list
+                PruneWanted();
+                writer.Write(_activeWanted.Count);
+                foreach (HuntRecord r in _activeWanted)
+                {
+                    writer.Write(r.Serial);
+                    writer.Write(r.SpawnTime);
+                    writer.Write(r.Name);
+                    writer.Write(r.Location);
+                }
             });
         }
 
@@ -152,16 +182,44 @@ namespace Server.Custom
                 for (int i = 0; i < deedCount; i++)
                     _titleDeedOwners.Add(reader.ReadInt());
 
-                _activeHuntSerial  = reader.ReadInt();
-                _huntSpawnTime     = reader.ReadDateTime();
-                _activeHuntName    = reader.ReadString();
-                if (version >= 1)
-                    _activeHuntLocation = reader.ReadString();
+                if (version >= 2)
+                {
+                    int huntCount = reader.ReadInt();
+                    for (int i = 0; i < huntCount; i++)
+                    {
+                        Serial   serial    = reader.ReadInt();
+                        DateTime spawnTime = reader.ReadDateTime();
+                        string   name      = reader.ReadString();
+                        string   location  = reader.ReadString();
+                        _activeHunts.Add(new HuntRecord(serial, name, location));
+                    }
 
-                _activeWantedSerial = reader.ReadInt();
-                _activeWantedName   = reader.ReadString();
-                if (version >= 1)
-                    _activeWantedLocation = reader.ReadString();
+                    int wantedCount = reader.ReadInt();
+                    for (int i = 0; i < wantedCount; i++)
+                    {
+                        Serial   serial    = reader.ReadInt();
+                        DateTime spawnTime = reader.ReadDateTime();
+                        string   name      = reader.ReadString();
+                        string   location  = reader.ReadString();
+                        _activeWanted.Add(new HuntRecord(serial, name, location));
+                    }
+                }
+                else
+                {
+                    // v0 / v1 — single-entry format; migrate into lists
+                    Serial huntSerial = reader.ReadInt();
+                    /*spawnTime*/      reader.ReadDateTime();
+                    string huntName   = reader.ReadString();
+                    string huntLoc    = version >= 1 ? reader.ReadString() : string.Empty;
+                    if (huntSerial != Serial.Zero)
+                        _activeHunts.Add(new HuntRecord(huntSerial, huntName, huntLoc));
+
+                    Serial wantedSerial = reader.ReadInt();
+                    string wantedName   = reader.ReadString();
+                    string wantedLoc    = version >= 1 ? reader.ReadString() : string.Empty;
+                    if (wantedSerial != Serial.Zero)
+                        _activeWanted.Add(new HuntRecord(wantedSerial, wantedName, wantedLoc));
+                }
             });
         }
 
@@ -239,131 +297,228 @@ namespace Server.Custom
         // SPAWN HELPERS — called by timers
         // --------------------------------------------------------
 
-        public static bool HasActiveHunt =>
-            _activeHuntSerial != Serial.Zero &&
-            World.FindMobile(_activeHuntSerial) != null;
-
-        public static bool HasActiveWanted =>
-            _activeWantedSerial != Serial.Zero &&
-            World.FindMobile(_activeWantedSerial) != null;
+        public static bool HasActiveHunt   { get { PruneHunts();  return _activeHunts .Count > 0; } }
+        public static bool HasActiveWanted { get { PruneWanted(); return _activeWanted.Count > 0; } }
 
         public static void SpawnHunterTarget()
         {
-            if (HasActiveHunt) return;
+            PruneHunts();
+            if (_activeHunts.Count >= MaxConcurrentHunts) return;
 
-            // Pick a random tier (weighted: Tier 1 most common, Tier 4 rarest)
             int tier = PickTier();
-
-            // Pick a spawn location for this tier
-            HunterSpawnEntry entry = PickSpawnEntry(tier);
-
-            // Pick a creature class
-            HunterCreature creature = CreateCreature(tier);
+            HunterSpawnEntry entry   = PickSpawnEntry(tier);
+            HunterCreature creature  = CreateCreature(tier);
             if (creature == null) return;
 
             creature.MoveToWorld(entry.Location, entry.Map);
 
-            _activeHuntSerial   = creature.Serial;
-            _huntSpawnTime      = DateTime.UtcNow;
-            _activeHuntName     = creature.Name.Replace("[Hunted] ", "");
-            _activeHuntLocation = entry.DungeonName;
+            var record = new HuntRecord(creature.Serial,
+                creature.Name.Replace("[Hunted] ", ""), entry.DungeonName);
+            _activeHunts.Add(record);
 
-            // World spawn broadcast
-            BroadcastHuntSpawn(_activeHuntName, entry.DungeonName);
+            BroadcastHuntSpawn(record.Name, entry.DungeonName);
 
-            // Schedule 10-minute reminder
+            // Capture locals for timer closures
+            Serial capturedSerial   = creature.Serial;
+            string capturedName     = record.Name;
+            string capturedLocation = entry.DungeonName;
+
             Timer.DelayCall(TimeSpan.FromMinutes(10), () =>
             {
-                if (HasActiveHunt)
-                    BroadcastHuntReminder(_activeHuntName, entry.DungeonName);
+                if (HuntRecordExists(_activeHunts, capturedSerial))
+                    BroadcastHuntReminder(capturedName, capturedLocation);
             });
 
-            // 20-minute auto-despawn
             Timer.DelayCall(TimeSpan.FromMinutes(20), () =>
             {
-                if (_activeHuntSerial != Serial.Zero)
+                if (RemoveHuntRecord(_activeHunts, capturedSerial, out Mobile target))
                 {
-                    Mobile m = World.FindMobile(_activeHuntSerial);
-                    if (m != null && !m.Deleted && m.Alive)
-                    {
-                        m.Delete();
-                        World.Broadcast(0x22, false, $"[World Hunt] {_activeHuntName} has fled into the darkness. The hunt is over.");
-                        _activeHuntSerial = Serial.Zero;
-                        _activeHuntName   = string.Empty;
-                    }
+                    target?.Delete();
+                    World.Broadcast(0x22, false,
+                        $"[World Hunt] {capturedName} has fled into the darkness. The hunt is over.");
                 }
             });
         }
 
         public static void SpawnWantedTarget()
         {
-            if (HasActiveWanted) return;
+            PruneWanted();
+            if (_activeWanted.Count >= MaxConcurrentHunts) return;
 
             int wantedTier = PickWantedTier();
             HunterSpawnEntry entry = PickWantedEntry(wantedTier);
-
-            BaseWantedNPC npc = CreateWantedNPC(wantedTier);
+            BaseWantedNPC npc      = CreateWantedNPC(wantedTier);
             if (npc == null) return;
 
             npc.MoveToWorld(entry.Location, entry.Map);
 
-            _activeWantedSerial   = npc.Serial;
-            _activeWantedName     = npc.Name.Replace("[Wanted] ", "");
-            _activeWantedLocation = entry.DungeonName;
+            var record = new HuntRecord(npc.Serial,
+                npc.Name.Replace("[Wanted] ", ""), entry.DungeonName);
+            _activeWanted.Add(record);
 
-            BroadcastWantedSpawn(_activeWantedName, entry.DungeonName);
+            BroadcastWantedSpawn(record.Name, entry.DungeonName);
 
-            // 10-minute auto-despawn
+            Serial capturedSerial   = npc.Serial;
+            string capturedName     = record.Name;
+
             Timer.DelayCall(TimeSpan.FromMinutes(10), () =>
             {
-                if (_activeWantedSerial != Serial.Zero)
+                if (RemoveHuntRecord(_activeWanted, capturedSerial, out Mobile target))
                 {
-                    Mobile m = World.FindMobile(_activeWantedSerial);
-                    if (m != null && !m.Deleted && m.Alive)
-                    {
-                        m.Delete();
-                        World.Broadcast(0x22, false, $"[Wanted] {_activeWantedName} has slipped away. The bounty has expired.");
-                        _activeWantedSerial = Serial.Zero;
-                        _activeWantedName   = string.Empty;
-                    }
+                    target?.Delete();
+                    World.Broadcast(0x22, false,
+                        $"[Wanted] {capturedName} has slipped away. The bounty has expired.");
                 }
             });
         }
 
         public static void OnHunterKilled(HunterCreature creature)
         {
-            if (creature.Serial == _activeHuntSerial)
-            {
-                _activeHuntSerial   = Serial.Zero;
-                _activeHuntName     = string.Empty;
-                _activeHuntLocation = string.Empty;
-            }
+            RemoveHuntRecord(_activeHunts, creature.Serial, out _);
         }
 
         public static void OnWantedKilled(BaseWantedNPC npc)
         {
-            if (npc.Serial == _activeWantedSerial)
-            {
-                _activeWantedSerial   = Serial.Zero;
-                _activeWantedName     = string.Empty;
-                _activeWantedLocation = string.Empty;
-            }
+            RemoveHuntRecord(_activeWanted, npc.Serial, out _);
         }
 
+        // Returns first active hunt info string (used by old single-line gump callers)
         public static string GetActiveHuntInfo()
         {
-            if (!HasActiveHunt) return string.Empty;
-            return _activeHuntLocation.Length > 0
-                ? $"{_activeHuntName} — {_activeHuntLocation}"
-                : _activeHuntName;
+            PruneHunts();
+            if (_activeHunts.Count == 0) return string.Empty;
+            HuntRecord r = _activeHunts[0];
+            return r.Location.Length > 0 ? $"{r.Name} — {r.Location}" : r.Name;
         }
 
         public static string GetActiveWantedInfo()
         {
-            if (!HasActiveWanted) return string.Empty;
-            return _activeWantedLocation.Length > 0
-                ? $"{_activeWantedName} — {_activeWantedLocation}"
-                : _activeWantedName;
+            PruneWanted();
+            if (_activeWanted.Count == 0) return string.Empty;
+            HuntRecord r = _activeWanted[0];
+            return r.Location.Length > 0 ? $"{r.Name} — {r.Location}" : r.Name;
+        }
+
+        // Returns one info string per active entry — for gump and compass
+        public static List<string> GetActiveHuntInfoList()
+        {
+            PruneHunts();
+            var list = new List<string>(_activeHunts.Count);
+            foreach (HuntRecord r in _activeHunts)
+                list.Add(r.Location.Length > 0 ? $"{r.Name} — {r.Location}" : r.Name);
+            return list;
+        }
+
+        public static List<string> GetActiveWantedInfoList()
+        {
+            PruneWanted();
+            var list = new List<string>(_activeWanted.Count);
+            foreach (HuntRecord r in _activeWanted)
+                list.Add(r.Location.Length > 0 ? $"{r.Name} — {r.Location}" : r.Name);
+            return list;
+        }
+
+        // ---- Compass / GM-command support ----
+
+        public struct ActiveTargetInfo
+        {
+            public string   Name;
+            public string   Location;
+            public Point3D  Position;
+            public Map      Map;
+        }
+
+        public static List<ActiveTargetInfo> GetAllActiveHunts()
+        {
+            PruneHunts();
+            var result = new List<ActiveTargetInfo>(_activeHunts.Count);
+            foreach (HuntRecord r in _activeHunts)
+            {
+                Mobile m = World.FindMobile(r.Serial);
+                if (m != null)
+                    result.Add(new ActiveTargetInfo
+                        { Name = r.Name, Location = r.Location, Position = m.Location, Map = m.Map });
+            }
+            return result;
+        }
+
+        public static List<ActiveTargetInfo> GetAllActiveWanted()
+        {
+            PruneWanted();
+            var result = new List<ActiveTargetInfo>(_activeWanted.Count);
+            foreach (HuntRecord r in _activeWanted)
+            {
+                Mobile m = World.FindMobile(r.Serial);
+                if (m != null)
+                    result.Add(new ActiveTargetInfo
+                        { Name = r.Name, Location = r.Location, Position = m.Location, Map = m.Map });
+            }
+            return result;
+        }
+
+        // Kept for backward-compat (compass / old callers) — returns first entry
+        public static string   GetActiveHuntTargetName()     { PruneHunts();  return _activeHunts .Count > 0 ? _activeHunts [0].Name     : string.Empty; }
+        public static string   GetActiveHuntTargetLocation() { PruneHunts();  return _activeHunts .Count > 0 ? _activeHunts [0].Location  : string.Empty; }
+        public static string   GetActiveWantedTargetName()   { PruneWanted(); return _activeWanted.Count > 0 ? _activeWanted[0].Name     : string.Empty; }
+        public static string   GetActiveWantedTargetLocation(){ PruneWanted(); return _activeWanted.Count > 0 ? _activeWanted[0].Location  : string.Empty; }
+
+        public static Point3D GetActiveHuntPosition()
+        {
+            PruneHunts();
+            if (_activeHunts.Count == 0) return Point3D.Zero;
+            Mobile m = World.FindMobile(_activeHunts[0].Serial);
+            return m != null ? m.Location : Point3D.Zero;
+        }
+
+        public static Map GetActiveHuntMap()
+        {
+            PruneHunts();
+            if (_activeHunts.Count == 0) return null;
+            Mobile m = World.FindMobile(_activeHunts[0].Serial);
+            return m?.Map;
+        }
+
+        public static Point3D GetActiveWantedPosition()
+        {
+            PruneWanted();
+            if (_activeWanted.Count == 0) return Point3D.Zero;
+            Mobile m = World.FindMobile(_activeWanted[0].Serial);
+            return m != null ? m.Location : Point3D.Zero;
+        }
+
+        public static Map GetActiveWantedMap()
+        {
+            PruneWanted();
+            if (_activeWanted.Count == 0) return null;
+            Mobile m = World.FindMobile(_activeWanted[0].Serial);
+            return m?.Map;
+        }
+
+        // ---- List helpers ----
+
+        private static bool HuntRecordExists(List<HuntRecord> list, Serial serial)
+        {
+            foreach (HuntRecord r in list)
+                if (r.Serial == serial) return true;
+            return false;
+        }
+
+        // Removes the record and outputs the live mobile (if still alive). Returns true if found.
+        private static bool RemoveHuntRecord(List<HuntRecord> list, Serial serial, out Mobile mobile)
+        {
+            mobile = null;
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i].Serial == serial)
+                {
+                    Mobile m = World.FindMobile(serial);
+                    if (m != null && !m.Deleted && m.Alive)
+                        mobile = m;
+                    list.RemoveAt(i);
+                    return true;
+                }
+            }
+            return false;
         }
 
         // --------------------------------------------------------
@@ -572,23 +727,23 @@ namespace Server.Custom
 
         private static readonly HunterSpawnEntry[] WantedCutthroatSpawns =
         {
-            new HunterSpawnEntry(1368, 1545, 0, Map.Felucca, "the road near Despise"),
-            new HunterSpawnEntry(2457, 875,  0, Map.Felucca, "the road near Covetous"),
-            new HunterSpawnEntry(505,  1445, 0, Map.Felucca, "the road near Shame"),
+            new HunterSpawnEntry(1368, 1545, 0, Map.Felucca, "near Despise"),
+            new HunterSpawnEntry(2457, 875,  0, Map.Felucca, "near Covetous"),
+            new HunterSpawnEntry(505,  1445, 0, Map.Felucca, "near Shame"),
         };
 
         private static readonly HunterSpawnEntry[] WantedMurdererSpawns =
         {
-            new HunterSpawnEntry(2005, 148,  0, Map.Felucca, "the road near Wrong"),
-            new HunterSpawnEntry(930,  3100, 0, Map.Felucca, "the road near Destard"),
-            new HunterSpawnEntry(1950, 110,  0, Map.Felucca, "the road near Deceit"),
+            new HunterSpawnEntry(2005, 148,  0, Map.Felucca, "near Wrong"),
+            new HunterSpawnEntry(930,  3100, 0, Map.Felucca, "near Destard"),
+            new HunterSpawnEntry(1950, 110,  0, Map.Felucca, "near Deceit"),
         };
 
         private static readonly HunterSpawnEntry[] WantedDreadLordSpawns =
         {
-            new HunterSpawnEntry(4690, 3790, 0, Map.Felucca, "the entrance to Hythloth"),
-            new HunterSpawnEntry(1920, 80,   0, Map.Felucca, "the depths near Deceit"),
-            new HunterSpawnEntry(1050, 3280, 0, Map.Felucca, "the wilderness near Destard"),
+            new HunterSpawnEntry(4690, 3790, 0, Map.Felucca, "near Hythloth"),
+            new HunterSpawnEntry(1920, 80,   0, Map.Felucca, "near Deceit"),
+            new HunterSpawnEntry(1050, 3280, 0, Map.Felucca, "near Destard"),
         };
 
         private static HunterSpawnEntry PickSpawnEntry(int tier)
@@ -614,6 +769,62 @@ namespace Server.Custom
                 default: pool = WantedDreadLordSpawns; break;
             }
             return pool[Utility.Random(pool.Length)];
+        }
+    }
+
+    // ============================================================
+    // GM COMMANDS
+    // ============================================================
+
+    public static class HunterCommands
+    {
+        public static void Initialize()
+        {
+            CommandSystem.Register("gothunt",   AccessLevel.GameMaster, OnGoHunt);
+            CommandSystem.Register("gowanted",  AccessLevel.GameMaster, OnGoWanted);
+        }
+
+        private static void OnGoHunt(CommandEventArgs e)
+        {
+            Mobile gm = e.Mobile;
+            var hunts = HunterSystem.GetAllActiveHunts();
+
+            if (hunts.Count == 0)
+            {
+                gm.SendMessage(0x22, "There are no active hunt targets right now.");
+                return;
+            }
+
+            // If an index argument is given (gothunt 2), go to that slot; else go to #1
+            int idx = 0;
+            if (e.Arguments.Length > 0 && int.TryParse(e.Arguments[0], out int arg))
+                idx = Math.Max(0, Math.Min(arg - 1, hunts.Count - 1));
+
+            var target = hunts[idx];
+            gm.MoveToWorld(target.Position, target.Map);
+            gm.SendMessage(0x35, $"Teleported to {target.Name} in {target.Location}. " +
+                $"({hunts.Count} hunt{(hunts.Count > 1 ? "s" : "")} active — use [gothunt 1/2/3 to pick)");
+        }
+
+        private static void OnGoWanted(CommandEventArgs e)
+        {
+            Mobile gm = e.Mobile;
+            var wanted = HunterSystem.GetAllActiveWanted();
+
+            if (wanted.Count == 0)
+            {
+                gm.SendMessage(0x22, "There are no active Wanted NPCs right now.");
+                return;
+            }
+
+            int idx = 0;
+            if (e.Arguments.Length > 0 && int.TryParse(e.Arguments[0], out int arg))
+                idx = Math.Max(0, Math.Min(arg - 1, wanted.Count - 1));
+
+            var target = wanted[idx];
+            gm.MoveToWorld(target.Position, target.Map);
+            gm.SendMessage(0x35, $"Teleported to {target.Name} in {target.Location}. " +
+                $"({wanted.Count} wanted NPC{(wanted.Count > 1 ? "s" : "")} active — use [gowanted 1/2/3 to pick)");
         }
     }
 

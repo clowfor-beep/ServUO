@@ -160,9 +160,13 @@ namespace Server.Custom
             int pts   = HunterSystem.GetPoints(from);
             string rank = HunterSystem.GetRankTitle(pts);
 
-            string huntInfo   = HunterSystem.GetActiveHuntInfo();
-            string wantedInfo = HunterSystem.GetActiveWantedInfo();
-            int extraHeight   = (huntInfo.Length > 0 ? 50 : 0) + (wantedInfo.Length > 0 ? 50 : 0);
+            var huntInfos   = HunterSystem.GetActiveHuntInfoList();
+            var wantedInfos = HunterSystem.GetActiveWantedInfoList();
+
+            // Each entry takes 20px; section header adds 20px; blank gap 10px
+            int huntBlock   = huntInfos.Count   > 0 ? 20 + huntInfos.Count   * 20 + 10 : 0;
+            int wantedBlock = wantedInfos.Count > 0 ? 20 + wantedInfos.Count * 20 + 10 : 0;
+            int extraHeight = huntBlock + wantedBlock;
 
             AddPage(0);
             AddBackground(0, 0, 360, 320 + extraHeight, 9270);
@@ -189,18 +193,30 @@ namespace Server.Custom
             AddButton(20, 210, 4005, 4007, 4, GumpButtonType.Reply, 0);
             AddLabel(55, 210, hasTitle ? 0x35 : 0x22, hasTitle ? "Toggle Hunter Title" : "No title earned yet");
 
-            // Active hunt info
+            // Active hunts
             int yInfo = 250;
-            if (huntInfo.Length > 0)
+            if (huntInfos.Count > 0)
             {
-                AddLabel(20, yInfo,      0x4AA, "Active Hunt:");
-                AddLabel(20, yInfo + 20, 1153,  huntInfo.Length > 45 ? huntInfo.Substring(0, 45) + "..." : huntInfo);
-                yInfo += 50;
+                AddLabel(20, yInfo, 0x4AA, $"Active Hunt{(huntInfos.Count > 1 ? "s" : "")} ({huntInfos.Count}):");
+                yInfo += 20;
+                foreach (string info in huntInfos)
+                {
+                    string line = info.Length > 45 ? info.Substring(0, 45) + "..." : info;
+                    AddLabel(30, yInfo, 1153, line);
+                    yInfo += 20;
+                }
+                yInfo += 10;
             }
-            if (wantedInfo.Length > 0)
+            if (wantedInfos.Count > 0)
             {
-                AddLabel(20, yInfo,      0x22,  "Wanted:");
-                AddLabel(20, yInfo + 20, 1153,  wantedInfo.Length > 45 ? wantedInfo.Substring(0, 45) + "..." : wantedInfo);
+                AddLabel(20, yInfo, 0x22, $"Wanted ({wantedInfos.Count}):");
+                yInfo += 20;
+                foreach (string info in wantedInfos)
+                {
+                    string line = info.Length > 45 ? info.Substring(0, 45) + "..." : info;
+                    AddLabel(30, yInfo, 1153, line);
+                    yInfo += 20;
+                }
             }
         }
 
@@ -304,6 +320,7 @@ namespace Server.Custom
         private static readonly (string name, int cost, System.Type itemType)[] ShopItems = {
             ("Hunter's Tabard (cosmetic robe)",       10, typeof(Robe)),
             ("Hunter's Map (highlights spawn zones)",  5, typeof(BlankScroll)),
+            ("Hunter's Compass (find active hunts)",   8, typeof(HunterCompass)),
             ("Tracking Orb (+3 tracking range)",      20, typeof(EssenceShard)),
             ("Title Deed: 'the Monster Hunter'",      30, typeof(Gold)),
         };
@@ -316,7 +333,7 @@ namespace Server.Custom
             int tokens = CountTokens(from);
 
             AddPage(0);
-            AddBackground(0, 0, 360, 220, 9270);
+            AddBackground(0, 0, 360, 250, 9270);
             AddLabel(20, 15, 0x4AA, "Hunter Token Shop");
             AddLabel(20, 35, 1153, $"Your tokens: {tokens}");
 
@@ -405,12 +422,17 @@ namespace Server.Custom
                     _from.SendMessage(0x35, "You receive a Hunter's Map.");
                     break;
 
-                case 2: // Tracking Orb — Essence Shards as placeholder
+                case 2: // Hunter's Compass
+                    _from.AddToBackpack(new HunterCompass());
+                    _from.SendMessage(0x35, "You receive a Hunter's Compass. Double-click it to find active hunts.");
+                    break;
+
+                case 3: // Tracking Orb — Essence Shards as placeholder
                     _from.AddToBackpack(new EssenceShard(5));
                     _from.SendMessage(0x35, "You receive a Tracking Orb (grants +3 tracking range when held).");
                     break;
 
-                case 3: // Title Deed
+                case 4: // Title Deed
                     _from.SendMessage(0x35, "'The Monster Hunter' title has been unlocked for you.");
                     HunterSystem.GrantTitleDeed(_from, "the Monster Hunter");
                     break;
