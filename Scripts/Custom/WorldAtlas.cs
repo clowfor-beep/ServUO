@@ -175,17 +175,17 @@ namespace Server.Items
         // -------------------------------------------------------
         private static readonly List<AtlasLocation> Moongates = new List<AtlasLocation>
         {
-            new AtlasLocation("Moonglow",        4467, 1284,  0, Map.Felucca),
-            new AtlasLocation("Britain",         1495, 1629, 10, Map.Felucca),
-            new AtlasLocation("Jhelom",          1383, 3815,  0, Map.Felucca),
-            new AtlasLocation("Yew",              546,  992,  0, Map.Felucca),
-            new AtlasLocation("Minoc",           2466,  544,  0, Map.Felucca),
-            new AtlasLocation("Trinsic",         1867, 2780,  0, Map.Felucca),
-            new AtlasLocation("Skara Brae",       632, 2233,  0, Map.Felucca),
-            new AtlasLocation("Magincia",        3714, 2220, 20, Map.Felucca),
-            new AtlasLocation("Ilshenar Gate",   1223,  475,-16, Map.Ilshenar),
-            new AtlasLocation("Malas Gate",       989,  520,-50, Map.Malas),
-            new AtlasLocation("Tokuno Gate",     1169,  998,  0, Map.Tokuno),
+            new AtlasLocation("Moonglow",        4467, 1283,  5, Map.Felucca),
+            new AtlasLocation("Britain",         1336, 1997,  5, Map.Felucca),
+            new AtlasLocation("Jhelom",          1499, 3771,  5, Map.Felucca),
+            new AtlasLocation("Yew",              771,  752,  5, Map.Felucca),
+            new AtlasLocation("Minoc",           2701,  692,  5, Map.Felucca),
+            new AtlasLocation("Trinsic",         1828, 2948,-20, Map.Felucca),
+            new AtlasLocation("Skara Brae",       643, 2067,  5, Map.Felucca),
+            new AtlasLocation("Magincia",        3563, 2139, 20, Map.Felucca),
+            new AtlasLocation("Ilshenar Gate",   1215,  467,-13, Map.Ilshenar),
+            new AtlasLocation("Malas Gate",      1015,  527,-65, Map.Malas),
+            new AtlasLocation("Tokuno Gate",     1169,  998, 41, Map.Tokuno),
         };
 
         // -------------------------------------------------------
