@@ -379,12 +379,40 @@ namespace Server.Engines.Quests
                 {
                     if (!obtained.QuestItem)
                     {
-                        CurProgress += obtained.Amount;
+                        int needed = MaxProgress - CurProgress;
 
-                        obtained.QuestItem = true;
-                        Quest.Owner.SendLocalizedMessage(1072353); // You set the item to Quest Item status
+                        // If the stack has more than we need, split it so only the
+                        // required amount gets flagged as a quest item
+                        if (obtained.Stackable && obtained.Amount > needed && needed > 0)
+                        {
+                            Item split = null;
 
-                        Quest.OnObjectiveUpdate(obtained);
+                            try { split = Activator.CreateInstance(obtained.GetType()) as Item; }
+                            catch { }
+
+                            if (split != null)
+                            {
+                                split.Amount    = needed;
+                                split.QuestItem = true;
+                                obtained.Amount -= needed;
+
+                                if (!Quest.Owner.PlaceInBackpack(split))
+                                    split.MoveToWorld(Quest.Owner.Location, Quest.Owner.Map);
+
+                                CurProgress += needed;
+                                Quest.Owner.SendLocalizedMessage(1072353); // You set the item to Quest Item status
+                                Quest.OnObjectiveUpdate(split);
+                            }
+                        }
+                        else
+                        {
+                            CurProgress += obtained.Amount;
+
+                            obtained.QuestItem = true;
+                            Quest.Owner.SendLocalizedMessage(1072353); // You set the item to Quest Item status
+
+                            Quest.OnObjectiveUpdate(obtained);
+                        }
                     }
                     else
                     {
