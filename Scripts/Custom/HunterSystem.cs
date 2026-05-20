@@ -88,6 +88,10 @@ namespace Server.Custom
         {
             new HunterSpawnTimer().Start();
             new WantedSpawnTimer().Start();
+
+            // Spawn one of each immediately on server start
+            SpawnHunterTarget();
+            SpawnWantedTarget();
         }
 
         // --------------------------------------------------------
@@ -258,15 +262,15 @@ namespace Server.Custom
             // World spawn broadcast
             BroadcastHuntSpawn(_activeHuntName, entry.DungeonName);
 
-            // Schedule 30-minute reminder
-            Timer.DelayCall(TimeSpan.FromMinutes(30), () =>
+            // Schedule 10-minute reminder
+            Timer.DelayCall(TimeSpan.FromMinutes(10), () =>
             {
                 if (HasActiveHunt)
                     BroadcastHuntReminder(_activeHuntName, entry.DungeonName);
             });
 
-            // 4-hour auto-despawn
-            Timer.DelayCall(TimeSpan.FromHours(4), () =>
+            // 20-minute auto-despawn
+            Timer.DelayCall(TimeSpan.FromMinutes(20), () =>
             {
                 if (_activeHuntSerial != Serial.Zero)
                 {
@@ -274,6 +278,7 @@ namespace Server.Custom
                     if (m != null && !m.Deleted && m.Alive)
                     {
                         m.Delete();
+                        World.Broadcast(0x22, false, $"[World Hunt] {_activeHuntName} has fled into the darkness. The hunt is over.");
                         _activeHuntSerial = Serial.Zero;
                         _activeHuntName   = string.Empty;
                     }
@@ -298,8 +303,8 @@ namespace Server.Custom
 
             BroadcastWantedSpawn(_activeWantedName, entry.DungeonName);
 
-            // 4-hour auto-despawn
-            Timer.DelayCall(TimeSpan.FromHours(4), () =>
+            // 10-minute auto-despawn
+            Timer.DelayCall(TimeSpan.FromMinutes(10), () =>
             {
                 if (_activeWantedSerial != Serial.Zero)
                 {
@@ -307,6 +312,7 @@ namespace Server.Custom
                     if (m != null && !m.Deleted && m.Alive)
                     {
                         m.Delete();
+                        World.Broadcast(0x22, false, $"[Wanted] {_activeWantedName} has slipped away. The bounty has expired.");
                         _activeWantedSerial = Serial.Zero;
                         _activeWantedName   = string.Empty;
                     }
@@ -590,14 +596,14 @@ namespace Server.Custom
     }
 
     // ============================================================
-    // HUNTER SPAWN TIMER — fires every 90-180 minutes
+    // HUNTER SPAWN TIMER — fires every 10-15 minutes
     // ============================================================
 
     public class HunterSpawnTimer : Timer
     {
         public HunterSpawnTimer()
-            : base(TimeSpan.FromMinutes(Utility.RandomMinMax(90, 180)),
-                   TimeSpan.FromMinutes(Utility.RandomMinMax(90, 180)))
+            : base(TimeSpan.FromMinutes(Utility.RandomMinMax(10, 15)),
+                   TimeSpan.FromMinutes(Utility.RandomMinMax(10, 15)))
         {
             Priority = TimerPriority.OneMinute;
         }
@@ -606,20 +612,20 @@ namespace Server.Custom
         {
             HunterSystem.SpawnHunterTarget();
             // Randomise next interval
-            Delay    = TimeSpan.FromMinutes(Utility.RandomMinMax(90, 180));
+            Delay    = TimeSpan.FromMinutes(Utility.RandomMinMax(10, 15));
             Interval = Delay;
         }
     }
 
     // ============================================================
-    // WANTED SPAWN TIMER — fires every 4-6 hours
+    // WANTED SPAWN TIMER — fires every 20-30 minutes
     // ============================================================
 
     public class WantedSpawnTimer : Timer
     {
         public WantedSpawnTimer()
-            : base(TimeSpan.FromMinutes(Utility.RandomMinMax(240, 360)),
-                   TimeSpan.FromMinutes(Utility.RandomMinMax(240, 360)))
+            : base(TimeSpan.FromMinutes(Utility.RandomMinMax(20, 30)),
+                   TimeSpan.FromMinutes(Utility.RandomMinMax(20, 30)))
         {
             Priority = TimerPriority.OneMinute;
         }
@@ -627,7 +633,7 @@ namespace Server.Custom
         protected override void OnTick()
         {
             HunterSystem.SpawnWantedTarget();
-            Delay    = TimeSpan.FromMinutes(Utility.RandomMinMax(240, 360));
+            Delay    = TimeSpan.FromMinutes(Utility.RandomMinMax(20, 30));
             Interval = Delay;
         }
     }
