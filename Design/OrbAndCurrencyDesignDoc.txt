@@ -1,0 +1,564 @@
+# Orb and Currency System — Design Document
+# Shard: Fun Stuff | ServUO + ClassicUO
+# Created: 2026-05-20
+# Status: Design Phase — Not Yet Implemented
+#
+# ============================================================
+# OVERVIEW
+# ============================================================
+#
+# This document defines the shard's consumable enhancement
+# economy: a third currency (Essence Shards) and three
+# categories of consumable items — Character Orbs, Item Orbs,
+# and Scrolls.
+#
+# These items allow players to improve characters and equipment
+# beyond standard UO limits, at the cost of scarcity and risk.
+# The system is inspired by Path of Exile currency orbs,
+# Diablo IV consumables, and classic UO Power Scrolls, tuned
+# for the "Fun Stuff" shard's tier-based progression.
+#
+# ============================================================
+# DESIGN GOALS
+# ============================================================
+#
+# - Provide meaningful progression beyond standard UO caps
+# - Keep the economy scarce — these items should feel rare
+# - Introduce risk/reward tradeoffs (destruction chances)
+# - Feed into the Hunter System as Tier 2+ reward drops
+# - Avoid power creep: hard ceilings enforced on all orbs
+# - All items are consumable — disappear on use
+#
+# ============================================================
+# THE THIRD CURRENCY — ESSENCE SHARDS
+# ============================================================
+#
+# Name        : Essence Shard
+# Description : A crystallised fragment of raw magical energy.
+#               The currency of augmentation on this shard.
+#
+# --- ROLE ---
+# Essence Shards are the primary currency for purchasing orbs
+# and scrolls from special vendors, and as supplemental drops
+# from monsters, dungeon chests, and Hunter targets.
+# They are NOT used to buy standard UO items — they exist
+# exclusively within the orb/scroll economy.
+#
+# --- DROP SOURCES ---
+# - Monster drops (Tier 2+ zones, low chance)
+# - Dungeon chests and locked containers
+# - Hunter System kills (Tier 2+, guaranteed small amount)
+# - Champion spawn bosses (large amount)
+# - Dismantling unwanted orbs/scrolls at a vendor
+#
+# --- USES ---
+# - Purchase orbs and scrolls from the Essence Merchant NPC
+# - Trade with other players (tradeable, stackable)
+# - Upgrade lower-tier orbs into higher-tier equivalents
+#   (vendor exchange: 5x Tier 1 = 1x Tier 2, etc.)
+#
+# --- NOTES ---
+# - Stackable item, max stack 9999
+# - No weight (or minimal weight)
+# - Does not drop in Tier 1 / newbie zones
+# - Gold value intentionally undefined — not meant for
+#   gold-to-shard conversion to avoid inflation
+#
+# ============================================================
+# CATEGORY 1 — CHARACTER ORBS
+# ============================================================
+#
+# Character Orbs permanently modify the character who uses
+# them — NOT items. Effects are applied to the character's
+# skills or stats directly.
+#
+# All Character Orbs:
+# - Are consumed on use
+# - Apply immediately, no delay
+# - Cannot be transferred to another character once used
+# - Drop in Tier 2 zones and above (Hunter System Tier 2+)
+#
+# ============================================================
+# ORBS — CATEGORY 1 OVERVIEW
+# ============================================================
+#
+# Orb                  | Effect                       | Ceiling
+# ---------------------+------------------------------+--------
+# Orb of Enhancement   | +skill points (one skill)    | 130.0
+# Orb of Mastery       | +stat points (one stat)      | 150
+# Orb of Expansion     | +total skill cap             | 900
+# Orb of Fortitude     | +total stat cap              | 250
+# Orb of Alacrity      | halves skill gain duration   | n/a
+# Orb of Balance       | redistribute skill/stat pts  | n/a
+#
+# ============================================================
+# ORB OF ENHANCEMENT
+# ============================================================
+#
+# Effect    : Permanently increases one chosen skill by a
+#             flat amount. Player chooses which skill.
+# Ceiling   : No individual skill may exceed 130.0
+#             (standard GM cap is 100.0; Power Scrolls raise
+#             to 120.0; this orb raises further to 130.0)
+#
+# Tier 1 (Uncommon)  : +0.1 skill points
+# Tier 2 (Rare)      : +0.2 skill points
+# Tier 3 (Very Rare) : +0.3 skill points
+#
+# Design Note:
+# Small increments preserve scarcity. A player who farms
+# Tier 3 orbs exclusively could gain +3.0 skill points after
+# 10 uses — meaningful but not game-breaking. Hard cap at
+# 130.0 regardless of how many orbs are consumed.
+#
+# ============================================================
+# ORB OF MASTERY
+# ============================================================
+#
+# Effect    : Permanently increases one chosen stat (Str,
+#             Dex, or Int) by a flat amount.
+# Ceiling   : No individual stat may exceed 150.
+#             Total stat cap is governed by Orb of Fortitude.
+#
+# Tier 1 (Rare)      : +1 to one stat
+# Tier 2 (Very Rare) : +2 to one stat
+#
+# Design Note:
+# Only two tiers — stat gains are significant in UO.
+# Both tiers are in the rare category. Cannot push a stat
+# above 150 even if total cap allows it.
+#
+# ============================================================
+# ORB OF EXPANSION
+# ============================================================
+#
+# Effect    : Permanently increases the character's total
+#             skill cap. Standard cap is 700 points.
+# Ceiling   : Total skill cap may never exceed 900.
+#
+# Tier 1 (Uncommon)  : +1 to total skill cap
+# Tier 2 (Rare)      : +2 to total skill cap
+# Tier 3 (Very Rare) : +3 to total skill cap
+#
+# Design Note:
+# A full collection of Tier 3 orbs to reach the 900 ceiling
+# requires 66.6 uses — an enormous investment. This is
+# intentional. The cap increase unlocks space for new skills
+# but does not raise individual skill ceilings.
+#
+# ============================================================
+# ORB OF FORTITUDE
+# ============================================================
+#
+# Effect    : Permanently increases the character's total
+#             stat cap. Standard total stat cap is 225.
+# Ceiling   : Total stat cap may never exceed 250.
+#
+# Tier 1 (Rare)      : +1 to total stat cap
+# Tier 2 (Very Rare) : +2 to total stat cap
+#
+# Design Note:
+# Only two tiers, both rare. The ceiling of 250 over standard
+# 225 provides a modest but noticeable edge for veteran
+# players who have invested heavily.
+#
+# ============================================================
+# ORB OF ALACRITY
+# ============================================================
+#
+# Effect    : Halves the time required for skill gains for
+#             a limited duration after use.
+#
+# Tier 1 (Uncommon)  : Half skill gain duration — 30 minutes
+# Tier 2 (Rare)      : Half skill gain duration — 60 minutes
+# Tier 3 (Very Rare) : Half skill gain duration — 120 minutes
+#
+# Design Note:
+# Quality-of-life orb. Does not raise caps — simply speeds
+# natural skill gain. Useful when grinding a skill that is
+# close to its cap. Does not stack with itself.
+#
+# ============================================================
+# ORB OF BALANCE
+# ============================================================
+#
+# Effect    : Allows redistribution of skill or stat points
+#             within the same character — not between
+#             different characters.
+#
+# Tier 1 — Skill Retraining (Rare)
+#   - Transfer up to 10 skill points from one skill to another
+#   - Both skills must be on the same character
+#   - Cannot reduce a skill below 0 or raise above current cap
+#
+# Tier 2 — Skill Mastery Transfer (Very Rare)
+#   - Transfer up to 50 skill points from one skill to another
+#
+# Tier 3 — Stat Retraining (Very Rare)
+#   - Transfer up to 20 stat points from one stat to another
+#
+# Design Note:
+# Higher transfer values are safe because this only moves
+# points around within one character — it does not create new
+# points. Particularly useful for players who have over-invested
+# in a skill they no longer use.
+#
+# ============================================================
+# CATEGORY 2 — ITEM ORBS
+# ============================================================
+#
+# Item Orbs are used on equipped items or items in the player's
+# pack to modify, enhance, corrupt, or cleanse their properties.
+#
+# All Item Orbs:
+# - Are consumed on use
+# - Target a specific item in the player's possession
+# - May carry a destruction chance (see individual orb notes)
+# - Drop in Tier 2 zones and above (Hunter System Tier 2+)
+#
+# ============================================================
+# ORBS — CATEGORY 2 OVERVIEW
+# ============================================================
+#
+# Orb                  | Effect                        | Risk
+# ---------------------+-------------------------------+------
+# Orb of Corruption    | Risky upgrade — adds powerful | 50% destroy
+#                      | random property or effect     |
+# Orb of Resonance     | Push property beyond normal   | 25% destroy
+#                      | item cap                      |
+# Orb of Cleansing     | Remove one property           | None
+# Orb of Tempering     | Improve item quality/base     | None
+# Orb of Enchantment   | Add a random magical property | None
+# Orb of Reforging     | Randomise all properties      | None
+#
+# ============================================================
+# ORB OF CORRUPTION
+# ============================================================
+#
+# Effect    : Applies a powerful and unpredictable change to
+#             an item — may grant exceptional bonuses, apply
+#             a negative modifier, or simply fail. Inspired
+#             by the PoE Vaal Orb.
+# Risk      : 50% chance to destroy the item entirely.
+#             This chance is FLAT across all tiers.
+#
+# Tier 1 (Rare)      : Minor corruption — small bonus/penalty
+#                      e.g. +2 skill bonus or -5 durability max
+# Tier 2 (Very Rare) : Moderate corruption — notable bonus/penalty
+#                      e.g. +5 skill bonus or cursed flag
+# Tier 3 (Epic)      : Major corruption — powerful bonus/penalty
+#                      e.g. +10 skill bonus, spell channelling,
+#                      or catastrophic penalty
+#
+# Design Note:
+# The 50% destruction chance applies to all tiers to keep
+# the risk consistent regardless of orb tier. A Tier 3 Orb
+# of Corruption is a high-stakes gamble. Items that survive
+# corruption are permanently marked as "Corrupted" and cannot
+# be corrupted again.
+#
+# ============================================================
+# ORB OF RESONANCE
+# ============================================================
+#
+# Effect    : Pushes one property of an item beyond its
+#             normal maximum roll. The item must already
+#             have the property to be amplified.
+# Risk      : 25% chance to destroy the item entirely.
+#
+# Tier 1 (Rare)      : +minor push on one property (e.g. +1 damage)
+# Tier 2 (Very Rare) : +moderate push on one property
+# Tier 3 (Epic)      : +significant push on one property
+#
+# Design Note:
+# This is the "min-max" orb for players who want to squeeze
+# peak performance out of an already-excellent item. The 25%
+# destruction risk means it should only be used on items the
+# player is willing to lose. Cannot push beyond server-set
+# absolute maximums per property.
+#
+# ============================================================
+# ORB OF CLEANSING
+# ============================================================
+#
+# Effect    : Removes a magical property from an item.
+#             No destruction risk.
+#
+# Tier 1 (Uncommon) : Removes one RANDOM property from the item.
+#                     Player does not choose which property.
+# Tier 2 (Rare)     : Removes one SPECIFIC property chosen by
+#                     the player. Player selects the target property
+#                     via a gump.
+#
+# Design Note:
+# Tier 1 is the "gamble" version — useful when you just need
+# to remove something and don't mind which. Tier 2 is the
+# controlled version for players who want to sculpt their item.
+# Cannot remove the item's base stats or its Corrupted flag.
+#
+# ============================================================
+# ORB OF TEMPERING
+# ============================================================
+#
+# Effect    : Improves the base quality of an item, raising
+#             its durability cap and base damage/armour value.
+#
+# Tier 1 (Common)    : +5% base quality improvement
+# Tier 2 (Uncommon)  : +10% base quality improvement
+# Tier 3 (Rare)      : +20% base quality improvement
+#
+# Maximum item quality: 200% (double standard)
+#
+# Design Note:
+# Quality-of-life orb. Does not add magical properties.
+# Particularly useful for crafters maintaining high-use items.
+#
+# ============================================================
+# ORB OF ENCHANTMENT
+# ============================================================
+#
+# Effect    : Adds one random magical property to an item
+#             that does not already have that property.
+#             If the item is at its property cap, the orb
+#             is consumed and nothing happens.
+#
+# Tier 1 (Uncommon)  : Adds one minor magical property
+# Tier 2 (Rare)      : Adds one moderate magical property
+# Tier 3 (Very Rare) : Adds one major magical property
+#
+# Design Note:
+# The "add something new" orb. The randomness means it is
+# not reliable for target-building, but useful for items
+# that have empty property slots. No destruction risk.
+#
+# ============================================================
+# ORB OF REFORGING
+# ============================================================
+#
+# Effect    : Randomises all magical properties on the item.
+#             The number of properties is preserved; their
+#             values and types are re-rolled.
+#
+# Tier 1 (Rare)      : Reroll all properties at standard rolls
+# Tier 2 (Very Rare) : Reroll all properties, biased toward
+#                      higher value outcomes
+#
+# Design Note:
+# High-risk item reset. Inspired by PoE's Chaos Orb mechanic.
+# The item keeps its number of properties but all current
+# modifiers are lost and replaced. Tier 2 is a weighted reroll
+# that skews positive — still random, but less likely to produce
+# the worst possible outcome. No destruction risk.
+#
+# ============================================================
+# CATEGORY 3 — SCROLLS
+# ============================================================
+#
+# Scrolls are single-use consumable buffs or effects applied
+# to the character (not items). Once used, the scroll is
+# consumed. Effects are temporary unless stated otherwise.
+#
+# All Scrolls:
+# - Are consumed on use
+# - Apply immediately
+# - Do not stack with the same scroll type
+# - Drop in Tier 2 zones and above (Hunter System Tier 2+)
+# - Deathtouch and Execution are Tier 3+ drops only
+#
+# ============================================================
+# SCROLLS — CATEGORY 3 OVERVIEW
+# ============================================================
+#
+# Scroll               | Effect                        | Duration
+# ---------------------+-------------------------------+---------
+# Scroll of Warding    | Absorbs incoming damage       | Until absorbed
+# Scroll of Deathtouch | Chance to instantly kill      | 30 min
+# Scroll of Execution  | Bonus damage at low target HP | 30 min
+# Scroll of Leeching   | Drains random stat on hit     | Timed
+#
+# ============================================================
+# SCROLL OF WARDING
+# ============================================================
+#
+# Effect    : Creates a damage absorption shield around the
+#             character. The scroll absorbs incoming damage
+#             until its threshold is reached, then is expended.
+#
+# Tier 1 (Uncommon)  : Absorbs up to  50 damage
+# Tier 2 (Rare)      : Absorbs up to 100 damage
+# Tier 3 (Very Rare) : Absorbs up to 150 damage
+#
+# Design Note:
+# Functions as a one-time emergency buffer. Particularly
+# useful against burst damage. The scroll is consumed as
+# soon as the absorption threshold is depleted, not on use.
+#
+# ============================================================
+# SCROLL OF DEATHTOUCH
+# ============================================================
+#
+# Effect    : Each melee hit has a chance to instantly kill
+#             the target, regardless of remaining HP.
+#             Does not work on champion spawn bosses or
+#             event bosses.
+#
+# Tier 1 only (Epic/Legendary) : 1% chance on hit — 30 minutes
+#
+# Design Note:
+# Single tier only — intentionally rare and coveted.
+# The 1% chance keeps it exciting without being reliable.
+# This is a prestige consumable: something players notice
+# and remember when it procs. Not a build-around tool.
+#
+# ============================================================
+# SCROLL OF EXECUTION
+# ============================================================
+#
+# Effect    : Grants massive bonus damage to attacks against
+#             targets who are critically low on HP. The bonus
+#             applies when the target's HP is below the
+#             tier's threshold.
+#
+# Tier 1 (Rare)      : +25% damage when target is below  5% HP — 30 min
+# Tier 2 (Very Rare) : +40% damage when target is below 10% HP — 30 min
+# Tier 3 (Epic)      : +60% damage when target is below 15% HP — 30 min
+#
+# Design Note:
+# A finisher enhancement. Tier 3 is the most powerful because
+# it activates at a higher HP threshold AND deals more bonus
+# damage. Particularly effective in PvP and against high-HP
+# Hunter targets.
+#
+# ============================================================
+# SCROLL OF LEECHING
+# ============================================================
+#
+# Effect    : On each melee hit, drains a random stat
+#             (Strength, Dexterity, or Intelligence) from
+#             the target and temporarily adds it to the user.
+#             Which stat is drained is chosen randomly at
+#             the time of each hit — the player has no control.
+#             Drained stats return to the target when the
+#             scroll expires.
+#
+# Tier 1 (Rare)      : Drains 1–3 of a random stat per hit — 30 sec
+# Tier 2 (Very Rare) : Drains 2–5 of a random stat per hit — 45 sec
+# Tier 3 (Epic)      : Drains 3–8 of a random stat per hit — 60 sec
+#
+# Design Note:
+# Unpredictable by design — the player gains from a random
+# stat drain each hit. Against STR targets, this lowers their
+# damage output; against INT targets, it cuts their mana.
+# Against DEX targets, it slows their swing and movement.
+# The random element prevents this from being a reliable
+# "kill the mage's mana" tool but keeps it interesting in
+# all PvP/PvM contexts.
+#
+# ============================================================
+# DROP RATE GUIDELINES
+# ============================================================
+#
+# Rarity tiers and suggested drop rate ranges:
+#
+# Common      : 5–10%   (Essence Shards, Tempering Tier 1)
+# Uncommon    : 1–5%    (Enhancement Tier 1, Warding Tier 1)
+# Rare        : 0.5–1%  (most Tier 2 orbs, Tier 1 Rare scrolls)
+# Very Rare   : 0.1–0.5% (Tier 3 orbs, major scrolls)
+# Epic        : 0.05%   (Corruption Tier 3, Deathtouch)
+#
+# These are suggestions — actual rates should be tuned in
+# the LootPack definitions based on playtesting.
+#
+# Hunter System integration:
+# - Tier 2 Hunter kills: 10% orb drop (Category 1 Tier 1–2)
+# - Tier 3 Hunter kills: 25% orb drop (any Category 1–2)
+# - Tier 4 Hunter kills: 50% orb drop (any; higher chance of Tier 3)
+# - Wanted Murderer:     15% orb drop (Category 1 Tier 1)
+# - Wanted Dread Lord:   35% orb drop (Category 1–2 Tier 1–2)
+#
+# ============================================================
+# IMPLEMENTATION NOTES (ServUO)
+# ============================================================
+#
+# File Location : Scripts/Custom/OrbAndCurrencySystem.cs
+#
+# --- ESSENCE SHARD ---
+# Simple stackable Item subclass.
+# ItemID: use existing gem/crystal graphic (e.g. 0x1F19 or similar)
+# Hue: 1153 (bright blue-white)
+#
+# --- CHARACTER ORBS ---
+# Each orb is a separate Item subclass that opens a skill
+# or stat selection gump on double-click.
+# On confirmation, apply the effect and delete the orb.
+# Check ceiling before applying — if at cap, abort with message.
+#
+# --- ITEM ORBS ---
+# Each orb targets an item in the player's backpack.
+# Use from.Target = new InternalTarget() to request a target.
+# Validate the item type before applying the effect.
+# For destruction chance, roll Utility.RandomDouble() < 0.50
+# (or 0.25 for Resonance) before applying; if true, item.Delete().
+#
+# --- SCROLLS ---
+# Scrolls add a timed buff to the player mobile.
+# Use a Timer to expire the effect after the duration.
+# Store buff state in a Dictionary<Mobile, ScrollBuffEntry>
+# or extend PlayerMobile with custom fields.
+# Deathtouch and Execution check on OnGaveMeleeAttack().
+# Leeching checks on OnGaveMeleeAttack() — roll randomly for
+# which stat (0=Str, 1=Dex, 2=Int) per hit.
+#
+# --- CEILING ENFORCEMENT ---
+# Enhancement    : skill value <= 130.0
+# Mastery        : stat value <= 150
+# Expansion      : SkillsCap <= 9000 (i.e. 900.0 in ServUO units)
+# Fortitude      : StatCap <= 250
+#
+# ============================================================
+# BALANCE GUARDRAILS
+# ============================================================
+#
+# The following absolute limits must be enforced in code,
+# regardless of how many orbs a player uses:
+#
+# Individual skill cap (enhanced)  : 130.0
+# Total skill cap (expanded)       : 900 points
+# Individual stat cap (enhanced)   : 150
+# Total stat cap (expanded)        : 250
+#
+# These ceilings are approx. 10–30% above standard UO caps.
+# The intent is that a fully-optimised, heavily-orbed character
+# feels noticeably more powerful than a fresh GM character,
+# but not so far beyond normal that ungeared players feel
+# irrelevant.
+#
+# ============================================================
+# FUTURE CONSIDERATIONS
+# ============================================================
+#
+# - Named orb variants: "Shard of Ancient Power" etc. with
+#   flavour text, for quest or event rewards
+#
+# - Essence Merchant NPC: sells orbs for Essence Shards,
+#   accepts bulk lower-tier orbs in exchange for higher-tier
+#
+# - Orb of Extraction (removed in current design): considered
+#   too powerful; could revisit as very limited event-only drop
+#
+# - Vaal-style extended corruption: some corrupted items could
+#   gain unique abilities not obtainable otherwise (e.g.
+#   "Blessed" flag, auto-repair on equip, etc.)
+#
+# - Consider whether scrolls should work in Trammel/safe zones
+#   or be restricted to Felucca / Tier 2+ zones only
+#
+# ============================================================
+# RELATED FILES
+# ============================================================
+#
+# Scripts/Custom/HunterSystem.cs      — primary orb/shard drop source
+# Scripts/Custom/PlayerKillerNPCs.cs  — Wanted track drops
+# Design/HunterSystemDesignDoc.txt    — reward table referencing orbs
+# Design/PKNPCDesignDoc.txt           — Wanted PK templates
+# CHANGELOG.md                        — update when implemented

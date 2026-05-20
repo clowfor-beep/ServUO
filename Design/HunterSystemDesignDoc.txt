@@ -1,0 +1,618 @@
+# Hunter System — Design Document
+# Shard: Fun Stuff | ServUO + ClassicUO
+# Created: 2026-05-20
+# Updated: 2026-05-20
+# Status: Design Phase — Not Yet Implemented
+#
+# ============================================================
+# OVERVIEW
+# ============================================================
+#
+# The Hunter System introduces World Hunt targets — rare, named,
+# extraordinary creatures and NPCs that roam the dungeons of
+# Britannia. They are enhanced versions of existing monsters
+# (including champion spawn bosses as the highest tier),
+# identifiable by unique name and hue, announced to the entire
+# shard on spawn, and worth hunting for exclusive loot, a
+# collectable head item, and Hunter Rank progression.
+#
+# A parallel "Wanted" track runs alongside the creature tiers,
+# placing infamous murderer NPCs as bounty targets with their
+# own reward structure tied to the Justice virtue.
+#
+# The system creates recurring shard-wide events without
+# requiring staff involvement.
+#
+# ============================================================
+# DESIGN GOALS
+# ============================================================
+#
+# - Create emergent shard-wide "events" from a passive system
+# - Make hunting feel like a prestige activity with visible rank
+# - Exclusive loot only available from Hunter targets
+# - Head bounty system ties creature hunting to NPC quest loop
+# - Four-tier creature challenge curve — accessible to legendary
+# - Parallel Wanted (PK NPC) track adds human-threat variety
+# - Champion bosses as roaming Tier 4 targets for maximum impact
+#
+# ============================================================
+# SPAWN SYSTEM
+# ============================================================
+#
+# Class         : HunterSpawnSystem (static, Initialize() pattern)
+# Timer         : Repeating timer, fires every 90–180 min (randomised)
+# Global cap    : Max 1 active Hunter target per dungeon facet
+#                 (Felucca cap = 2, Trammel = 0 — Felucca only)
+# Wanted cap    : Max 1 active Wanted target shard-wide at a time
+# Despawn       : If unkilled after 4 hours, silently deleted
+#                 (no broadcast on despawn — it just vanishes)
+#
+# --- SPAWN LOCATIONS BY TIER ---
+#
+# Tier 1 — Shallow dungeons (solo/duo accessible)
+#   Covetous Level 1, Despise Level 1-2, Shame Level 1
+#
+# Tier 2 — Mid dungeons (small group recommended)
+#   Wrong Level 2-3, Shame Level 3, Covetous Level 3,
+#   Destard Level 1
+#
+# Tier 3 — Deep dungeons (group required)
+#   Destard Level 2-3, Covetous Level 4, Shame Level 5,
+#   Deceit Level 3
+#
+# Tier 4 — Deepest/most dangerous (full group, shard event)
+#   Hythloth Level 3-4, Deceit Level 4, Destard Level 3,
+#   Doom (Gauntlet area)
+#
+# Wanted NPCs — spawn near dungeon entrances and roads
+#   Cutthroat : Roads near Tier 1 dungeon entrances
+#   Murderer  : Roads near Tier 2-3 dungeon entrances
+#   Dread Lord: Felucca wilderness, near deep dungeon mouths
+#
+# --- WORLD BROADCAST ---
+# Hue 0x44 (gold) for all Hunt broadcasts.
+#
+# On spawn:
+#   "[World Hunt] Grimtooth the Ancient Ogre has been sighted
+#    deep within Despise! Seek it out for glory and reward!"
+#
+# Reminder at 30 min if still alive:
+#   "[World Hunt] Grimtooth the Ancient Ogre still prowls
+#    Despise. It has not yet been slain!"
+#
+# On death:
+#   "[World Hunt] Grimtooth the Ancient Ogre has been slain
+#    by [PlayerName]! The hunt is over."
+#
+# Wanted on spawn:
+#   "[Wanted] Harlan the Cutthroat has been sighted near
+#    Despise. The Hunter's Guild offers a bounty. Dead or
+#    alive — bring the head."
+#
+# Wanted on death:
+#   "[Wanted] Harlan the Cutthroat has been brought to
+#    justice by [PlayerName]!"
+#
+# ============================================================
+# TIER STRUCTURE — CREATURES
+# ============================================================
+#
+# Tier | Type               | Difficulty    | HP Scale
+# -----+--------------------+---------------+---------
+#   1  | Dungeon Brute      | Solo / duo    |   2x
+#   2  | Dungeon Predator   | Small group   |   3x
+#   3  | Ancient & Legendary| Group (5-8)   |   4x
+#   4  | Champion Roamer    | Raid (8-12)   |   5x+
+#
+# ============================================================
+# TIER 1 — DUNGEON BRUTE
+# ============================================================
+#
+# Concept     : Enhanced common dungeon creature. Dangerous to
+#               a careless solo. Manageable for a prepared duo.
+#               Entry point to the Hunter System.
+#
+# Creature pool:
+#   HunterOgreLord     (extends OgreLord)
+#   HunterTrollChief   (extends Troll)
+#   HunterHarpyQueen   (extends HarpyQueen)
+#   HunterEttinWarlord (extends Ettin)
+#   HunterLizardShaman (extends LizardmanShaman)
+#
+# Stat profile:
+#   HP          : 2x base max hits
+#   Damage      : 1.5x base
+#   Combat skills: +20 over base, minimum 80
+#   Magic Resist : 80 minimum
+#   Hue          : 0x21 (deep crimson)
+#
+# Name format : "[Hunted] <UniqueName> the <Title>"
+#   Examples  : "[Hunted] Grimtooth the Ancient Ogre"
+#               "[Hunted] Skarr the Troll Chief"
+#
+# Loot:
+#   Gold (corpse)  : 50 – 200gp
+#   Magic items    : 2 from LootPack.Rich
+#   Reagents       : Full set (30-50 each)
+#   HunterMedallion: 100% drop
+#   Named weapon   : 5% chance (Tier 1 pool)
+#   Orb drop       : No
+#   Head           : HunterHead (always — see Head section)
+#
+# Turn-in reward : 900gp + 1 Hunter Point
+#
+# ============================================================
+# TIER 2 — DUNGEON PREDATOR
+# ============================================================
+#
+# Concept     : A serious dungeon threat. Requires coordination.
+#               Recognisable to veteran UO players. Seeing one
+#               in the tracking gump raises the stakes.
+#
+# Creature pool:
+#   HunterDragon      (extends Dragon)
+#   HunterBalron      (extends Balron)
+#   HunterLichLord    (extends LichLord)
+#   HunterDaemon      (extends Daemon)
+#
+# Stat profile:
+#   HP          : 3x base max hits
+#   Damage      : 2x base
+#   Combat skills: 100–110 minimum
+#   Magic Resist : 100 minimum
+#   Magery       : 100 (all Tier 2 targets can cast)
+#   Hue          : 0x47B (bone white / spectral)
+#
+# Name format : "[Hunted] <UniqueName> the <Title>"
+#   Examples  : "[Hunted] Vaelthorn the Burning Dragon"
+#               "[Hunted] Xan the Fallen Balron"
+#
+# Loot:
+#   Gold (corpse)  : 200 – 800gp
+#   Magic items    : 3-4 from LootPack.UltraRich
+#   Scrolls        : 2-4 random 7th/8th circle
+#   Reagents       : Full set + necro reagents (50-80 each)
+#   HunterMedallion: 100% drop
+#   Named weapon   : 12% chance (Tier 2 pool)
+#   HunterToken    : 1 token (100%)
+#   Orb drop       : 10% chance — see OrbAndCurrencyDesignDoc
+#   Head           : HunterHead (always)
+#
+# Turn-in reward : 2,400gp + 2 Hunter Points
+#
+# ============================================================
+# TIER 3 — ANCIENT & LEGENDARY
+# ============================================================
+#
+# Concept     : Creatures of legend. Sit above Tier 2 threats
+#               but below the full spectacle of a champion boss
+#               roamer. A group of 5-8 experienced players is
+#               needed. These are the most common "big" hunts.
+#
+# Creature pool:
+#   HunterAncientWyrm   (extends AncientWyrm)
+#   HunterPrimevalLich  (extends PrimevalLich)
+#   HunterJuonar        (extends Juonar or similar undead lord)
+#   HunterBloodDragon   (extends Dragon — blood variant, unique hue)
+#   HunterAbyssalDaemon (extends Balron — abyssal variant)
+#
+# Stat profile:
+#   HP          : 4x base max hits
+#   Damage      : 2.5x base
+#   Combat skills: 110–120
+#   Magic Resist : 110 minimum
+#   Magery       : 110+, full spell access
+#   Special      : Periodic area message / ground effect that
+#                  signals presence to nearby players
+#   Hue          : 0x4A0 (deep violet / ancient)
+#
+# Name format : "[Hunted] <UniqueName> the <Title>"
+#   Examples  : "[Hunted] Atherix the Ancient Wyrm"
+#               "[Hunted] Morvain the Undying Lich"
+#
+# Loot:
+#   Gold (corpse)  : 500 – 1,500gp
+#   Magic items    : 4-5 from LootPack.UltraRich
+#   Scrolls        : 3-5 random 7th/8th circle
+#   Potions        : Greater Heal x3, Greater Cure x2
+#   Reagents       : Full set + necro set (80-100 each)
+#   HunterMedallion: 100% drop
+#   Named weapon   : 20% chance (Tier 3 pool)
+#   HunterToken    : 3 tokens (100%)
+#   Orb drop       : 25% chance — see OrbAndCurrencyDesignDoc
+#   Head           : HunterHead (always)
+#
+# Turn-in reward : 6,000gp + 4 Hunter Points
+#
+# ============================================================
+# TIER 4 — CHAMPION ROAMER (SHARD EVENT)
+# ============================================================
+#
+# Concept     : Enhanced versions of champion spawn bosses,
+#               freed from their spawning grounds and roaming
+#               the deep dungeons. Standalone from the champion
+#               spawn event system. When one spawns, it is the
+#               event of the day. Requires 8-12 players.
+#
+# Creature pool:
+#   HunterRikktor   (extends Rikktor)
+#   HunterBarracoon (extends Barracoon)
+#   HunterNeira     (extends Neira)
+#   HunterMephitis  (extends Mephitis)
+#   HunterSemidar   (extends Semidar)
+#   HunterLordOaks  (extends LordOaks)
+#
+# Stat profile:
+#   HP          : 5x base champion boss max hits
+#   Damage      : 2x base champ
+#   Combat skills: 120 across the board
+#   Magic Resist : 120
+#   Special      : Retain ALL original champion abilities
+#                  (earthquake, summons, breath, etc.) PLUS
+#                  a periodic AoE shout that warns nearby
+#                  players of presence
+#   Hue          : 0x497 (dark void / near-black)
+#
+# Name format : "[Hunted] <BossName> the <EpicTitle>"
+#   Examples  : "[Hunted] Rikktor the Undying"
+#               "[Hunted] Barracoon the Eternal Piper"
+#               "[Hunted] Neira the Deathless"
+#
+# Loot:
+#   Gold (corpse)  : 500 – 2,000gp
+#   Magic items    : 5-6 from LootPack.UltraRich
+#   Scrolls        : 4-6 random 7th/8th circle
+#   Potions        : Greater Heal x5, Greater Cure x3, Explosion x2
+#   Reagents       : Full set + necro set (100 each)
+#   HunterMedallion: 100% drop
+#   Named weapon   : 30% chance (Tier 4 pool)
+#   HunterToken    : 6 tokens (100%)
+#   Rare artifact  : 5% (unique per boss — see Exclusive Items)
+#   Orb drop       : 50% chance — see OrbAndCurrencyDesignDoc
+#   Head           : HunterHead (always)
+#
+# Turn-in reward : 15,000gp + 8 Hunter Points
+#
+# ============================================================
+# WANTED TRACK — PK NPC TARGETS (PARALLEL SYSTEM)
+# ============================================================
+#
+# Wanted targets run alongside the creature Hunt system.
+# At any time the shard may have both an active Hunt target
+# AND an active Wanted target. They are independent systems
+# with independent spawn timers.
+#
+# Wanted spawn timer : Every 4–6 hours (rarer than creature hunts)
+# Global cap         : 1 active Wanted target shard-wide
+# Despawn            : 4 hours if unkilled
+#
+# Wanted targets are enhanced versions of the PK NPC classes
+# (see PKNPCDesignDoc for base templates). They are named
+# infamous criminals with world broadcast on appearance.
+#
+# Kill rewards tie into Justice virtue (negative karma target
+# grants Justice points) in addition to Hunter Points.
+# Head turn-in uses the same HunterGuildmaster as creature hunts.
+#
+# -----------------------------------------------------------
+# WANTED: CUTTHROAT (Difficulty ≈ Tier 1-2)
+# -----------------------------------------------------------
+#
+# Base class  : Enhanced NovicePlayerKiller
+# Concept     : A named low-level murderer. Dangerous to solos.
+#               Manageable for a coordinated duo or small group.
+#               Uses the classic dexxer (melee) PvP template.
+#
+# Stat profile:
+#   Strength   : 100   Hit Points : 100
+#   Dexterity  : 70    Stamina    : 70
+#   Intelligence: 30   Mana       : 30
+#
+#   Swords     : 100   Tactics    : 100
+#   Anatomy    : 90    Healing    : 90
+#   Parry      : 85    Hiding     : 60
+#
+# Hue        : 0x21 (crimson — matches Tier 1 creature hue)
+# Name format: "[Wanted] <Name> the Cutthroat"
+#   Example  : "[Wanted] Harlan the Cutthroat"
+#
+# Loot:
+#   Gold (corpse)  : 100 – 400gp
+#   Equipment      : GM Katana, leather armour (worn quality)
+#   Bandages       : 20-40
+#   HunterMedallion: 100% drop
+#   Orb drop       : No
+#   Head           : HunterHead (always)
+#
+# Turn-in reward : 1,500gp + 1 Hunter Point + Justice virtue
+#
+# -----------------------------------------------------------
+# WANTED: MURDERER (Difficulty ≈ Tier 2-3)
+# -----------------------------------------------------------
+#
+# Base class  : Enhanced AdvancedPlayerKiller
+# Concept     : A seasoned, named murderer with many kills.
+#               Uses the tank-mage hybrid template. Can cast,
+#               bandage, and attempt to flee via Recall.
+#               Requires a coordinated group of 3-5.
+#
+# Stat profile:
+#   Strength   : 110   Hit Points : 110
+#   Dexterity  : 80    Stamina    : 80
+#   Intelligence: 60   Mana       : 60
+#
+#   Swords     : 110   Tactics    : 110
+#   Anatomy    : 90    Healing    : 90
+#   Parry      : 100   Magery     : 80
+#   Magic Resist: 80
+#
+# Hue        : 0x47B (spectral — matches Tier 2 creature hue)
+# Name format: "[Wanted] <Name> the Murderer"
+#   Example  : "[Wanted] Sevik the Bloodsoaked"
+#
+# Loot:
+#   Gold (corpse)  : 300 – 900gp
+#   Equipment      : GM weapon (Katana or Halberd), ringmail set
+#   Spellbook      : Circles 1-5
+#   Reagents       : Basic set (30-50 each)
+#   Bandages       : 30-50
+#   HunterMedallion: 100% drop
+#   HunterToken    : 2 tokens (100%)
+#   Orb drop       : 15% chance — see OrbAndCurrencyDesignDoc
+#   Head           : HunterHead (always)
+#
+# Turn-in reward : 4,500gp + 3 Hunter Points + Justice virtue
+#
+# -----------------------------------------------------------
+# WANTED: DREAD LORD (Difficulty ≈ Tier 3-4)
+# -----------------------------------------------------------
+#
+# Base class  : Enhanced ExpertPlayerKiller
+# Concept     : A veteran murderer at the peak of their power.
+#               Full NecroMage template. Wraith Form, Strangle,
+#               Wither, Animate Dead. A genuine threat even to
+#               experienced players. Comparable to a Tier 3-4
+#               creature hunt in difficulty.
+#
+# Stat profile:
+#   Strength   : 120   Hit Points : 120
+#   Dexterity  : 90    Stamina    : 90
+#   Intelligence: 100  Mana       : 100
+#
+#   Magery     : 120   Eval Int   : 120
+#   Magic Resist: 120  Necromancy : 120
+#   Spirit Speak: 120  Swords     : 110
+#   Tactics    : 110
+#
+# Hue        : 0x497 (void dark — matches Tier 4 creature hue)
+# Name format: "[Wanted] <Name> the Dread Lord"
+#   Example  : "[Wanted] Valdris the Deathless"
+#
+# Loot:
+#   Gold (corpse)  : 500 – 1,500gp
+#   Equipment      : Bone armour set, GM weapon (magic mod)
+#   Spellbooks     : Full magery + necromancer spellbook
+#   Reagents       : Full set + necro set (80-100 each)
+#   Potions        : Greater Heal x4, Greater Cure x3
+#   Bandages       : 50-80
+#   HunterMedallion: 100% drop
+#   HunterToken    : 5 tokens (100%)
+#   Orb drop       : 35% chance — see OrbAndCurrencyDesignDoc
+#   Head           : HunterHead (always)
+#
+# Turn-in reward : 12,000gp + 6 Hunter Points + Justice virtue
+#
+# ============================================================
+# FULL REWARD SUMMARY TABLE
+# ============================================================
+#
+# Track              | Difficulty    | Turn-in gold | Hunter Pts | Tokens | Named item % | Orb %
+# -------------------+---------------+--------------+------------+--------+--------------+------
+# Tier 1 Creature    | Solo/duo      |    900gp     |     1      |   —    |      5%      |   —
+# Tier 2 Creature    | Small group   |   2,400gp    |     2      |   1    |     12%      |  10%
+# Tier 3 Creature    | Group (5-8)   |   6,000gp    |     4      |   3    |     20%      |  25%
+# Tier 4 Champion    | Raid (8-12)   |  15,000gp    |     8      |   6    |     30%      |  50%
+# Wanted: Cutthroat  | Duo           |   1,500gp    |     1      |   —    |      —       |   —
+# Wanted: Murderer   | Group (3-5)   |   4,500gp    |     3      |   2    |     10%      |  15%
+# Wanted: Dread Lord | Full group    |  12,000gp    |     6      |   5    |     20%      |  35%
+#
+# Wanted kills also grant Justice virtue points (all Wanted targets have negative karma).
+# Orb drops reference the Orb and Currency System — see OrbAndCurrencyDesignDoc.txt
+#
+# ============================================================
+# THE HUNTER HEAD
+# ============================================================
+#
+# Class     : HunterHead (extends Item)
+# Graphic   : 0x1DA0 (severed head)
+# Stackable : No — each head is a unique named item
+# Decay     : 48 hours from drop if not turned in
+# Blessed   : No — can be stolen (adds risk/tension)
+#
+# Properties serialised:
+#   string   CreatureName  // "Grimtooth the Ancient Ogre"
+#   int      HunterTier    // 1, 2, 3, 4, or Wanted level 1-3
+#   string   SlayerName    // killer's character name
+#   DateTime KilledAt      // timestamp
+#
+# Item name : "the severed head of Grimtooth the Ancient Ogre"
+#
+# GetProperties:
+#   "Slain by: [SlayerName]"
+#   "Hunter Tier: [I / II / III / IV / Wanted]"
+#   "Turn this in at a Hunter's Guildmaster for reward."
+#
+# Drop rule : Head goes directly into killing blow player's
+#             backpack if room permits. Otherwise lands in corpse.
+#             One head per kill — party members get no head.
+#
+# ============================================================
+# HUNTER'S GUILDMASTER NPC
+# ============================================================
+#
+# Class     : HunterGuildmaster (extends BaseVendor or BaseNPC)
+# Locations : Britain (West Britain Bank),
+#             Trinsic (docks),
+#             Minoc (tavern)
+#
+# Interaction trigger:
+#   Double-click OR say "bounty" / "hunter" / "turn in"
+#
+# Turn-in flow:
+#   1. Gump displays all HunterHead items in player's backpack
+#   2. Player selects a head
+#   3. Guildmaster validates tier, awards gold + Hunter Points
+#   4. Head consumed (deleted)
+#   5. Flavour dialogue based on creature type
+#
+# Token shop (HunterTokens only):
+#   Hunter's Tabard        (cosmetic robe, 10 tokens)
+#   Hunter's Map           (highlights spawn zones, 5 tokens)
+#   Tracking Orb           (extends tracking range +3, 20 tokens)
+#   Title Deed             ("the Monster Hunter", 30 tokens)
+#
+# ============================================================
+# HUNTER RANK SYSTEM
+# ============================================================
+#
+# Hunter Points stored in HunterPlayerData (static companion
+# class, not on PlayerMobile directly — avoids core edits).
+# Persisted with world save via ISerializable pattern.
+#
+# Points | Title (PlayerMobile.Title)       | Unlock broadcast?
+# -------+----------------------------------+------------------
+#   0    | (none)                           | —
+#   1    | "the Tracker"                    | No
+#   5    | "the Hunter"                     | No
+#  15    | "the Monster Hunter"             | No
+#  30    | "the Legendary Hunter"           | No
+#  50    | "the Apex Predator"              | No
+# 100    | "the Eternal Hunter"             | Yes (shard-wide)
+#
+# Titles toggle on/off via Guildmaster gump.
+# Wanted kills count toward rank alongside creature kills.
+#
+# ============================================================
+# EXCLUSIVE ITEMS
+# ============================================================
+#
+# HunterMedallion
+#   Neck slot. No combat stats. Name includes creature killed.
+#   "Medallion of Grimtooth's Fall"
+#   GetProperties: kill date + slayer name. Pure prestige.
+#
+# Named Weapons (% chance by tier)
+#   Tier 1 pool : Katana, Kryss, Hatchet — one +damage mod
+#   Tier 2 pool : Halberd, Bardiche, Crossbow — two mods
+#   Tier 3 pool : Two-handed weapon — three mods, one
+#                 creature-specific (e.g. dragon = fire damage)
+#   Tier 4 pool : Exceptional weapon — three mods, blessed,
+#                 named after the boss creature
+#   Named after killer creature: "Grimtooth's Fang",
+#   "Vaelthorn's Talon", "Rikktor's Claw"
+#
+# Rare Boss Artifacts (Tier 4 only, 5% per boss type)
+#   HunterRikktor  : "Rikktor's Scale Shield" (AR bonus)
+#   HunterBarracoon: "Barracoon's Pipe" (cosmetic wearable)
+#   HunterNeira    : "Neira's Death Shroud" (robe, MR bonus)
+#   HunterMephitis : "Mephitis's Fang" (dagger, always poisons)
+#   HunterSemidar  : "Semidar's Binding" (ring, minor Int bonus)
+#   HunterLordOaks : "Oaks' Bark Talisman" (talisman, minor Str)
+#
+# HunterToken
+#   Blessed, non-tradeable. Stackable. Spent at Guildmaster shop.
+#
+# ============================================================
+# TRACKING INTEGRATION
+# ============================================================
+#
+# No custom Tracking code required. The "[Hunted]" and
+# "[Wanted]" prefixes on mobile Name ensure immediate
+# recognition in the standard Tracking gump.
+#
+# Unique Hue per tier makes targets visually distinct on-screen
+# from normal creatures of the same body type.
+#
+# Optional post-launch enhancement:
+#   Extend Tracking handler to show tier indicator alongside
+#   name: "[Hunted] Grimtooth... (Tier I)"
+#
+# ============================================================
+# ORB AND CURRENCY DROPS (REFERENCE)
+# ============================================================
+#
+# Hunter targets at Tier 2 and above, and Wanted targets at
+# Murderer level and above, have a percentage chance to drop
+# Orbs and/or the shard's 3rd currency on death.
+#
+# Orbs are consumable items that modify player skills and stats.
+# The currency circulates across the wider shard economy and
+# can be obtained from other sources beyond the Hunt system.
+#
+# Full design: see OrbAndCurrencyDesignDoc.txt
+#
+# ============================================================
+# IMPLEMENTATION FILES
+# ============================================================
+#
+# Scripts/Custom/HunterSystem.cs
+#   - HunterSpawnSystem (Initialize, timer, spawn/despawn)
+#   - HunterSpawnEntry (location table struct)
+#   - HunterPlayerData (Hunter Points, head count per serial)
+#
+# Scripts/Custom/HunterCreature.cs
+#   - HunterCreature (abstract base class)
+#   - Tier 1: HunterOgreLord, HunterTrollChief, HunterHarpyQueen,
+#             HunterEttinWarlord, HunterLizardShaman
+#   - Tier 2: HunterDragon, HunterBalron, HunterLichLord,
+#             HunterDaemon
+#   - Tier 3: HunterAncientWyrm, HunterPrimevalLich,
+#             HunterJuonar, HunterBloodDragon, HunterAbyssalDaemon
+#   - Tier 4: HunterRikktor, HunterBarracoon, HunterNeira,
+#             HunterMephitis, HunterSemidar, HunterLordOaks
+#
+# Scripts/Custom/HunterWanted.cs
+#   - WantedCutthroat, WantedMurderer, WantedDreadLord
+#     (extend existing PK NPC classes from PKNPCDesignDoc)
+#
+# Scripts/Custom/HunterHead.cs
+#   - HunterHead item with full serialisation
+#
+# Scripts/Custom/HunterGuildmaster.cs
+#   - HunterGuildmaster NPC
+#   - HunterTurnInGump
+#   - HunterShopGump (token shop)
+#
+# Scripts/Custom/HunterItems.cs
+#   - HunterMedallion
+#   - HunterToken
+#   - Named weapon generation helpers
+#   - Tier 4 rare artifact item classes
+#
+# ============================================================
+# OPEN QUESTIONS
+# ============================================================
+#
+# 1. Should Tier 4 champion roamers retain all original champion
+#    abilities (earthquake, summons, etc.)? Recommended: yes.
+#
+# 2. Server restart mid-hunt: HunterSpawnSystem must serialise
+#    active target serial + location to re-announce on load.
+#
+# 3. Are Hunter Points permanent or seasonal (periodic reset)?
+#
+# 4. Should the world broadcast name the specific dungeon?
+#    Recommended: yes — it is a call to action, not a mystery.
+#
+# 5. Can Wanted NPCs detect hidden players (DetectHidden skill)?
+#    Recommended: Dread Lord level only, at 80 skill.
+#
+# ============================================================
+# RELATED FILES
+# ============================================================
+#
+# Design/PKNPCDesignDoc.txt          — base PK NPC templates
+# Design/OrbAndCurrencyDesignDoc.txt — orb drops + 3rd currency
+# Scripts/Custom/SkillSynergies.cs   — weapon mods apply here
+# Scripts/Custom/CooldownSystem.cs   — cooldowns active in fights
+# CHANGELOG.md                       — update when implemented
