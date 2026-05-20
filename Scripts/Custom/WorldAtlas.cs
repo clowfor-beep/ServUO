@@ -231,7 +231,7 @@ namespace Server.Items
                 var loc = locs[i];
 
                 if ((i - start) % 2 == 0)
-                    AddImageTiled(RightX - 2, y - 1, 160, RowH - 2, 9264);
+                    AddImageTiled(RightX - 2, y - 1, 150, RowH - 2, 9264);
 
                 AddHtml(RightX, y, 155, RowH,
                     String.Format("<BASEFONT COLOR=#DDCCAA>{0}</BASEFONT>", loc.Name),
