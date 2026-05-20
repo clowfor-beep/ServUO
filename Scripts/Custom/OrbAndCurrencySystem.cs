@@ -871,13 +871,13 @@ namespace Server.Custom
                 // Apply damage bonus to weapons, AR to armour
                 if (item is BaseWeapon weapon)
                 {
-                    weapon.MaxDamage += _orb.DamageBonus;
-                    weapon.MinDamage += _orb.DamageBonus;
+                    weapon.MaximumDamage += _orb.DamageBonus;
+                    weapon.MinimumDamage += _orb.DamageBonus;
                     from.SendMessage(0x35, $"The weapon pulses with amplified power (+{_orb.DamageBonus} damage).");
                 }
                 else if (item is BaseArmor armor)
                 {
-                    armor.ArmorBase += _orb.DamageBonus;
+                    armor.BaseArmorRating += _orb.DamageBonus;
                     from.SendMessage(0x35, $"The armour resonates with hardened protection (+{_orb.DamageBonus} AR).");
                 }
                 else

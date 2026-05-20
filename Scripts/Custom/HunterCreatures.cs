@@ -34,8 +34,12 @@ namespace Server.Custom
     {
         // Set by subclass constructor
         protected abstract int    HunterTier        { get; }
-        protected abstract string HunterCreatureName { get; }  // e.g. "Grimtooth"
+        protected abstract string HunterCreatureName { get; }  // picks a random name — call once via InitHunterName
         protected abstract string HunterTitle        { get; }  // e.g. "the Ancient Ogre"
+
+        // Resolved once in InitHunterName so all references use the same name
+        private string _resolvedName;
+        protected string ResolvedName => _resolvedName ?? string.Empty;
 
         // Periodic presence shout (Tier 3+)
         private Timer _shoutTimer;
@@ -51,7 +55,8 @@ namespace Server.Custom
         // Called by subclass after base constructor sets stats
         protected void InitHunterName()
         {
-            Name  = $"[Hunted] {HunterCreatureName} {HunterTitle}";
+            _resolvedName = HunterCreatureName;  // evaluate random name exactly once
+            Name  = $"[Hunted] {_resolvedName} {HunterTitle}";
             Title = string.Empty;
         }
 
@@ -70,10 +75,10 @@ namespace Server.Custom
             if (Deleted || !Alive) return;
 
             string[] shouts = {
-                $"*The ground trembles as {HunterCreatureName} stirs*",
-                $"*A chilling roar echoes from {HunterCreatureName}*",
-                $"*{HunterCreatureName} lets out a deafening bellow*",
-                $"*The air grows heavy around {HunterCreatureName}*"
+                $"*The ground trembles as {_resolvedName} stirs*",
+                $"*A chilling roar echoes from {_resolvedName}*",
+                $"*{_resolvedName} lets out a deafening bellow*",
+                $"*The air grows heavy around {_resolvedName}*"
             };
 
             PublicOverheadMessage(MessageType.Regular, 0x22, false,
@@ -93,9 +98,10 @@ namespace Server.Custom
             // Find killer
             Mobile killer = LastKiller;
             string killerName = killer?.Name ?? "an unknown hunter";
+            string fullName   = $"{_resolvedName} {HunterTitle}";
 
             // World broadcast
-            HunterSystem.BroadcastHuntKill(HunterCreatureName + " " + HunterTitle, killerName);
+            HunterSystem.BroadcastHuntKill(fullName, killerName);
 
             // Award hunter points
             if (killer is PlayerMobile pm)
@@ -106,7 +112,7 @@ namespace Server.Custom
 
                 // Head — into killer's pack if room, else corpse
                 var head = new HunterHead(
-                    HunterCreatureName + " " + HunterTitle,
+                    fullName,
                     HunterTier,
                     killerName,
                     DateTime.UtcNow);
@@ -119,7 +125,7 @@ namespace Server.Custom
 
             // Medallion always on corpse
             corpse.DropItem(new HunterMedallion(
-                HunterCreatureName + " " + HunterTitle,
+                fullName,
                 killerName,
                 DateTime.UtcNow));
 
@@ -132,7 +138,7 @@ namespace Server.Custom
             double namedChance = HunterSystem.TierNamedWeaponChance(HunterTier);
             if (Utility.RandomDouble() < namedChance)
                 corpse.DropItem(HunterWeaponFactory.GenerateNamedWeapon(HunterTier,
-                    HunterCreatureName));
+                    _resolvedName));
 
             // Tier 4 rare artifact (5%)
             if (HunterTier == 4 && Utility.RandomDouble() < 0.05)
@@ -166,13 +172,16 @@ namespace Server.Custom
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
-            writer.Write(0);
+            writer.Write(1);  // version
+            writer.Write(_resolvedName ?? string.Empty);
         }
 
         public override void Deserialize(GenericReader reader)
         {
             base.Deserialize(reader);
-            reader.ReadInt();
+            int version = reader.ReadInt();
+            if (version >= 1)
+                _resolvedName = reader.ReadString();
         }
     }
 
@@ -798,7 +807,7 @@ namespace Server.Custom
         public HunterBloodDragon() : base(AIType.AI_Mage, FightMode.Closest, 14, 1, 0.1, 0.2)
         {
             Body = 12;
-            Hue  = 0x21;  // deep red — blood variant
+            Hue  = 0x4A0;  // Tier 3 hue (blood red variant uses body 12, not hue override)
 
             SetStr(1592, 1650);
             SetDex(86, 105);

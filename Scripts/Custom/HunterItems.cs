@@ -286,7 +286,7 @@ namespace Server.Custom
 
             string shortName = creatureName.Split(' ')[0]; // e.g. "Grimtooth"
             weapon.Name    = $"{shortName}'s {WeaponSuffix(weapon)}";
-            weapon.Quality = WeaponQuality.Exceptional;
+            weapon.Quality = ItemQuality.Exceptional;
             weapon.Hue     = TierWeaponHue(tier);
 
             return weapon;
@@ -381,7 +381,7 @@ namespace Server.Custom
         {
             Name         = "Rikktor's Scale Shield";
             Hue          = 0x497;
-            ArmorBase    = 18;
+            BaseArmorRating = 18;
             LootType     = LootType.Blessed;
             Attributes.ReflectPhysical = 10;
         }
