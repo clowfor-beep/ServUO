@@ -17,7 +17,7 @@ using Server.Mobiles;
 
 namespace Server.Custom
 {
-    public class NovicePlayerKiller : BaseCreature
+    public class NovicePlayerKiller : BaseFBCombatNPC
     {
         // -------------------------------------------------------
         // Speech
@@ -49,6 +49,10 @@ namespace Server.Custom
             "Your gold is mine.",
         };
 
+        // Route base speech arrays through BaseFBCombatNPC virtual properties
+        protected override string[] AggroLines => AggroSpeech;
+        protected override string[] KillLines  => KillSpeech;
+
         // -------------------------------------------------------
         // Constructors
         // -------------------------------------------------------
@@ -67,18 +71,10 @@ namespace Server.Custom
         }
 
         private NovicePlayerKiller(FightMode mode, Mobile target)
-            : base(AIType.AI_Melee, mode, 12, 1, 0.2, 0.4)
+            : base(AIType.AI_Melee, mode, 12)
         {
-            bool female = Utility.RandomBool();
-            Body  = female ? 0x191 : 0x190;
-            Hue   = Utility.RandomSkinHue();
-            Name  = NameList.RandomName(female ? "female" : "male");
+            // Appearance and Kills=5 handled by BaseFBCombatNPC.SetupAppearance()
             Title = "the ruffian";
-
-            HairItemID = female
-                ? Utility.RandomList(0x203B, 0x203C, 0x2045, 0x204A)
-                : Utility.RandomList(0x2044, 0x2045, 0x204A, 0x203C);
-            HairHue = Utility.RandomHairHue();
 
             // Stats — Newbie tier: StatCap 150
             SetStr(72, 76);
@@ -139,22 +135,8 @@ namespace Server.Custom
             }
         }
 
-        // -------------------------------------------------------
-        // Combat speech
-        // -------------------------------------------------------
-        public override void OnGotMeleeAttack(Mobile attacker)
-        {
-            base.OnGotMeleeAttack(attacker);
-
-            if (Utility.RandomDouble() < 0.20)
-                Say(AggroSpeech[Utility.Random(AggroSpeech.Length)]);
-        }
-
-        public override void OnDeath(Container c)
-        {
-            base.OnDeath(c);
-            Say(KillSpeech[Utility.Random(KillSpeech.Length)]);
-        }
+        // OnGotMeleeAttack and OnDeath handled by BaseFBCombatNPC via
+        // AggroLines / KillLines properties above.
 
         // -------------------------------------------------------
         // Loot
@@ -169,7 +151,7 @@ namespace Server.Custom
         // -------------------------------------------------------
         // Persistence
         // -------------------------------------------------------
-        public NovicePlayerKiller(Serial serial) : base(serial) { }
+        public NovicePlayerKiller(Serial serial) : base(serial) { } // → BaseFBCombatNPC → BaseCreature
 
         public override void Serialize(GenericWriter writer)
         {

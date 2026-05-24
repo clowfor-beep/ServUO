@@ -26,85 +26,19 @@ namespace Server.Custom
     // SHARED BASE — body setup, speech, persistence
     // =========================================================
 
-    public abstract class BasePKNPC : BaseCreature
+    public abstract class BasePKNPC : BaseFBCombatNPC
     {
-        protected virtual string[] AggroLines => new string[0];
-        protected virtual string[] KillLines  => new string[0];
+        // AggroLines and KillLines are virtual in BaseFBCombatNPC — override in each
+        // concrete class as before. SetupAppearance, InitEncounter, OnThink, combat
+        // speech hooks, and Kills=5 all live in BaseFBCombatNPC now.
 
         protected BasePKNPC(AIType ai, FightMode mode, int range)
-            : base(ai, mode, range, 1, 0.1, 0.2)
+            : base(ai, mode, range)
         {
-            SetupAppearance();
-            Kills = 5; // murderer flag — red name
+            // All shared setup (appearance, Kills=5) handled by BaseFBCombatNPC
         }
 
         public BasePKNPC(Serial serial) : base(serial) { }
-
-        protected void SetupAppearance()
-        {
-            bool female = Utility.RandomBool();
-            Body = female ? 0x191 : 0x190;
-            Hue  = Utility.RandomSkinHue();
-            Name = NameList.RandomName(female ? "female" : "male");
-            HairItemID = female
-                ? Utility.RandomList(0x203B, 0x203C, 0x2045, 0x204A)
-                : Utility.RandomList(0x2044, 0x2045, 0x204A, 0x203C);
-            HairHue = Utility.RandomHairHue();
-        }
-
-        // Called by GraveyardPKEncounter after MoveToWorld to set up hunt behaviour
-        public void InitEncounter(Mobile target)
-        {
-            Timer.DelayCall(TimeSpan.FromMilliseconds(500), () =>
-            {
-                if (Deleted || target == null || !target.Alive)
-                    return;
-
-                if (AggroLines.Length > 0)
-                    Say(AggroLines[Utility.Random(AggroLines.Length)]);
-
-                Combatant = target;
-                // Wake up the AI loop — without this the NPC stands idle after spawn
-                if (AIObject != null)
-                    AIObject.Action = ActionType.Combat;
-
-                // Auto-delete after 5 min if the player escapes
-                Timer.DelayCall(TimeSpan.FromMinutes(5.0), () =>
-                {
-                    if (!Deleted && Combatant == null && !Controlled)
-                        Delete();
-                });
-            });
-        }
-
-        public override void OnThink()
-        {
-            // Cache combatant before base call — some AI paths can clear it
-            Mobile target = Combatant as Mobile;
-
-            base.OnThink();
-
-            if (Deleted || !Alive)
-                return;
-
-            // Restore combatant if base cleared it while we still have a valid target
-            if (target != null && !target.Deleted && target.Alive && Combatant == null)
-                Combatant = target;
-        }
-
-        public override void OnGotMeleeAttack(Mobile attacker)
-        {
-            base.OnGotMeleeAttack(attacker);
-            if (AggroLines.Length > 0 && Utility.RandomDouble() < 0.20)
-                Say(AggroLines[Utility.Random(AggroLines.Length)]);
-        }
-
-        public override void OnDeath(Container c)
-        {
-            base.OnDeath(c);
-            if (KillLines.Length > 0)
-                Say(KillLines[Utility.Random(KillLines.Length)]);
-        }
 
         public override void Serialize(GenericWriter writer)
         {
