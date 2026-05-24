@@ -146,7 +146,7 @@ These are listed in build order (see Section 5). Do not skip steps.
 This is the authoritative sequence. Do not build out of order.
 
 ```
-STEP 0  Fix NovicePlayerKiller.cs OnDeath: protected → public (MAY ALREADY BE DONE — verify)
+STEP 0  Fix NovicePlayerKiller.cs OnDeath: protected → public  ✓ DONE — confirmed public in live file
 STEP 1  FBZones.cs + FBEventBus.cs         (no dependencies — pure data/events)
 STEP 2  BaseFBCombatNPC.cs                 (7 templates, equipment rule enforced)
         Refactor NovicePlayerKiller.cs     (extend BaseFBCombatNPC, no behaviour change)
@@ -218,7 +218,7 @@ Phase 1 implementation: Wanderers only (4 members). Verify performance before ex
 
 | # | Issue | Status | Notes |
 |---|-------|--------|-------|
-| 1 | `NovicePlayerKiller.cs` — `OnDeath` must be `public override` not `protected override` | Possibly fixed — verify before Step 2 | Blocking if not fixed |
+| 1 | `NovicePlayerKiller.cs` — `OnDeath` must be `public override` not `protected override` | **DONE — confirmed `public` in live file** (`.bak` = old broken version) | Not blocking |
 | 2 | Equipment layer conflicts — books vs weapons | **FIXED by rule**: books always in backpack | Affected NecroMage, Sampire, Paladin, Mage templates |
 | 3 | `WorldAtlas.cs` Z coords for Luna/Umbra/Zento unverified | Open | Verify in-game with `[where` before Atlas goes live |
 | 4 | Bad spawn at TerMur 946, 3858, -40 | Non-blocking | Pre-existing. Clean up when convenient |
