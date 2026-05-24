@@ -42,15 +42,29 @@ $entry = [
 ];
 
 $file = __DIR__ . '/submissions.json';
-$submissions = [];
-if (file_exists($file)) {
-    $raw = file_get_contents($file);
-    $submissions = json_decode($raw, true) ?? [];
+
+// Atomic read-modify-write with exclusive lock so concurrent submissions
+// cannot interleave and corrupt the JSON file.
+$fp = fopen($file, 'c+');
+if (!$fp) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Storage unavailable']);
+    exit;
 }
+
+flock($fp, LOCK_EX);
+
+$raw         = stream_get_contents($fp);
+$submissions = json_decode($raw, true) ?? [];
 
 array_unshift($submissions, $entry);
 $submissions = array_slice($submissions, 0, 500);
 
-file_put_contents($file, json_encode($submissions, JSON_PRETTY_PRINT));
+ftruncate($fp, 0);
+rewind($fp);
+fwrite($fp, json_encode($submissions, JSON_PRETTY_PRINT));
+
+flock($fp, LOCK_UN);
+fclose($fp);
 
 echo json_encode(['ok' => true]);

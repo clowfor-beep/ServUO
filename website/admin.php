@@ -1,18 +1,38 @@
 <?php
+// ── Secure session cookie flags ───────────────────────────────────────────────
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',
+    'secure'   => false,   // set to true once HTTPS is live
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_start();
 
 // ── Change this password ──────────────────────────────────────────────────────
-define('ADMIN_PASSWORD', 'changeme');
+define('ADMIN_PASSWORD', 'CHANGE_ME_NOW');   // ← replace before deploying
 // ─────────────────────────────────────────────────────────────────────────────
 
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
-    if ($_POST['password'] === ADMIN_PASSWORD) {
+    // CSRF check — token must match what was issued in the login form
+    $token = $_POST['csrf_token'] ?? '';
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+        $error = 'Invalid request.';
+    } elseif ($_POST['password'] === ADMIN_PASSWORD) {
+        session_regenerate_id(true);   // prevent session fixation
         $_SESSION['admin'] = true;
+        unset($_SESSION['csrf_token']);
     } else {
+        sleep(1);   // slow down brute-force attempts
         $error = 'Wrong password.';
     }
+}
+
+// Generate a CSRF token for the login form if one doesn't exist yet
+if (!($_SESSION['admin'] ?? false) && empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
 }
 
 if (isset($_POST['logout'])) {
@@ -104,6 +124,7 @@ tr:hover td { background: rgba(201,168,76,0.03); }
   <h1>Admin Access</h1>
   <?php if ($error): ?><p class="login-error"><?= htmlspecialchars($error) ?></p><?php endif; ?>
   <form method="POST">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
     <input class="login-input" type="password" name="password" placeholder="Password" autofocus>
     <button class="login-btn" type="submit">Enter</button>
   </form>

@@ -31,7 +31,17 @@ if (!file_exists($file)) {
     exit;
 }
 
-$submissions = json_decode(file_get_contents($file), true) ?? [];
+// Atomic read-modify-write with exclusive lock.
+$fp = fopen($file, 'c+');
+if (!$fp) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Storage unavailable']);
+    exit;
+}
+
+flock($fp, LOCK_EX);
+
+$submissions = json_decode(stream_get_contents($fp), true) ?? [];
 
 $found = false;
 foreach ($submissions as &$s) {
@@ -44,10 +54,18 @@ foreach ($submissions as &$s) {
 unset($s);
 
 if (!$found) {
+    flock($fp, LOCK_UN);
+    fclose($fp);
     http_response_code(404);
     echo json_encode(['error' => 'Submission not found']);
     exit;
 }
 
-file_put_contents($file, json_encode($submissions, JSON_PRETTY_PRINT));
+ftruncate($fp, 0);
+rewind($fp);
+fwrite($fp, json_encode($submissions, JSON_PRETTY_PRINT));
+
+flock($fp, LOCK_UN);
+fclose($fp);
+
 echo json_encode(['ok' => true]);
