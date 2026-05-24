@@ -653,8 +653,9 @@ namespace Server.Custom
         ///      the ocean tile Z (0), not the actual dungeon floor Z (20-128 for L1,
         ///      lower for deeper levels). Probing finds the real floor tile.
         ///
-        /// Uses CanFit instead of CanSpawnMobile — CanFit is what spawner systems
-        /// use and correctly handles static-tile dungeon geometry.
+        /// Uses static tile data to locate the highest walkable surface at (x,y).
+        /// Dungeon floors are static geometry — CanFit alone can't find the right Z
+        /// because it returns true at any high-altitude Z where nothing is blocking.
         ///
         /// Returns Point3D.Zero if no valid tile is found (caller must guard).
         /// </summary>
@@ -669,24 +670,53 @@ namespace Server.Custom
                 int x = rect.X + Utility.Random(rect.Width);
                 int y = rect.Y + Utility.Random(rect.Height);
 
-                // Try GetAverageZ first — works correctly for overworld tiles
-                int baseZ = data.Map.GetAverageZ(x, y);
-                if (data.Map.CanFit(x, y, baseZ, 16, false, false))
-                    return new Point3D(x, y, baseZ);
-
-                // GetAverageZ returns wrong Z for dungeon static-tile geometry
-                // (dungeon interiors have no real land layer — ocean tile Z=0).
-                // Probe from +128 DOWN so we find shallow/level-1 floors first.
-                // Wrong L1 floors: Z=-5..25. Despise L1: Z=40..128.
-                // Probing downward hits these before the deep-level geometry.
-                for (int z = 128; z >= -128; z -= 5)
-                {
-                    if (data.Map.CanFit(x, y, z, 16, false, false))
-                        return new Point3D(x, y, z);
-                }
+                int z = FindSurfaceZ(data.Map, x, y);
+                if (z != int.MinValue && data.Map.CanFit(x, y, z, 16, false, false))
+                    return new Point3D(x, y, z);
             }
 
             return Point3D.Zero;
+        }
+
+        /// <summary>
+        /// Finds the Z coordinate of the highest walkable surface at (x, y).
+        ///
+        /// For dungeon zones, the floor is made of static tiles — there is no real
+        /// land layer (the land tile is ocean at Z=0).  We read static tile data
+        /// directly and pick the highest tile that is Surface, not Impassable, and
+        /// not Wet.  Falls back to GetAverageZ for overworld / surface zones.
+        ///
+        /// Returns int.MinValue when no walkable surface exists at this column.
+        /// </summary>
+        private static int FindSurfaceZ(Map map, int x, int y)
+        {
+            int best = int.MinValue;
+
+            // Read static tiles at this column — dungeon floors are static geometry
+            StaticTile[] statics = map.Tiles.GetStaticTiles(x, y, true);
+            foreach (StaticTile tile in statics)
+            {
+                ItemData id = TileData.ItemTable[tile.ID & TileData.MaxItemValue];
+                if ((id.Flags & TileFlag.Surface)    != 0 &&
+                    (id.Flags & TileFlag.Impassable)  == 0 &&
+                    (id.Flags & TileFlag.Wet)         == 0)
+                {
+                    int top = tile.Z + id.CalcHeight;
+                    if (top > best)
+                        best = top;
+                }
+            }
+
+            // Fall back to land tile for overworld / surface zones
+            if (best == int.MinValue)
+            {
+                LandTile lt = map.Tiles.GetLandTile(x, y);
+                TileFlag  lf = TileData.LandTable[lt.ID & TileData.MaxLandValue].Flags;
+                if ((lf & TileFlag.Impassable) == 0 && (lf & TileFlag.Wet) == 0)
+                    best = map.GetAverageZ(x, y);
+            }
+
+            return best;
         }
 
         /// <summary>
