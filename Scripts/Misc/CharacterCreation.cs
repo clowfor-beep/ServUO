@@ -253,7 +253,11 @@ namespace Server.Misc
             // All new characters start in New Haven regardless of the city chosen
             // in the client.  New Haven is the newbie learning area on Trammel.
             // Once the player is ready they travel to Felucca via the moongate.
-            Point3D newHavenLoc = new Point3D(3503, 2574, 2);
+            // Z=2 was wrong — characters spawned below the New Haven floor.
+            // Resolve the actual surface Z at the start tile so this survives
+            // any future map tile edits.
+            int newHavenZ = Map.Trammel.GetAverageZ(3503, 2574);
+            Point3D newHavenLoc = new Point3D(3503, 2574, newHavenZ);
             Map     newHavenMap = Map.Trammel;
 
             newChar.MoveToWorld(newHavenLoc, newHavenMap);
