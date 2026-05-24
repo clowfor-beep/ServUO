@@ -119,21 +119,30 @@ namespace Server.Custom
         Despise_BottomLevel,
         Hythloth_Abyss,
         Deceit_Level3Entry,
+
+        // ── Hunter Wanted NPC surface zones ────────────────────────────────────
+        // Overworld Felucca rects where Wanted NPCs spawn near dungeon entrances.
+        WantedZone_NearDespise,
+        WantedZone_NearCovetous,
+        WantedZone_NearShame,
+        WantedZone_NearWrong,
+        WantedZone_NearDestard,
+        WantedZone_NearDeceit,
+        WantedZone_NearHythloth,
     }
 
     // ── Hunter spawn entry ────────────────────────────────────────────────
-    // Bundles a single hunter/wanted spawn point with its map and the
-    // display name used in shard-wide broadcast messages.
+    // References the zone where this target spawns and the display name used
+    // in shard-wide broadcast messages.  Actual Point3D is resolved at spawn
+    // time by FBZones.GetRandomSpawnPoint so creatures never land in walls.
     public struct HunterSpawnEntry
     {
-        public Point3D Location;
-        public Map     Map;
-        public string  DungeonName;
+        public SpawnZone Zone;
+        public string    DungeonName;
 
-        public HunterSpawnEntry(int x, int y, int z, Map map, string dungeon)
+        public HunterSpawnEntry(SpawnZone zone, string dungeon)
         {
-            Location    = new Point3D(x, y, z);
-            Map         = map;
+            Zone        = zone;
             DungeonName = dungeon;
         }
     }
@@ -402,6 +411,31 @@ namespace Server.Custom
 
                 [SpawnZone.Deceit_Level3Entry] = new ZoneData(Map.Felucca,
                     new Rectangle2D(5180,  660,  60,  40)),
+
+                // ── Hunter Wanted NPC surface zones ───────────────────────────────
+                // Overworld Felucca rects near dungeon entrances where Wanted NPCs
+                // lurk. GetRandomSpawnPoint samples within these for valid floor tiles.
+
+                [SpawnZone.WantedZone_NearDespise] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(1285, 1545, 50, 50)),
+
+                [SpawnZone.WantedZone_NearCovetous] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(2455,  880, 50, 50)),
+
+                [SpawnZone.WantedZone_NearShame] = new ZoneData(Map.Felucca,
+                    new Rectangle2D( 490, 1455, 50, 50)),
+
+                [SpawnZone.WantedZone_NearWrong] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(2025,  155, 50, 50)),
+
+                [SpawnZone.WantedZone_NearDestard] = new ZoneData(Map.Felucca,
+                    new Rectangle2D( 965, 3055, 50, 50)),
+
+                [SpawnZone.WantedZone_NearDeceit] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(1950,  125, 50, 50)),
+
+                [SpawnZone.WantedZone_NearHythloth] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(4685, 3785, 50, 50)),
             };
         }
 
@@ -512,66 +546,67 @@ namespace Server.Custom
         public static readonly Point3D TheVoid_Home           = new Point3D(5168,  520, 0); // Deceit outskirts
         public static readonly Point3D Shadowblade_Home       = new Point3D(5664,  516, 0); // Wrong outskirts
 
-        // ── Hunter System spawn locations ─────────────────────────────────────
-        // Used by HunterSystem.cs to pick a random spawn point per tier.
-        // HunterSpawnEntry bundles location + map + display name for broadcasts.
-        // Coords verified from Spawns/felucca.xml and in-game [where checks.
+        // ── Hunter System spawn tables ────────────────────────────────────────
+        // Actual Point3D is resolved at spawn time by GetRandomSpawnPoint so
+        // creatures never land inside wall geometry.  Dungeon zones resolve
+        // entirely within the dungeon interior map; Wanted zones are overworld
+        // Felucca rects near dungeon entrances.
 
         public static readonly HunterSpawnEntry[] HunterTier1Spawns =
         {
-            new HunterSpawnEntry(5487, 902, 30, Map.Felucca, "Despise"),
-            new HunterSpawnEntry(5483, 711, 15, Map.Felucca, "Despise"),
-            new HunterSpawnEntry(5390, 587, 45, Map.Felucca, "Despise"),
-            new HunterSpawnEntry(5390, 145, 20, Map.Felucca, "Shame"),
-            new HunterSpawnEntry(5439, 137, 20, Map.Felucca, "Shame"),
+            new HunterSpawnEntry(SpawnZone.Despise_L1, "Despise"),
+            new HunterSpawnEntry(SpawnZone.Despise_L1, "Despise"),
+            new HunterSpawnEntry(SpawnZone.Despise_L1, "Despise"),
+            new HunterSpawnEntry(SpawnZone.Shame_L1,   "Shame"),
+            new HunterSpawnEntry(SpawnZone.Shame_L1,   "Shame"),
         };
 
         public static readonly HunterSpawnEntry[] HunterTier2Spawns =
         {
-            new HunterSpawnEntry(5472, 1877,  0, Map.Felucca, "Covetous"),
-            new HunterSpawnEntry(5425, 1992,  0, Map.Felucca, "Covetous"),
-            new HunterSpawnEntry(5724,  561, 20, Map.Felucca, "Wrong"),
-            new HunterSpawnEntry(5724,  118,  0, Map.Felucca, "Shame"),
-            new HunterSpawnEntry(5219,  552,  0, Map.Felucca, "Deceit"),
+            new HunterSpawnEntry(SpawnZone.Covetous_L1, "Covetous"),
+            new HunterSpawnEntry(SpawnZone.Covetous_L1, "Covetous"),
+            new HunterSpawnEntry(SpawnZone.Wrong_L1,    "Wrong"),
+            new HunterSpawnEntry(SpawnZone.Shame_L1,    "Shame"),
+            new HunterSpawnEntry(SpawnZone.Deceit_L1,   "Deceit"),
         };
 
         public static readonly HunterSpawnEntry[] HunterTier3Spawns =
         {
-            new HunterSpawnEntry(5283, 583, 0, Map.Felucca, "Deceit"),
-            new HunterSpawnEntry(5320, 708, 0, Map.Felucca, "Deceit"),
-            new HunterSpawnEntry(5147, 995, 0, Map.Felucca, "Destard"),
-            new HunterSpawnEntry(5165, 839, 0, Map.Felucca, "Destard"),
-            new HunterSpawnEntry(5319, 967, 0, Map.Felucca, "Destard"),
+            new HunterSpawnEntry(SpawnZone.Deceit_L2,  "Deceit"),
+            new HunterSpawnEntry(SpawnZone.Deceit_L2,  "Deceit"),
+            new HunterSpawnEntry(SpawnZone.Destard_L2, "Destard"),
+            new HunterSpawnEntry(SpawnZone.Destard_L2, "Destard"),
+            new HunterSpawnEntry(SpawnZone.Destard_L2, "Destard"),
         };
 
         public static readonly HunterSpawnEntry[] HunterTier4Spawns =
         {
-            new HunterSpawnEntry(6046, 199, 22, Map.Felucca, "Hythloth"),
-            new HunterSpawnEntry(5978, 185, 44, Map.Felucca, "Hythloth"),
-            new HunterSpawnEntry(5979,  26, 22, Map.Felucca, "Hythloth"),
-            new HunterSpawnEntry(5917,  93,  0, Map.Felucca, "Hythloth"),
+            new HunterSpawnEntry(SpawnZone.Hythloth_L3, "Hythloth"),
+            new HunterSpawnEntry(SpawnZone.Hythloth_L3, "Hythloth"),
+            new HunterSpawnEntry(SpawnZone.Hythloth_L3, "Hythloth"),
+            new HunterSpawnEntry(SpawnZone.Hythloth_L3, "Hythloth"),
         };
 
         // Wanted NPCs lurk on the overworld surface near dungeon entrances.
         public static readonly HunterSpawnEntry[] WantedCutthroatSpawns =
         {
-            new HunterSpawnEntry(1310, 1570, 0, Map.Felucca, "near Despise"),
-            new HunterSpawnEntry(2480,  905, 0, Map.Felucca, "near Covetous"),
-            new HunterSpawnEntry( 515, 1480, 0, Map.Felucca, "near Shame"),
+            new HunterSpawnEntry(SpawnZone.WantedZone_NearDespise,  "near Despise"),
+            new HunterSpawnEntry(SpawnZone.WantedZone_NearCovetous, "near Covetous"),
+            new HunterSpawnEntry(SpawnZone.WantedZone_NearShame,    "near Shame"),
         };
 
         public static readonly HunterSpawnEntry[] WantedMurdererSpawns =
         {
-            new HunterSpawnEntry(2050, 180,  0, Map.Felucca, "near Wrong"),
-            new HunterSpawnEntry( 990, 3080, 0, Map.Felucca, "near Destard"),
-            new HunterSpawnEntry(1975, 150,  0, Map.Felucca, "near Deceit"),
+            new HunterSpawnEntry(SpawnZone.WantedZone_NearWrong,   "near Wrong"),
+            new HunterSpawnEntry(SpawnZone.WantedZone_NearDestard, "near Destard"),
+            new HunterSpawnEntry(SpawnZone.WantedZone_NearDeceit,  "near Deceit"),
         };
 
         public static readonly HunterSpawnEntry[] WantedDreadLordSpawns =
         {
-            new HunterSpawnEntry(4710, 3810, 0, Map.Felucca, "near Hythloth"),
-            new HunterSpawnEntry(1950,  115, 0, Map.Felucca, "near Deceit"),
-            new HunterSpawnEntry(1020, 3075, 0, Map.Felucca, "near Destard"),
+            new HunterSpawnEntry(SpawnZone.WantedZone_NearHythloth, "near Hythloth"),
+            new HunterSpawnEntry(SpawnZone.WantedZone_NearDeceit,   "near Deceit"),
+            new HunterSpawnEntry(SpawnZone.WantedZone_NearDestard,  "near Destard"),
         };
 
         // ── Per-SimPlayer home locations ──────────────────────────────────────
@@ -607,6 +642,31 @@ namespace Server.Custom
         public static readonly Point3D MinocBoard   = CraftsmensLeague_Board_Minoc;
 
         // ── Public helpers ────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Finds a random valid spawn point within the named zone.
+        /// Samples up to 25 random tiles, accepting the first that passes
+        /// Map.CanSpawnMobile. Returns Point3D.Zero if no valid tile is found
+        /// (caller must guard against this).
+        /// </summary>
+        public static Point3D GetRandomSpawnPoint(SpawnZone zone)
+        {
+            if (!_zones.TryGetValue(zone, out ZoneData data))
+                return Point3D.Zero;
+
+            for (int attempt = 0; attempt < 25; attempt++)
+            {
+                Rectangle2D rect = data.Rects[Utility.Random(data.Rects.Length)];
+                int x = rect.X + Utility.Random(rect.Width);
+                int y = rect.Y + Utility.Random(rect.Height);
+                int z = data.Map.GetAverageZ(x, y);
+
+                if (data.Map.CanSpawnMobile(x, y, z))
+                    return new Point3D(x, y, z);
+            }
+
+            return Point3D.Zero;
+        }
 
         /// <summary>
         /// Returns true if the mobile is on the correct map and within any

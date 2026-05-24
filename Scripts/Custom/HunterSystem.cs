@@ -292,7 +292,10 @@ namespace Server.Custom
             HunterCreature creature  = CreateCreature(tier);
             if (creature == null) return;
 
-            creature.MoveToWorld(entry.Location, entry.Map);
+            Point3D loc = FBZones.GetRandomSpawnPoint(entry.Zone);
+            Map     map = FBZones.GetMap(entry.Zone);
+            if (loc == Point3D.Zero) { creature.Delete(); return; }
+            creature.MoveToWorld(loc, map);
 
             var record = new HuntRecord(creature.Serial,
                 creature.Name.Replace("[Hunted] ", ""), entry.DungeonName);
@@ -332,7 +335,10 @@ namespace Server.Custom
             BaseWantedNPC npc      = CreateWantedNPC(wantedTier);
             if (npc == null) return;
 
-            npc.MoveToWorld(entry.Location, entry.Map);
+            Point3D loc = FBZones.GetRandomSpawnPoint(entry.Zone);
+            Map     map = FBZones.GetMap(entry.Zone);
+            if (loc == Point3D.Zero) { npc.Delete(); return; }
+            npc.MoveToWorld(loc, map);
 
             var record = new HuntRecord(npc.Serial,
                 npc.Name.Replace("[Wanted] ", ""), entry.DungeonName);
