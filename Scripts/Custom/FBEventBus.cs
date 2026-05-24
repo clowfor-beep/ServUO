@@ -72,6 +72,16 @@ namespace Server.Custom
         /// lost.</param>
         public static event Action<Mobile, string, int> ReputationChanged;
 
+        /// <summary>Fired when a Hunter System creature target is killed.</summary>
+        /// <param name="creature">The HunterCreature that was killed.</param>
+        /// <param name="killer">The mobile that landed the killing blow (may be null).</param>
+        public static event Action<Mobile, Mobile> HunterTargetKilled;
+
+        /// <summary>Fired when a Wanted NPC (bounty target) is killed.</summary>
+        /// <param name="npc">The BaseWantedNPC that was killed.</param>
+        /// <param name="killer">The mobile that landed the killing blow (may be null).</param>
+        public static event Action<Mobile, Mobile> WantedNPCKilled;
+
         /// <summary>Fired when FBPKSpawner places a new PoolPK in the world.</summary>
         /// <param name="pk">The PoolPK mobile that was spawned.</param>
         /// <param name="zone">The zone it was spawned into.</param>
@@ -112,6 +122,12 @@ namespace Server.Custom
 
         public static void Fire_ReputationChanged(Mobile player, string guildName, int delta)
             => ReputationChanged?.Invoke(player, guildName, delta);
+
+        public static void Fire_HunterTargetKilled(Mobile creature, Mobile killer)
+            => HunterTargetKilled?.Invoke(creature, killer);
+
+        public static void Fire_WantedNPCKilled(Mobile npc, Mobile killer)
+            => WantedNPCKilled?.Invoke(npc, killer);
 
         public static void Fire_PoolPKSpawned(Mobile pk, SpawnZone zone)
             => PoolPKSpawned?.Invoke(pk, zone);

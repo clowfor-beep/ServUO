@@ -26,24 +26,6 @@ using Server.Network;
 namespace Server.Custom
 {
     // ============================================================
-    // SPAWN ENTRY
-    // ============================================================
-
-    public struct HunterSpawnEntry
-    {
-        public Point3D Location;
-        public Map     Map;
-        public string  DungeonName;
-
-        public HunterSpawnEntry(int x, int y, int z, Map map, string dungeon)
-        {
-            Location    = new Point3D(x, y, z);
-            Map         = map;
-            DungeonName = dungeon;
-        }
-    }
-
-    // ============================================================
     // HUNTER SYSTEM
     // ============================================================
 
@@ -372,14 +354,16 @@ namespace Server.Custom
             });
         }
 
-        public static void OnHunterKilled(HunterCreature creature)
+        public static void OnHunterKilled(HunterCreature creature, Mobile killer)
         {
             RemoveHuntRecord(_activeHunts, creature.Serial, out _);
+            FBEventBus.Fire_HunterTargetKilled(creature, killer);
         }
 
-        public static void OnWantedKilled(BaseWantedNPC npc)
+        public static void OnWantedKilled(BaseWantedNPC npc, Mobile killer)
         {
             RemoveHuntRecord(_activeWanted, npc.Serial, out _);
+            FBEventBus.Fire_WantedNPCKilled(npc, killer);
         }
 
         // Returns first active hunt info string (used by old single-line gump callers)
@@ -687,79 +671,18 @@ namespace Server.Custom
 
         // --------------------------------------------------------
         // SPAWN LOCATION TABLES
-        // (Approximate Felucca dungeon coordinates)
+        // All coordinates live in FBZones.cs — single source of truth.
         // --------------------------------------------------------
-
-        // Coordinates verified from Spawns/felucca.xml and Spawns/Destard.xml.
-        // Dungeon interiors are in the 5000+ coordinate space on Map.Felucca.
-
-        private static readonly HunterSpawnEntry[] Tier1Spawns =
-        {
-            new HunterSpawnEntry(5487, 902, 30, Map.Felucca, "Despise"),
-            new HunterSpawnEntry(5483, 711, 15, Map.Felucca, "Despise"),
-            new HunterSpawnEntry(5390, 587, 45, Map.Felucca, "Despise"),
-            new HunterSpawnEntry(5390, 145, 20, Map.Felucca, "Shame"),
-            new HunterSpawnEntry(5439, 137, 20, Map.Felucca, "Shame"),
-        };
-
-        private static readonly HunterSpawnEntry[] Tier2Spawns =
-        {
-            new HunterSpawnEntry(5472, 1877,  0, Map.Felucca, "Covetous"),
-            new HunterSpawnEntry(5425, 1992,  0, Map.Felucca, "Covetous"),
-            new HunterSpawnEntry(5724,  561, 20, Map.Felucca, "Wrong"),
-            new HunterSpawnEntry(5724,  118,  0, Map.Felucca, "Shame"),
-            new HunterSpawnEntry(5219,  552,  0, Map.Felucca, "Deceit"),
-        };
-
-        private static readonly HunterSpawnEntry[] Tier3Spawns =
-        {
-            new HunterSpawnEntry(5283, 583, 0, Map.Felucca, "Deceit"),
-            new HunterSpawnEntry(5320, 708, 0, Map.Felucca, "Deceit"),
-            new HunterSpawnEntry(5147, 995, 0, Map.Felucca, "Destard"),
-            new HunterSpawnEntry(5165, 839, 0, Map.Felucca, "Destard"),
-            new HunterSpawnEntry(5319, 967, 0, Map.Felucca, "Destard"),
-        };
-
-        private static readonly HunterSpawnEntry[] Tier4Spawns =
-        {
-            new HunterSpawnEntry(6046, 199, 22, Map.Felucca, "Hythloth"),
-            new HunterSpawnEntry(5978, 185, 44, Map.Felucca, "Hythloth"),
-            new HunterSpawnEntry(5979,  26, 22, Map.Felucca, "Hythloth"),
-            new HunterSpawnEntry(5917,  93,  0, Map.Felucca, "Hythloth"),
-        };
-
-        // Wanted NPCs lurk on the overworld surface near dungeon entrances.
-        // Entrance coords from classic UO Felucca geography.
-        private static readonly HunterSpawnEntry[] WantedCutthroatSpawns =
-        {
-            new HunterSpawnEntry(1310, 1570, 0, Map.Felucca, "near Despise"),
-            new HunterSpawnEntry(2480,  905, 0, Map.Felucca, "near Covetous"),
-            new HunterSpawnEntry( 515, 1480, 0, Map.Felucca, "near Shame"),
-        };
-
-        private static readonly HunterSpawnEntry[] WantedMurdererSpawns =
-        {
-            new HunterSpawnEntry(2050, 180,  0, Map.Felucca, "near Wrong"),
-            new HunterSpawnEntry( 990, 3080, 0, Map.Felucca, "near Destard"),
-            new HunterSpawnEntry(1975, 150,  0, Map.Felucca, "near Deceit"),
-        };
-
-        private static readonly HunterSpawnEntry[] WantedDreadLordSpawns =
-        {
-            new HunterSpawnEntry(4710, 3810, 0, Map.Felucca, "near Hythloth"),
-            new HunterSpawnEntry(1950,  115, 0, Map.Felucca, "near Deceit"),
-            new HunterSpawnEntry(1020, 3075, 0, Map.Felucca, "near Destard"),
-        };
 
         private static HunterSpawnEntry PickSpawnEntry(int tier)
         {
             HunterSpawnEntry[] pool;
             switch (tier)
             {
-                case 1:  pool = Tier1Spawns; break;
-                case 2:  pool = Tier2Spawns; break;
-                case 3:  pool = Tier3Spawns; break;
-                default: pool = Tier4Spawns; break;
+                case 1:  pool = FBZones.HunterTier1Spawns; break;
+                case 2:  pool = FBZones.HunterTier2Spawns; break;
+                case 3:  pool = FBZones.HunterTier3Spawns; break;
+                default: pool = FBZones.HunterTier4Spawns; break;
             }
             return pool[Utility.Random(pool.Length)];
         }
@@ -769,9 +692,9 @@ namespace Server.Custom
             HunterSpawnEntry[] pool;
             switch (tier)
             {
-                case 10: pool = WantedCutthroatSpawns; break;
-                case 11: pool = WantedMurdererSpawns;  break;
-                default: pool = WantedDreadLordSpawns; break;
+                case 10: pool = FBZones.WantedCutthroatSpawns; break;
+                case 11: pool = FBZones.WantedMurdererSpawns;  break;
+                default: pool = FBZones.WantedDreadLordSpawns; break;
             }
             return pool[Utility.Random(pool.Length)];
         }

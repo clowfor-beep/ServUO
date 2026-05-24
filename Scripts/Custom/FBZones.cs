@@ -121,6 +121,23 @@ namespace Server.Custom
         Deceit_Level3Entry,
     }
 
+    // ── Hunter spawn entry ────────────────────────────────────────────────
+    // Bundles a single hunter/wanted spawn point with its map and the
+    // display name used in shard-wide broadcast messages.
+    public struct HunterSpawnEntry
+    {
+        public Point3D Location;
+        public Map     Map;
+        public string  DungeonName;
+
+        public HunterSpawnEntry(int x, int y, int z, Map map, string dungeon)
+        {
+            Location    = new Point3D(x, y, z);
+            Map         = map;
+            DungeonName = dungeon;
+        }
+    }
+
     // ── Zone coordinate store ─────────────────────────────────────────────
     public static class FBZones
     {
@@ -494,6 +511,68 @@ namespace Server.Custom
         public static readonly Point3D BloodPact_Home         = new Point3D(5456,  724, 0); // Destard outskirts
         public static readonly Point3D TheVoid_Home           = new Point3D(5168,  520, 0); // Deceit outskirts
         public static readonly Point3D Shadowblade_Home       = new Point3D(5664,  516, 0); // Wrong outskirts
+
+        // ── Hunter System spawn locations ─────────────────────────────────────
+        // Used by HunterSystem.cs to pick a random spawn point per tier.
+        // HunterSpawnEntry bundles location + map + display name for broadcasts.
+        // Coords verified from Spawns/felucca.xml and in-game [where checks.
+
+        public static readonly HunterSpawnEntry[] HunterTier1Spawns =
+        {
+            new HunterSpawnEntry(5487, 902, 30, Map.Felucca, "Despise"),
+            new HunterSpawnEntry(5483, 711, 15, Map.Felucca, "Despise"),
+            new HunterSpawnEntry(5390, 587, 45, Map.Felucca, "Despise"),
+            new HunterSpawnEntry(5390, 145, 20, Map.Felucca, "Shame"),
+            new HunterSpawnEntry(5439, 137, 20, Map.Felucca, "Shame"),
+        };
+
+        public static readonly HunterSpawnEntry[] HunterTier2Spawns =
+        {
+            new HunterSpawnEntry(5472, 1877,  0, Map.Felucca, "Covetous"),
+            new HunterSpawnEntry(5425, 1992,  0, Map.Felucca, "Covetous"),
+            new HunterSpawnEntry(5724,  561, 20, Map.Felucca, "Wrong"),
+            new HunterSpawnEntry(5724,  118,  0, Map.Felucca, "Shame"),
+            new HunterSpawnEntry(5219,  552,  0, Map.Felucca, "Deceit"),
+        };
+
+        public static readonly HunterSpawnEntry[] HunterTier3Spawns =
+        {
+            new HunterSpawnEntry(5283, 583, 0, Map.Felucca, "Deceit"),
+            new HunterSpawnEntry(5320, 708, 0, Map.Felucca, "Deceit"),
+            new HunterSpawnEntry(5147, 995, 0, Map.Felucca, "Destard"),
+            new HunterSpawnEntry(5165, 839, 0, Map.Felucca, "Destard"),
+            new HunterSpawnEntry(5319, 967, 0, Map.Felucca, "Destard"),
+        };
+
+        public static readonly HunterSpawnEntry[] HunterTier4Spawns =
+        {
+            new HunterSpawnEntry(6046, 199, 22, Map.Felucca, "Hythloth"),
+            new HunterSpawnEntry(5978, 185, 44, Map.Felucca, "Hythloth"),
+            new HunterSpawnEntry(5979,  26, 22, Map.Felucca, "Hythloth"),
+            new HunterSpawnEntry(5917,  93,  0, Map.Felucca, "Hythloth"),
+        };
+
+        // Wanted NPCs lurk on the overworld surface near dungeon entrances.
+        public static readonly HunterSpawnEntry[] WantedCutthroatSpawns =
+        {
+            new HunterSpawnEntry(1310, 1570, 0, Map.Felucca, "near Despise"),
+            new HunterSpawnEntry(2480,  905, 0, Map.Felucca, "near Covetous"),
+            new HunterSpawnEntry( 515, 1480, 0, Map.Felucca, "near Shame"),
+        };
+
+        public static readonly HunterSpawnEntry[] WantedMurdererSpawns =
+        {
+            new HunterSpawnEntry(2050, 180,  0, Map.Felucca, "near Wrong"),
+            new HunterSpawnEntry( 990, 3080, 0, Map.Felucca, "near Destard"),
+            new HunterSpawnEntry(1975, 150,  0, Map.Felucca, "near Deceit"),
+        };
+
+        public static readonly HunterSpawnEntry[] WantedDreadLordSpawns =
+        {
+            new HunterSpawnEntry(4710, 3810, 0, Map.Felucca, "near Hythloth"),
+            new HunterSpawnEntry(1950,  115, 0, Map.Felucca, "near Deceit"),
+            new HunterSpawnEntry(1020, 3075, 0, Map.Felucca, "near Destard"),
+        };
 
         // ── Per-SimPlayer home locations ──────────────────────────────────────
         // TODO: 144 individual Point3D entries (GuildName_MemberName_Home) will

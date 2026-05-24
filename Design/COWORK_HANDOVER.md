@@ -108,7 +108,7 @@ Any `public static void Initialize()` in Scripts/ is called automatically on ser
 | `PKEncounterSystem.cs` | Multi-zone PK encounter system — all facets | Replaces GraveyardPKEncounter. 40+ zones, floor-tier logic, 30-min cooldown per player |
 | `PKTestCommand.cs` | `[pktest` staff command with tier override | Tests PKEncounterSystem. Usage: `[pktest`, `[pktest advanced`, `[pktest <name> expert` |
 | `WorldAtlas.cs` | Item: dungeon/town atlas with gump | Note: Luna/Umbra/Zento Z coordinates unverified in-game |
-| `HunterSystem.cs` | Hunter spawn timer, persistence, player points, rank | Core of Hunter System |
+| `HunterSystem.cs` | Hunter spawn timer, persistence, player points, rank | Core of Hunter System. Spawn coords now in FBZones. Kill events fire via FBEventBus. |
 | `HunterCreatures.cs` | All Hunter target creature classes (Tiers 1-4) | Extends existing ServUO monsters |
 | `HunterWanted.cs` | Wanted PK NPC targets (Cutthroat / Murderer / Dread Lord) | Extends BasePKNPC |
 | `HunterGuildmaster.cs` | Guildmaster NPC + turn-in gump + token shop | Placed in Britain, Trinsic, Minoc |
@@ -122,8 +122,8 @@ These are listed in build order (see Section 5). Do not skip steps.
 
 | File | What it does | Depends on |
 |------|-------------|-----------|
-| `FBZones.cs` | Single source of truth for all world coordinates | Nothing |
-| `FBEventBus.cs` | Cross-system event bus (decouples all systems) | Nothing |
+| `FBZones.cs` | Single source of truth for all world coordinates | Nothing | **DONE** |
+| `FBEventBus.cs` | Cross-system event bus (decouples all systems) | Nothing | **DONE** |
 | `BaseFBCombatNPC.cs` | Shared combat base for all PK/SimPlayer types — 7 templates | FBZones |
 | `FBPKSpawner.cs` | Pool-managed patrol PKs on roads and in dungeons | BaseFBCombatNPC, FBZones |
 | `ForsakenBritannia.xml` | Static world objects via XmlSpawner (boards, NPCs) | Nothing |

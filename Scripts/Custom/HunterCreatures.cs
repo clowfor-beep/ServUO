@@ -95,8 +95,11 @@ namespace Server.Custom
                 _shoutTimer = null;
             }
 
-            // Find killer
+            // Find killer — walk up to pet owner if killed by a controlled creature
             Mobile killer = LastKiller;
+            if (killer is BaseCreature bc && bc.Controlled && bc.ControlMaster is PlayerMobile)
+                killer = bc.ControlMaster;
+
             string killerName = killer?.Name ?? "an unknown hunter";
             string fullName   = $"{_resolvedName} {HunterTitle}";
 
@@ -149,8 +152,9 @@ namespace Server.Custom
             if (Utility.RandomDouble() < orbChance)
                 corpse.DropItem(GenerateOrb());
 
-            // Clear active spawn slot
-            HunterSystem.OnHunterKilled(this);
+            // Clear active spawn slot and fire FBEventBus kill event
+            // (killer already resolved above with pet-owner walk-up)
+            HunterSystem.OnHunterKilled(this, killer);
         }
 
         protected virtual Item GenerateTier4Artifact() => new HunterToken(1); // override in boss classes

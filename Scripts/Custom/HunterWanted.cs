@@ -47,6 +47,9 @@ namespace Server.Custom
             base.OnDeath(corpse);
 
             Mobile killer = LastKiller;
+            if (killer is BaseCreature bc && bc.Controlled && bc.ControlMaster is PlayerMobile)
+                killer = bc.ControlMaster;
+
             string killerName = killer?.Name ?? "an unknown hunter";
 
             // World broadcast
@@ -101,8 +104,8 @@ namespace Server.Custom
                     Name.Replace("[Wanted] ", "").Split(' ')[0]));
             }
 
-            // Clear wanted spawn slot
-            HunterSystem.OnWantedKilled(this);
+            // Clear wanted spawn slot and fire FBEventBus kill event
+            HunterSystem.OnWantedKilled(this, killer);
         }
 
         public override bool ShowFameTitle => false;
