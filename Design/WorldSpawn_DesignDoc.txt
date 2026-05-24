@@ -1,0 +1,409 @@
+================================================================
+FORSAKEN BRITANNIA — WORLD SPAWN DESIGN DOCUMENT
+Created: 2026-05-24
+Status: Design Approved — Implementation Pending
+================================================================
+
+OVERVIEW
+--------
+This document defines how all AI characters, NPCs, items, and
+world objects are placed and managed in the Forsaken Britannia
+world. The world is already fully spawned with XmlSpawners for
+monster populations and ground objects. This document covers
+only the CUSTOM content added on top of that foundation.
+
+CORE PRINCIPLE: The existing XmlSpawner monster populations
+are never modified. All custom content is additive.
+
+
+================================================================
+THE FOUR WORLD POPULATION LAYERS
+================================================================
+
+LAYER 1 — AMBIENT WORLD (EXISTING — DO NOT TOUCH)
+  What:   All monster populations and ground objects
+  How:    XmlSpawner system already deployed and verified
+  Files:  Data/Spawns/*.xml (existing files)
+  Rule:   Never modify. Never add monster spawns here.
+          If a monster location needs changing, note it
+          separately and discuss before touching anything.
+
+LAYER 2A — PATROL PKs (FBPKSpawner)
+  What:   Unnamed, respawnable PK grunt populations
+  How:    FBPKSpawner.cs manages pools per zone
+  Files:  Scripts/Custom/FBPKSpawner.cs
+  Names:  "a ruffian", "a thug", "a brigand", "a murderer"
+  Tiers:
+    Tier 1: Roads near towns — weak, flee at low HP
+    Tier 2: Dungeon entrances and corridors — moderate
+    Tier 3: Deep dungeon patrols — veteran killers
+  Pattern: Models BountyQuestSpawner.cs exactly.
+           Pool of N active per zone, respawn after death.
+           Patrol waypoints from FBZones.cs.
+
+LAYER 2B — STATIC WORLD OBJECTS (ForsakenBritannia.xml)
+  What:   Guild bulletin boards, quest NPCs, bounty boards,
+          reputation contact NPCs, vendor additions
+  How:    Single XML file deployed via [xmlload command
+  File:   Data/Spawns/ForsakenBritannia.xml
+  Deploy: [xmlload Data/Spawns/ForsakenBritannia.xml
+  Export: [xmlsave Data/Spawns/ForsakenBritannia.xml
+  Rule:   Version controlled. Reviewable without running game.
+          Only place static objects here — NOT monsters.
+
+LAYER 3 — TRIGGERED ENCOUNTERS (FBEncounterSystem)
+  What:   Event-driven PKs that portal in on player location
+  How:    EventSink.Movement + Rectangle2D checks
+  Files:  Scripts/Custom/GraveyardPKEncounter.cs (existing)
+          Scripts/Custom/FBEncounterSystem.cs (planned)
+  Current: Britain graveyard only (rect 1333,1441→1417,1523)
+  Planned: Multiple Tier 2/3 trigger zones
+  Rule:   Temporary characters — auto-despawn after 5 min
+          or on death. No persistence.
+
+LAYER 4 — SIMPLAYERS (PlayerSimulatorManager)
+  What:   144 persistent AI characters across 12 guilds
+  How:    PlayerSimulatorManager.cs creates on first load
+  File:   Scripts/Custom/PlayerSimulatorManager.cs
+  Rule:   SimPlayers persist in world save.
+          ~30 active simultaneously (active/idle pool).
+          SimPlayers gate between locations — do not walk
+          across map. Never pathfind long distances.
+
+
+================================================================
+THE THREE AI CHARACTER TYPES (CRITICAL DISTINCTION)
+================================================================
+
+TYPE A — SimPlayers
+  Class:   SimPlayer : BaseFBCombatNPC
+  Manager: PlayerSimulatorManager
+  State:   Persistent — survives server restarts
+  On death: Cooldown timer, then re-activates at HomeLocation
+  Names:   Unique named individuals ("Erik the Wanderer")
+  Count:   144 total, ~30 active
+
+TYPE B — Pool PKs
+  Class:   PoolPK : BaseFBCombatNPC
+  Manager: FBPKSpawner
+  State:   NOT persistent — new instance on respawn
+  On death: True respawn after timer via FBPKSpawner
+  Names:   Generic ("a ruffian", "a brigand")
+  Count:   Defined per zone, pool managed
+
+TYPE C — Encounter PKs
+  Class:   NovicePlayerKiller : BaseFBCombatNPC (existing)
+  Manager: GraveyardPKEncounter / FBEncounterSystem
+  State:   Temporary — despawn after combat/timeout
+  On death: Despawn (5-min auto-delete)
+  Names:   Generic encounter names
+  Trigger: Player enters specific Rectangle2D
+
+IMPORTANT: SimPlayers REACTIVATE after cooldown.
+           Pool PKs RESPAWN (new instance).
+           These are different mechanics. Use correct language.
+
+
+================================================================
+EXISTING SYSTEMS THAT INTEGRATE
+================================================================
+
+BountyQuestSpawner.cs (existing ServUO code)
+  Pattern reference for FBPKSpawner.cs
+  Pool management, zone definitions, waypoints
+  Already handles pirate/merchant bounty system
+  We model FBPKSpawner directly from this
+
+ProfessionalBountyBoard.cs (existing ServUO code)
+  Pattern reference for our guild bulletin boards
+  Reads from active pool dictionary, displays in gump
+  We extend this pattern for SimGuild bulletin boards
+
+BountyQuestObjective.cs (existing ServUO code)
+  Pattern reference for Hunt quest type
+  Checks if target is in active bounty dictionary
+  We extend for dynamic Hunt quest generation
+
+GraveyardPKEncounter.cs (our custom code — existing)
+  EventSink.Movement + Rectangle check pattern
+  Already deployed at Britain graveyard
+  FBEncounterSystem extends this to more zones
+
+
+================================================================
+Fbzones.CS — THE LOCATION REGISTRY
+================================================================
+
+File: Scripts/Custom/FBZones.cs
+Purpose: Single source of truth for ALL coordinates.
+Rule: NEVER hardcode a Point3D in any other file.
+      Always import from FBZones.
+
+Contains:
+
+  1. SpawnZone enum
+     One entry per named zone used by any system.
+     Example: Britain_Graveyard, Despise_Entrance,
+              Covetous_Level1, BloodPact_DespiseTerritory
+
+  2. Zone Rectangle2D boundaries
+     The spatial boundary of each named zone.
+     Used by: FBPKSpawner (pool zones), FBEncounterSystem
+     Example:
+       BloodPact_Despise = new Rectangle2D(1270, 1060, 80, 60)
+
+  3. Patrol waypoints per zone
+     Point2D[][] arrays defining patrol courses.
+     Used by: FBPKSpawner for PoolPK patrol routes
+     Example:
+       BloodPact_DespiseWaypoints = new Point2D[][]
+       {
+         new Point2D[] { (1275,1065), (1310,1080), (1290,1095) },
+         new Point2D[] { (1280,1070), (1320,1090), (1270,1100) }
+       }
+
+  4. SimPlayer HomeLocations
+     One Point3D per SimPlayer (144 total).
+     Used by: PlayerSimulatorManager on re-activation.
+     Naming: GuildName_MemberName_Home
+     Example:
+       SilverWolves_RowenaHome = new Point3D(1430, 1680, 0)
+
+  5. Static object placement coordinates
+     Named Point3D for every bulletin board, quest NPC, etc.
+     Used by: ForsakenBritannia.xml and initialization code.
+     Example:
+       SilverWolves_Board_Britain = new Point3D(1442, 1693, 5)
+       BountyBoard_Britain_Bank   = new Point3D(1439, 1695, 5)
+
+
+================================================================
+FORSAKEN BRITANNIA XML — STATIC OBJECT PLACEMENT
+================================================================
+
+File: Data/Spawns/ForsakenBritannia.xml
+Deploy: [xmlload Data/Spawns/ForsakenBritannia.xml
+Export: [xmlsave Data/Spawns/ForsakenBritannia.xml
+
+NAMING CONVENTION:
+  FB_[Guild/System]_[ObjectType]_[Location]
+  Examples:
+    FB_SilverWolves_Board_Britain
+    FB_IronCompany_Contact_Despise
+    FB_BountyBoard_Britain_Bank
+    FB_QuestNPC_Wanderers_Trinsic
+    FB_ReputationNPC_PaladinOrder_Trinsic
+
+SPAWNER CONFIGURATION FOR STATIC OBJECTS:
+  count="1"       — exactly one instance
+  homerange="0"   — no wandering
+  spawnrange="0"  — spawn exactly at coordinates
+  mintimer="0"    — no respawn timer needed
+  maxtimer="0"
+
+PLANNED STATIC OBJECTS (Phase 1):
+  Britain bank area:
+    FB_BountyBoard_Britain_Bank    — main bounty board
+    FB_QuestNPC_Wanderers_Britain  — quest giver for Tier 1 quests
+
+  Despise entrance area:
+    FB_IronCompany_Contact_Despise — Iron Company contact NPC
+    FB_SilverWolves_Board_Despise  — Silver Wolves patrol notice
+
+  Trinsic:
+    FB_ReputationNPC_PaladinOrder_Trinsic — Paladin Order contact
+    FB_QuestNPC_Gather_Trinsic            — Craftsmen's League job board
+
+  Minoc:
+    FB_CraftsmensLeague_Board_Minoc       — Craftsmen's League board
+    FB_QuestNPC_Mining_Minoc              — Mining quest giver
+
+ADD MORE as each guild and quest system is implemented.
+Start with Britain only. Test [xmlload/[xmlsave round-trip
+before adding more locations.
+
+
+================================================================
+LAYER 2A — FBPKSPAWNER ZONE PLAN
+================================================================
+
+TIER 1 ZONES (roads, graveyard — weak PKs):
+  Britain_Roads         StatCap 150, SkillCap 450
+  Britain_Graveyard     StatCap 150 (encounter system handles this)
+  Trinsic_Outskirts     StatCap 150, SkillCap 450
+  Yew_Roads             StatCap 150, SkillCap 450
+
+TIER 2 ZONES (dungeon entrances, contested areas):
+  Despise_Entrance      StatCap 180, SkillCap 600
+  Covetous_Entrance     StatCap 180, SkillCap 600
+  Wrong_Entrance        StatCap 180, SkillCap 600
+  Shame_Entrance        StatCap 180, SkillCap 600
+
+TIER 3 ZONES (deep dungeons):
+  Despise_Level3        StatCap 225, SkillCap 700
+  Hythloth_Deep         StatCap 225, SkillCap 700
+  Deceit_Level3         StatCap 225, SkillCap 700
+
+Pool sizes per zone (active at any time):
+  Tier 1: 2-3 active, 5-minute respawn
+  Tier 2: 2-4 active, 10-minute respawn
+  Tier 3: 1-3 active, 15-minute respawn
+
+
+================================================================
+LAYER 3 — ENCOUNTER TRIGGER ZONES (planned)
+================================================================
+
+EXISTING:
+  Britain_Graveyard     (1333,1441) → (1417,1523)
+  Trigger: Any player enters rect
+  Spawns: NovicePlayerKiller (Tier 1)
+  Cooldown: 3 min per player, 1 active PK per player
+
+PLANNED (FBEncounterSystem.cs):
+  Covetous_DarkCorridor  — Tier 2 ambush
+  Wrong_DeepHall         — Tier 2 ambush
+  Despise_BottomLevel    — Tier 3 Blood Pact encounter
+  Hythloth_Abyss         — Tier 3 Void encounter
+  Deceit_Level3Entry     — Tier 3 Dead Watchers encounter
+
+Encounter types to implement:
+  PK_Ambush    — NovicePlayerKiller / PoolPK portals in
+  Void_Haunt   — Void NecroMage appears without portal
+  DeadWatcher  — Silent observer appears, evaluates, then attacks
+
+
+================================================================
+LAYER 4 — SIMPLAYER HOME LOCATIONS
+================================================================
+
+Home locations are defined in FBZones.cs.
+SimPlayers gate to their HomeLocation on re-activation.
+Between sessions they roam their guild's territory.
+
+GUILD TERRITORY MAPPING:
+
+  The Wanderers         : Roam all Tier 1 — no fixed territory
+  Craftsmen's League    : 30 resource locations across all towns
+  Shadow Hand           : Britain, Trinsic, Moonglow town areas
+  Iron Company          : Despise, Covetous, Wrong entrance areas
+  Arcane Brotherhood    : Moonglow, Deceit, Shame, Hythloth upper
+  Silver Wolves         : Tier 2 border — roads and dungeon entrances
+  Paladin Order         : Tier 3 — Hythloth, Doom, deep Deceit
+  Dead Watchers         : Tier 3 — Doom, Bedlam, Stygian Abyss
+  Dread Hunters         : Tier 3 extreme — Stygian Abyss, Underworld
+  Blood Pact            : Tier 2/3 — near champion spawn locations
+  The Void              : Tier 3 deep — Deceit 3+, Stygian, Underworld
+  Shadowblade           : Tier 2/3 border, champion spawn exits,
+                          Britain bank area (grey members only)
+
+HOME LOCATION SELECTION PRINCIPLE:
+  Each SimPlayer's home is at the edge of their guild's territory.
+  On re-activation they return home, then navigate to activity.
+  Wanderers: home is Britain bank (central hub for all activity).
+  Evil guilds: home is near wilderness vendor (never cities).
+
+
+================================================================
+FBPKSPAWNER IMPLEMENTATION NOTES
+================================================================
+
+Model directly from BountyQuestSpawner.cs.
+Key differences from BountyQuestSpawner:
+
+1. Spawns PoolPK (extends BaseFBCombatNPC) not pirate ships
+2. Multiple tiers — tier determined by zone assignment
+3. Fires FBEventBus events:
+     FBEventBus.PoolPKSpawned(pk, zone)
+     FBEventBus.PoolPKKilled(pk, killer, zone)
+4. Integrates with BountyBoardFB:
+     Named pool PKs (Tier 2/3) added to bounty dictionary
+     Bounty board displays them as Hunt quest targets
+5. Uses FBZones for all coordinates and waypoints
+
+Manager placement:
+  FBPKSpawner manager Item is placed at a fixed location
+  in the world (non-visible, system-only zone or buried).
+  Use Britain bank basement or similar inaccessible area.
+  Only one manager instance in the world.
+
+
+================================================================
+IMPLEMENTATION BUILD ORDER
+================================================================
+
+STEP 1: FBZones.cs
+  Start with Britain + Despise + Covetous only.
+  Add zones as each system needs them.
+  Never hardcode coordinates anywhere else.
+
+STEP 2: FBEventBus.cs
+  Declare all spawn-related events.
+  No logic — just event declarations.
+
+STEP 3: BaseFBCombatNPC.cs
+  Shared combat foundation for all PK types.
+  7 combat templates.
+  Equipment rule: books in backpack, weapons explicit layer.
+
+STEP 4: FBPKSpawner.cs
+  Start with Tier 1 Britain_Roads zone only.
+  Test spawn, patrol, death, and respawn cycle.
+  Verify FBEventBus events fire correctly.
+  Then expand to other zones.
+
+STEP 5: ForsakenBritannia.xml
+  Start with Britain bank bounty board only.
+  Test [xmlload / [xmlsave round-trip.
+  Verify object appears in correct location in-game.
+  Then expand to other static objects.
+
+STEP 6: FBEncounterSystem.cs
+  Extend GraveyardPKEncounter.cs to more zones.
+  Add Tier 2 ambush zones first.
+  Then Tier 3 special encounters.
+
+STEP 7: PlayerSimulatorManager.cs + SimPlayer.cs
+  Create 15 launch roster SimPlayers first (see PlayerSimulator_DesignDoc.txt).
+  Verify performance before expanding to 144.
+
+EXPAND: Add zones, objects, and SimPlayers incrementally.
+        Test each addition before proceeding to the next.
+
+
+================================================================
+WHAT NOT TO DO
+================================================================
+
+DO NOT modify existing XmlSpawner monster populations.
+DO NOT hardcode Point3D coordinates outside FBZones.cs.
+DO NOT put SimPlayers in ForsakenBritannia.xml.
+DO NOT put monster spawns in ForsakenBritannia.xml.
+DO NOT give Pool PKs persistence (they must respawn clean).
+DO NOT let SimPlayers pathfind long distances (always gate).
+DO NOT exceed 30 active SimPlayers simultaneously.
+
+
+================================================================
+KNOWN ISSUES
+================================================================
+
+Bad spawn in Ter Mur (pre-existing, non-blocking):
+  badspawn.log: 946, 3858, -40, TerMur
+  One existing XmlSpawner at this location fails to load.
+  Not blocking. Investigate and fix when convenient.
+
+WorldAtlas Z coordinates unverified:
+  Luna z=-50, Umbra z=-85, Zento z=30 listed as suspect.
+  Verify in-game before using in any encounter trigger zones.
+
+
+================================================================
+RELATED DOCUMENTS
+================================================================
+
+SystemArchitecture_DesignDoc.txt  Module specs + dependency graph
+GuildSystem_FullDesignDoc.txt     Guild territories + SimPlayer templates
+PlayerSimulator_DesignDoc.txt     SimPlayer architecture detail
+COWORK_HANDOVER.txt               Full project context + build order
+================================================================

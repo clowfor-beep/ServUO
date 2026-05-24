@@ -246,6 +246,7 @@ All in `Design/` folder. Read the relevant doc before implementing any system.
 | `OrbAndCurrencyDesignDoc.txt` | Orbs, scrolls, Essence Shards — all tiers and effects |
 | `QuestSystem_DesignDoc.txt` | 6 quest types, SimGuild integration, reward philosophy, implementation phases |
 | `SkillSynergies_DesignDoc.txt` | Offensive (done) + defensive (pending) synergy tables and hook locations |
+| `WorldSpawn_DesignDoc.txt` | **The four world layers** — FBPKSpawner zones, ForsakenBritannia.xml objects, encounter triggers, SimPlayer home locations, build order |
 
 ---
 

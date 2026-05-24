@@ -7,9 +7,10 @@ Branch: claude2/fbzones-fbeventbus
 ## Context files to read (in this order)
 
 1. `Design/COWORK_HANDOVER.md`                        ← always first — full project context
-2. `Design/SystemArchitecture_DesignDoc.txt`          ← authoritative specs for both files
-3. `Scripts/Custom/PKEncounterSystem.cs`              ← example of how zones/rects are used today (reference only — do NOT modify)
-4. `Scripts/Custom/CooldownSystem.cs`                 ← example of a clean static system class with Initialize()
+2. `Design/WorldSpawn_DesignDoc.txt`                  ← authoritative world spawn architecture (read this second)
+3. `Design/SystemArchitecture_DesignDoc.txt`          ← module specs and dependency graph
+4. `Scripts/Custom/PKEncounterSystem.cs`              ← example of how zones/rects are used today (reference only — do NOT modify)
+5. `Scripts/Custom/CooldownSystem.cs`                 ← example of a clean static system class with Initialize()
 
 ---
 
@@ -34,16 +35,23 @@ A static class `FBZones` in namespace `Server.Custom` containing:
    Pull the actual Rectangle2D values from `PKEncounterSystem.cs` (the `AllZones` list has them — extract them into FBZones).
    Use descriptive field names: `public static readonly Rectangle2D[] Destard_L1 = { ... };`
 
-3. **Guild home locations** — `static readonly Point3D` for each guild's base / starting position.
-   Use approximate Britain-area coordinates for now; we will pin them in-game later.
-   Include all 12 guilds (see `COWORK_HANDOVER.md` Section 7 for the guild list).
-   Naming: `public static readonly Point3D Wanderers_Home = new Point3D(1442, 1693, 5);`
+3. **Patrol waypoints** — `static readonly Point2D[][]` per zone, defining patrol courses for PoolPKs.
+   Each outer array is a zone, each inner array is one patrol route (a loop of waypoints).
+   Start with Britain_Roads and Despise_Entrance only — other zones will be added as FBPKSpawner expands.
+   Naming: `public static readonly Point2D[][] Britain_Roads_Waypoints = new Point2D[][] { new Point2D[] { new Point2D(x,y), ... } };`
+   Use approximate waypoints for now — they will be tuned in-game later.
 
-4. **Town board locations** — `static readonly Point3D` for bounty/guild bulletin boards.
-   Britain bank area, Trinsic, Minoc (3 towns to start).
+4. **Guild home locations** — `static readonly Point3D` for each guild's base / starting position.
+   Use approximate Britain-area coordinates for now; we will pin them in-game later.
+   Include all 12 guilds (see `COWORK_HANDOVER.md` Section 7 and `WorldSpawn_DesignDoc.txt` for territory mapping).
+   Naming: `public static readonly Point3D Wanderers_Home = new Point3D(1442, 1693, 5);`
+   Key rule from design doc: Wanderers home = Britain bank. Evil guilds home = near wilderness, never cities.
+
+5. **Town board locations** — `static readonly Point3D` for bounty/guild bulletin boards.
+   Britain bank area, Trinsic, Minoc (3 towns to start — Phase 1 only).
    Naming: `public static readonly Point3D BritainBoard = new Point3D(1439, 1695, 5);`
 
-5. **Helper method** — `static bool IsInZone(Mobile m, SpawnZone zone)` that checks if a mobile is within any rectangle of the named zone on the correct map. Use the Map associated with each zone's rectangles.
+6. **Helper method** — `static bool IsInZone(Mobile m, SpawnZone zone)` that checks if a mobile is within any rectangle of the named zone on the correct map. Use the Map associated with each zone's rectangles.
 
 **Important:**
 - This is a pure data class. No timers, no event hooks, no `Initialize()` needed.
@@ -87,10 +95,17 @@ public static event Action<object, Mobile> ChampionSpawnCompleted;
 
 // Fired when a player's reputation with a guild changes
 public static event Action<Mobile, string, int> ReputationChanged;
+
+// Fired when a Pool PK spawns into a zone (used by BountyBoardFB)
+public static event Action<Mobile, SpawnZone> PoolPKSpawned;
+
+// Fired when a Pool PK is killed (used by BountyBoardFB + QuestFactory)
+public static event Action<Mobile, Mobile, SpawnZone> PoolPKKilled;
 ```
 
-Note: `SimPlayer` doesn't exist yet as a class, so use `Mobile` for those parameters now.
+Note: `SimPlayer` and `PoolPK` don't exist yet as classes, so use `Mobile` for those parameters now.
 `ChampionSpawn` doesn't exist in custom namespace, use `object`. These will be tightened later.
+`SpawnZone` comes from `FBZones.cs` — both files are in the same namespace so this is fine.
 
 Also add a **safe-fire helper** for each event to avoid null checks everywhere:
 
@@ -138,9 +153,10 @@ Namespace for both files: `Server.Custom`
 - [ ] `FBZones.cs` compiles with no errors (read through carefully — no missing using statements)
 - [ ] `FBEventBus.cs` compiles with no errors
 - [ ] `SpawnZone` enum covers all zones currently in `PKEncounterSystem.cs` (at minimum)
+- [ ] Patrol waypoints defined for Britain_Roads and Despise_Entrance (approximate, tunable in-game)
 - [ ] All 12 guild home locations defined in FBZones (approximate coords fine — will be tuned in-game)
-- [ ] All 8 FBEventBus events present with correct signatures
-- [ ] All 8 `Fire_*` helper methods present
+- [ ] All 10 FBEventBus events present with correct signatures (8 original + PoolPKSpawned + PoolPKKilled)
+- [ ] All 10 `Fire_*` helper methods present
 - [ ] No hardcoded values in FBEventBus (pure event declarations)
 - [ ] Follows `namespace Server.Custom` convention
 - [ ] No `Initialize()` in either file (neither needs one)
@@ -151,8 +167,9 @@ Namespace for both files: `Server.Custom`
 
 ## Zone data reference
 
-Extract these from `PKEncounterSystem.cs` `AllZones` list into FBZones named fields.
-Here are the zone names to map to the SpawnZone enum:
+### Encounter zones (extract from `PKEncounterSystem.cs` `AllZones` list)
+
+Map these to the SpawnZone enum — Rectangle2D values come directly from PKEncounterSystem.cs:
 
 ```
 Britain_Graveyard
@@ -169,6 +186,24 @@ TerMur_Underworld, TerMur_Stygian
 ```
 
 Add any additional zones that are in PKEncounterSystem.cs but not listed above.
+
+### FBPKSpawner patrol zones (add to enum — coordinates approximate, Phase 1 only)
+
+These are road/entrance zones used by FBPKSpawner. Start with just the first two:
+```
+Britain_Roads          (Phase 1 — Tier 1 patrol)
+Despise_Entrance       (Phase 1 — Tier 2 patrol)
+Trinsic_Outskirts      (future)
+Yew_Roads              (future)
+Covetous_Entrance      (future)
+Wrong_Entrance         (future)
+Shame_Entrance         (future)
+Despise_Level3         (future)
+Hythloth_Deep          (future)
+Deceit_Level3          (future)
+```
+
+Approximate coords for Phase 1 zones (Britain_Roads rectangle ~1300-1500, 1600-1800 Felucca; Despise entrance ~1270-1350, 1060-1120 Felucca). These will be verified and tuned in-game — use reasonable estimates now.
 
 ---
 
