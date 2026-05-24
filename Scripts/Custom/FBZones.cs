@@ -645,24 +645,45 @@ namespace Server.Custom
 
         /// <summary>
         /// Finds a random valid spawn point within the named zone.
-        /// Samples up to 25 random tiles, accepting the first that passes
-        /// Map.CanSpawnMobile. Returns Point3D.Zero if no valid tile is found
-        /// (caller must guard against this).
+        ///
+        /// For each of 50 random X,Y candidates:
+        ///   1. Try GetAverageZ (reliable for overworld surface tiles).
+        ///   2. If that fails, probe Z from -128 to 128 in steps of 5.
+        ///      Dungeon interiors have no real land layer — GetAverageZ returns
+        ///      the ocean tile Z (0), not the actual dungeon floor Z (20-128 for L1,
+        ///      lower for deeper levels). Probing finds the real floor tile.
+        ///
+        /// Uses CanFit instead of CanSpawnMobile — CanFit is what spawner systems
+        /// use and correctly handles static-tile dungeon geometry.
+        ///
+        /// Returns Point3D.Zero if no valid tile is found (caller must guard).
         /// </summary>
         public static Point3D GetRandomSpawnPoint(SpawnZone zone)
         {
             if (!_zones.TryGetValue(zone, out ZoneData data))
                 return Point3D.Zero;
 
-            for (int attempt = 0; attempt < 25; attempt++)
+            for (int attempt = 0; attempt < 50; attempt++)
             {
                 Rectangle2D rect = data.Rects[Utility.Random(data.Rects.Length)];
                 int x = rect.X + Utility.Random(rect.Width);
                 int y = rect.Y + Utility.Random(rect.Height);
-                int z = data.Map.GetAverageZ(x, y);
 
-                if (data.Map.CanSpawnMobile(x, y, z))
-                    return new Point3D(x, y, z);
+                // Try GetAverageZ first — works correctly for overworld tiles
+                int baseZ = data.Map.GetAverageZ(x, y);
+                if (data.Map.CanFit(x, y, baseZ, 16, false, false))
+                    return new Point3D(x, y, baseZ);
+
+                // GetAverageZ returns wrong Z for dungeon static-tile geometry
+                // (dungeon interiors have no real land layer — ocean tile Z=0).
+                // Probe from +128 DOWN so we find shallow/level-1 floors first.
+                // Wrong L1 floors: Z=-5..25. Despise L1: Z=40..128.
+                // Probing downward hits these before the deep-level geometry.
+                for (int z = 128; z >= -128; z -= 5)
+                {
+                    if (data.Map.CanFit(x, y, z, 16, false, false))
+                        return new Point3D(x, y, z);
+                }
             }
 
             return Point3D.Zero;
