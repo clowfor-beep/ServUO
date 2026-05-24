@@ -372,6 +372,33 @@ namespace Server.Custom
             FBEventBus.Fire_WantedNPCKilled(npc, killer);
         }
 
+        /// <summary>
+        /// Deletes every active hunt and wanted NPC mob, clears both tracking lists.
+        /// Used by [resethunts to unstick the system when mobs get spawned inside walls
+        /// or otherwise end up in a bad state.
+        /// Returns the number of mobs that were actually deleted.
+        /// </summary>
+        public static int ResetAllHunts()
+        {
+            int deleted = 0;
+
+            foreach (HuntRecord r in _activeHunts)
+            {
+                Mobile m = World.FindMobile(r.Serial);
+                if (m != null && !m.Deleted) { m.Delete(); deleted++; }
+            }
+            _activeHunts.Clear();
+
+            foreach (HuntRecord r in _activeWanted)
+            {
+                Mobile m = World.FindMobile(r.Serial);
+                if (m != null && !m.Deleted) { m.Delete(); deleted++; }
+            }
+            _activeWanted.Clear();
+
+            return deleted;
+        }
+
         // Returns first active hunt info string (used by old single-line gump callers)
         public static string GetActiveHuntInfo()
         {
@@ -714,8 +741,9 @@ namespace Server.Custom
     {
         public static void Initialize()
         {
-            CommandSystem.Register("gothunt",   AccessLevel.GameMaster, OnGoHunt);
-            CommandSystem.Register("gowanted",  AccessLevel.GameMaster, OnGoWanted);
+            CommandSystem.Register("gothunt",    AccessLevel.GameMaster, OnGoHunt);
+            CommandSystem.Register("gowanted",   AccessLevel.GameMaster, OnGoWanted);
+            CommandSystem.Register("resethunts", AccessLevel.GameMaster, OnResetHunts);
         }
 
         private static void OnGoHunt(CommandEventArgs e)
@@ -759,6 +787,12 @@ namespace Server.Custom
             gm.MoveToWorld(target.Position, target.Map);
             gm.SendMessage(0x35, $"Teleported to {target.Name} in {target.Location}. " +
                 $"({wanted.Count} wanted NPC{(wanted.Count > 1 ? "s" : "")} active — use [gowanted 1/2/3 to pick)");
+        }
+
+        private static void OnResetHunts(CommandEventArgs e)
+        {
+            int deleted = HunterSystem.ResetAllHunts();
+            e.Mobile.SendMessage(0x35, $"Hunt reset complete — {deleted} mob(s) deleted, both lists cleared.");
         }
     }
 
