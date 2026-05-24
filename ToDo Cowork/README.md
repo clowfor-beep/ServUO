@@ -80,9 +80,17 @@ Contents of that file: one line — "Done: <topic>. Files created/edited: <list>
 ## Branching rules
 
 - Claude 2 always works on branch: `claude2/<topic-in-kebab-case>`
-- Never commit directly to `main` or the master working branch
+- **NEVER commit directly to `main`** — hard rule, no exceptions
+- Create the branch as the very first step before touching any file:
+  ```
+  git checkout main
+  git pull
+  git checkout -b claude2/<topic-in-kebab-case>
+  ```
 - One branch per work instruction
 - Final commit on the branch must be the DONE file
+- Push with: `git push origin claude2/<topic-in-kebab-case>`
+- Do NOT `git push` without specifying the branch — this risks pushing to main
 
 ---
 

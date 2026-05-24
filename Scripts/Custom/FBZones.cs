@@ -91,6 +91,7 @@ namespace Server.Custom
 
         // ── TerMur — Expert ───────────────────────────
         TerMur_Stygian,
+        TerMur_Underworld,   // TODO: add rects from Regions.xml — coords unverified
 
         // ── FBPKSpawner — Tier 1 Road Zones ──────────────────────────────────
         // Overworld roads near towns. Weak pool PKs, 5-min respawn.
