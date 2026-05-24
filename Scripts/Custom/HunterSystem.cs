@@ -690,60 +690,65 @@ namespace Server.Custom
         // (Approximate Felucca dungeon coordinates)
         // --------------------------------------------------------
 
+        // Coordinates verified from Spawns/felucca.xml and Spawns/Destard.xml.
+        // Dungeon interiors are in the 5000+ coordinate space on Map.Felucca.
+
         private static readonly HunterSpawnEntry[] Tier1Spawns =
         {
-            new HunterSpawnEntry(2497, 921,  0, Map.Felucca, "Covetous"),
-            new HunterSpawnEntry(2497, 965,  0, Map.Felucca, "Covetous"),
-            new HunterSpawnEntry(1298, 1599, 0, Map.Felucca, "Despise"),
-            new HunterSpawnEntry(1350, 1650, 0, Map.Felucca, "Despise"),
-            new HunterSpawnEntry(532,  1501, 0, Map.Felucca, "Shame"),
+            new HunterSpawnEntry(5487, 902, 30, Map.Felucca, "Despise"),
+            new HunterSpawnEntry(5483, 711, 15, Map.Felucca, "Despise"),
+            new HunterSpawnEntry(5390, 587, 45, Map.Felucca, "Despise"),
+            new HunterSpawnEntry(5390, 145, 20, Map.Felucca, "Shame"),
+            new HunterSpawnEntry(5439, 137, 20, Map.Felucca, "Shame"),
         };
 
         private static readonly HunterSpawnEntry[] Tier2Spawns =
         {
-            new HunterSpawnEntry(2040, 195,  0, Map.Felucca, "Wrong"),
-            new HunterSpawnEntry(2100, 250,  0, Map.Felucca, "Wrong"),
-            new HunterSpawnEntry(600,  1550, 0, Map.Felucca, "Shame"),
-            new HunterSpawnEntry(960,  3155, 0, Map.Felucca, "Destard"),
-            new HunterSpawnEntry(2550, 1000, 0, Map.Felucca, "Covetous"),
+            new HunterSpawnEntry(5472, 1877,  0, Map.Felucca, "Covetous"),
+            new HunterSpawnEntry(5425, 1992,  0, Map.Felucca, "Covetous"),
+            new HunterSpawnEntry(5724,  561, 20, Map.Felucca, "Wrong"),
+            new HunterSpawnEntry(5724,  118,  0, Map.Felucca, "Shame"),
+            new HunterSpawnEntry(5219,  552,  0, Map.Felucca, "Deceit"),
         };
 
         private static readonly HunterSpawnEntry[] Tier3Spawns =
         {
-            new HunterSpawnEntry(1010, 3200, 0, Map.Felucca, "Destard"),
-            new HunterSpawnEntry(1060, 3250, 0, Map.Felucca, "Destard"),
-            new HunterSpawnEntry(2600, 1050, 0, Map.Felucca, "Covetous"),
-            new HunterSpawnEntry(680,  1600, 0, Map.Felucca, "Shame"),
-            new HunterSpawnEntry(1965, 135,  0, Map.Felucca, "Deceit"),
+            new HunterSpawnEntry(5283, 583, 0, Map.Felucca, "Deceit"),
+            new HunterSpawnEntry(5320, 708, 0, Map.Felucca, "Deceit"),
+            new HunterSpawnEntry(5147, 995, 0, Map.Felucca, "Destard"),
+            new HunterSpawnEntry(5165, 839, 0, Map.Felucca, "Destard"),
+            new HunterSpawnEntry(5319, 967, 0, Map.Felucca, "Destard"),
         };
 
         private static readonly HunterSpawnEntry[] Tier4Spawns =
         {
-            new HunterSpawnEntry(4725, 3823, 0, Map.Felucca, "Hythloth"),
-            new HunterSpawnEntry(4780, 3870, 0, Map.Felucca, "Hythloth"),
-            new HunterSpawnEntry(2010, 170,  0, Map.Felucca, "Deceit"),
-            new HunterSpawnEntry(1090, 3300, 0, Map.Felucca, "Destard"),
+            new HunterSpawnEntry(6046, 199, 22, Map.Felucca, "Hythloth"),
+            new HunterSpawnEntry(5978, 185, 44, Map.Felucca, "Hythloth"),
+            new HunterSpawnEntry(5979,  26, 22, Map.Felucca, "Hythloth"),
+            new HunterSpawnEntry(5917,  93,  0, Map.Felucca, "Hythloth"),
         };
 
+        // Wanted NPCs lurk on the overworld surface near dungeon entrances.
+        // Entrance coords from classic UO Felucca geography.
         private static readonly HunterSpawnEntry[] WantedCutthroatSpawns =
         {
-            new HunterSpawnEntry(1368, 1545, 0, Map.Felucca, "near Despise"),
-            new HunterSpawnEntry(2457, 875,  0, Map.Felucca, "near Covetous"),
-            new HunterSpawnEntry(505,  1445, 0, Map.Felucca, "near Shame"),
+            new HunterSpawnEntry(1310, 1570, 0, Map.Felucca, "near Despise"),
+            new HunterSpawnEntry(2480,  905, 0, Map.Felucca, "near Covetous"),
+            new HunterSpawnEntry( 515, 1480, 0, Map.Felucca, "near Shame"),
         };
 
         private static readonly HunterSpawnEntry[] WantedMurdererSpawns =
         {
-            new HunterSpawnEntry(2005, 148,  0, Map.Felucca, "near Wrong"),
-            new HunterSpawnEntry(930,  3100, 0, Map.Felucca, "near Destard"),
-            new HunterSpawnEntry(1950, 110,  0, Map.Felucca, "near Deceit"),
+            new HunterSpawnEntry(2050, 180,  0, Map.Felucca, "near Wrong"),
+            new HunterSpawnEntry( 990, 3080, 0, Map.Felucca, "near Destard"),
+            new HunterSpawnEntry(1975, 150,  0, Map.Felucca, "near Deceit"),
         };
 
         private static readonly HunterSpawnEntry[] WantedDreadLordSpawns =
         {
-            new HunterSpawnEntry(4690, 3790, 0, Map.Felucca, "near Hythloth"),
-            new HunterSpawnEntry(1920, 80,   0, Map.Felucca, "near Deceit"),
-            new HunterSpawnEntry(1050, 3280, 0, Map.Felucca, "near Destard"),
+            new HunterSpawnEntry(4710, 3810, 0, Map.Felucca, "near Hythloth"),
+            new HunterSpawnEntry(1950,  115, 0, Map.Felucca, "near Deceit"),
+            new HunterSpawnEntry(1020, 3075, 0, Map.Felucca, "near Destard"),
         };
 
         private static HunterSpawnEntry PickSpawnEntry(int tier)
