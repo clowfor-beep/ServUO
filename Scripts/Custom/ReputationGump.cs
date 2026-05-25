@@ -65,7 +65,7 @@ namespace Server.Gumps
 
             // Guild rows — 12 guilds, 27 px per row, starting at y=35
             int y = 35;
-            foreach (string guild in Guilds.All)
+            foreach (string guild in FBGuilds.All)
             {
                 int          standing = ReputationSystem.GetStanding(owner, guild);
                 StandingTier tier     = ReputationSystem.GetTier(standing);

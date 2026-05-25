@@ -28,7 +28,7 @@ namespace Server.Custom
     // -------------------------------------------------------
     // Guild name constants
     // -------------------------------------------------------
-    public static class Guilds
+    public static class FBGuilds
     {
         public const string Wanderers         = "The Wanderers";
         public const string CraftsmenLeague   = "The Craftsmen's League";
@@ -196,7 +196,7 @@ namespace Server.Custom
             // Fall back to Title if it matches a known guild name exactly
             if (!string.IsNullOrEmpty(m.Title))
             {
-                foreach (string guild in Guilds.All)
+                foreach (string guild in FBGuilds.All)
                 {
                     if (m.Title == guild) return guild;
                 }
@@ -218,8 +218,8 @@ namespace Server.Custom
             if (killer.AccessLevel > AccessLevel.Player) return;
             if (victim.AccessLevel > AccessLevel.Player) return;
 
-            AddStanding(killer, Guilds.SilverWolves, -20);
-            AddStanding(killer, Guilds.PaladinOrder, -15);
+            AddStanding(killer, FBGuilds.SilverWolves, -20);
+            AddStanding(killer, FBGuilds.PaladinOrder, -15);
         }
 
         // -------------------------------------------------------
@@ -230,8 +230,8 @@ namespace Server.Custom
             PlayerMobile pm = killer as PlayerMobile;
             if (pm == null) return;
 
-            AddStanding(pm, Guilds.SilverWolves, +5);
-            AddStanding(pm, Guilds.PaladinOrder, +5);
+            AddStanding(pm, FBGuilds.SilverWolves, +5);
+            AddStanding(pm, FBGuilds.PaladinOrder, +5);
         }
 
         // -------------------------------------------------------
@@ -245,20 +245,20 @@ namespace Server.Custom
             string simGuild = GetSimGuild(victim);
             if (simGuild == null) return;
 
-            if (simGuild == Guilds.BloodPact)
+            if (simGuild == FBGuilds.BloodPact)
             {
-                AddStanding(pm, Guilds.SilverWolves, +10);
-                AddStanding(pm, Guilds.PaladinOrder, +15);
+                AddStanding(pm, FBGuilds.SilverWolves, +10);
+                AddStanding(pm, FBGuilds.PaladinOrder, +15);
             }
-            else if (simGuild == Guilds.TheVoid)
+            else if (simGuild == FBGuilds.TheVoid)
             {
-                AddStanding(pm, Guilds.ArcaneBrotherhood, +10);
-                AddStanding(pm, Guilds.DreadHunters,      +10);
+                AddStanding(pm, FBGuilds.ArcaneBrotherhood, +10);
+                AddStanding(pm, FBGuilds.DreadHunters,      +10);
             }
-            else if (simGuild == Guilds.Shadowblade)
+            else if (simGuild == FBGuilds.Shadowblade)
             {
-                AddStanding(pm, Guilds.PaladinOrder, +10);
-                AddStanding(pm, Guilds.SilverWolves, +5);
+                AddStanding(pm, FBGuilds.PaladinOrder, +10);
+                AddStanding(pm, FBGuilds.SilverWolves, +5);
             }
         }
 
@@ -308,7 +308,7 @@ namespace Server.Custom
                 }
 
                 from.SendMessage($"--- Reputation: {target.Name} ---");
-                foreach (string guild in Guilds.All)
+                foreach (string guild in FBGuilds.All)
                 {
                     int standing          = GetStanding(target, guild);
                     StandingTier tier     = GetTier(standing);
@@ -345,7 +345,7 @@ namespace Server.Custom
 
             // Find a matching guild — exact match first, then contains (case-insensitive)
             string matched = null;
-            foreach (string g in Guilds.All)
+            foreach (string g in FBGuilds.All)
             {
                 if (string.Equals(g, guildName, StringComparison.OrdinalIgnoreCase))
                 {
@@ -356,7 +356,7 @@ namespace Server.Custom
 
             if (matched == null)
             {
-                foreach (string g in Guilds.All)
+                foreach (string g in FBGuilds.All)
                 {
                     if (g.IndexOf(guildName, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
