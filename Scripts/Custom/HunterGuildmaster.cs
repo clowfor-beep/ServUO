@@ -230,19 +230,19 @@ namespace Server.Custom
             AddLabel(20, 35, 1153, $"Your Rank: {(rank.Length > 0 ? rank : "(Unranked)")}");
             AddLabel(20, 55, 1153, $"Hunter Points: {pts}");
 
-            AddLabel(20, 90, 1, "What would you like to do?");
+            AddLabel(20, 90, 1153, "What would you like to do?");
 
             // Button 1 — Turn in heads
             AddButton(20, 120, 4005, 4007, 1, GumpButtonType.Reply, 0);
-            AddLabel(55, 120, 1, "Turn in Hunter Heads");
+            AddLabel(55, 120, 1153, "Turn in Hunter Heads");
 
             // Button 2 — Token shop
             AddButton(20, 150, 4005, 4007, 2, GumpButtonType.Reply, 0);
-            AddLabel(55, 150, 1, "Token Shop");
+            AddLabel(55, 150, 1153, "Token Shop");
 
             // Button 3 — Hunter ranks
             AddButton(20, 180, 4005, 4007, 3, GumpButtonType.Reply, 0);
-            AddLabel(55, 180, 1, "View Rank Table");
+            AddLabel(55, 180, 1153, "View Rank Table");
 
             // Button 4 — Toggle title
             bool hasTitle = rank.Length > 0;
@@ -349,7 +349,7 @@ namespace Server.Custom
                 int gold = HunterGuildmaster.ProcessHeadRewardPreview(head.HunterTier);
 
                 AddButton(20, y, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
-                AddLabel(55, y, 1,
+                AddLabel(55, y, 1153,
                     $"{head.CreatureName} [{head.TierLabel()}] — {gold:N0}gp");
             }
         }
@@ -392,21 +392,45 @@ namespace Server.Custom
 
             int tokens = CountTokens(from);
 
-            AddPage(0);
-            // Height: 65px header + 9 items * 33px rows + 20px footer padding
-            int gumpHeight = 65 + ShopItems.Length * 33 + 20;
-            AddBackground(0, 0, 400, gumpHeight, 9270);
-            AddLabel(20, 15, 0x4AA, "Hunter Token Shop");
-            AddLabel(20, 35, 1153, $"Your tokens: {tokens}");
+            const int W       = 520;
+            const int RowH    = 26;
+            int gumpHeight    = 80 + ShopItems.Length * RowH + 16;
 
+            AddPage(0);
+            AddBackground(0, 0, W, gumpHeight, 9270);
+            AddAlphaRegion(8, 8, W - 16, gumpHeight - 16);
+
+            // Header
+            AddHtml(0, 12, W, 22,
+                "<CENTER><BASEFONT COLOR=#C8A428><BIG>Hunter Token Shop</BIG></BASEFONT></CENTER>",
+                false, false);
+            AddHtml(20, 38, 300, 18,
+                $"<BASEFONT COLOR=#AAAAAA>Your tokens: </BASEFONT><BASEFONT COLOR=#FFFFFF>{tokens}</BASEFONT>",
+                false, false);
+
+            // Column headers
+            AddHtml(55,  58, 340, 16, "<BASEFONT COLOR=#666655>Item</BASEFONT>",   false, false);
+            AddHtml(420, 58,  80, 16, "<BASEFONT COLOR=#666655>Cost</BASEFONT>",   false, false);
+            AddImageTiled(15, 74, W - 30, 1, 9264);
+
+            // Rows
             for (int i = 0; i < ShopItems.Length; i++)
             {
-                int y = 65 + i * 33;
+                int  y         = 80 + i * RowH;
                 bool canAfford = tokens >= ShopItems[i].cost;
-                AddButton(20, y, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
-                // 1153 = bright white (affordable), 0x22 = red (can't afford)
-                AddLabel(55, y, canAfford ? 1153 : 0x22,
-                    $"{ShopItems[i].name} — {ShopItems[i].cost} tokens");
+                string nameCol = canAfford ? "#DDCCAA" : "#886655";
+                string costCol = canAfford ? "#88BBFF" : "#664444";
+
+                if (i % 2 == 0)
+                    AddImageTiled(15, y - 1, W - 30, RowH - 2, 9264);
+
+                AddButton(18, y + 2, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
+                AddHtml(52,  y, 364, RowH,
+                    $"<BASEFONT COLOR={nameCol}>{ShopItems[i].name}</BASEFONT>",
+                    false, false);
+                AddHtml(418, y,  90, RowH,
+                    $"<BASEFONT COLOR={costCol}>{ShopItems[i].cost}</BASEFONT>",
+                    false, false);
             }
         }
 
@@ -557,8 +581,8 @@ namespace Server.Custom
             {
                 int y      = 70 + i * 28;
                 bool earned = myPts >= Ranks[i].pts;
-                AddLabel(20,  y, earned ? 0x35 : 0x22, $"{Ranks[i].pts,4} pts");
-                AddLabel(80,  y, earned ? 1 : 0x22, Ranks[i].title);
+                AddLabel(20,  y, earned ? 0x35 : 0x22,  $"{Ranks[i].pts,4} pts");
+                AddLabel(80,  y, earned ? 1153 : 0x22, Ranks[i].title);
                 if (earned)
                     AddLabel(240, y, 0x35, "[earned]");
             }
