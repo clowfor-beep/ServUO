@@ -12,7 +12,7 @@ namespace Server.Gumps
     {
         // ── Layout constants ─────────────────────────────────────────────
         private const int GW  = 540;   // gump width
-        private const int GH  = 660;   // gump height (fixed)
+        private const int GH  = 692;   // gump height (fixed)
         private const int TitleH = 28; // title bar height
         private const int RH  = 17;    // row height
         private const int SH  = 19;    // section-header bar height
@@ -148,7 +148,13 @@ namespace Server.Gumps
             fY = DrawLuckOther(fY);
             fY += 4;
             fY = DrawSection("ACTIVE EFFECTS", CL, fY, FW);
-            DrawActiveEffects(fY, GH - fY - 10);
+            DrawActiveEffects(fY, GH - fY - 42);
+
+            // ── Bottom button row ─────────────────────────────────────────
+            int btnY = GH - 30;
+            AddButton(CL, btnY, 4005, 4007, 1, GumpButtonType.Reply, 0);
+            AddHtml(CL + 22, btnY + 2, 120, 20,
+                "<BASEFONT COLOR=#DDCCAA>Item Search</BASEFONT>", false, false);
         }
 
         // ── Section header bar ────────────────────────────────────────────
@@ -600,8 +606,18 @@ namespace Server.Gumps
         // ── Gump response ─────────────────────────────────────────────────
         public override void OnResponse(NetState sender, RelayInfo info)
         {
-            // Any response here means the player manually interacted with or closed the gump.
-            // Disable auto-refresh so the timer doesn't reopen it behind their back.
+            if (info.ButtonID == 1)
+            {
+                // Item Search — open without killing auto-refresh
+                if (_from is PlayerMobile pm)
+                {
+                    pm.CloseGump(typeof(Server.Custom.ItemSearchGump));
+                    pm.SendGump(new Server.Custom.ItemSearchGump(pm, "", null, 0));
+                }
+                return;
+            }
+
+            // Button 0 = closed — disable auto-refresh so the timer doesn't reopen it
             _refreshEnabled.Remove(_from.Serial);
         }
     }
