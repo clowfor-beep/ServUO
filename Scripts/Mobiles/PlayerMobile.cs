@@ -6315,6 +6315,9 @@ namespace Server.Mobiles
 
         private Dictionary<BuffIcon, BuffInfo> m_BuffTable;
 
+        /// <summary>Read-only view of active buff icons — used by CharacterStatsGump.</summary>
+        public IReadOnlyDictionary<BuffIcon, BuffInfo> Buffs => m_BuffTable;
+
         public void AddBuff(BuffInfo b)
         {
             if (b == null)
