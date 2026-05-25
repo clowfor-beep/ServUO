@@ -14,6 +14,7 @@
 using System;
 using System.Collections.Generic;
 using Server;
+using Server.Commands;
 using Server.Custom;
 using Server.Mobiles;
 
@@ -38,6 +39,10 @@ namespace Server.Custom
         // ── Initialize() — auto-called at server startup ──────────────────
         public static void Initialize()
         {
+            // Register staff commands
+            CommandSystem.Register("simreset",  AccessLevel.GameMaster, e => SimReset(e.Mobile));
+            CommandSystem.Register("simstatus", AccessLevel.GameMaster, e => SimStatus(e.Mobile));
+
             // Find existing singleton in world
             if (_instance == null)
             {
@@ -172,6 +177,61 @@ namespace Server.Custom
             if (Deleted) return;
             ActivateEligibleSimPlayers();
             Timer.DelayCall(TimeSpan.FromMinutes(1.0), OnManageTick);
+        }
+
+        // ── Staff commands ────────────────────────────────────────────────
+
+        /// <summary>
+        /// [simreset — wipe all SimPlayers and rebuild the full roster from scratch.
+        /// Use after adding new guild members to the roster definition.
+        /// </summary>
+        public static void SimReset(Mobile from)
+        {
+            if (_instance == null)
+            {
+                from.SendMessage(0x22, "[SimPlayer] No manager instance found.");
+                return;
+            }
+
+            int deleted = 0;
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (!sp.Deleted)
+                {
+                    sp.Delete();
+                    deleted++;
+                }
+            }
+            _instance._allSimPlayers.Clear();
+
+            from.SendMessage(0x35, $"[SimPlayer] Deleted {deleted} SimPlayers. Rebuilding roster...");
+            Console.WriteLine($"[SimPlayer] simreset by {from.Name} — deleted {deleted} SimPlayers.");
+
+            _instance.CreateRosterIfEmpty();
+            _instance.ActivateEligibleSimPlayers();
+
+            from.SendMessage(0x35, $"[SimPlayer] Roster rebuilt: {_instance._allSimPlayers.Count} SimPlayers, {_instance.CountActive()} active.");
+        }
+
+        /// <summary>
+        /// [simstatus — show roster state to the invoking staff member.
+        /// </summary>
+        public static void SimStatus(Mobile from)
+        {
+            if (_instance == null)
+            {
+                from.SendMessage(0x22, "[SimPlayer] No manager instance found.");
+                return;
+            }
+
+            from.SendMessage(0x4AA, $"=== SimPlayer Status ({_instance._allSimPlayers.Count} roster / {_instance.CountActive()} active) ===");
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                string location = sp.Deleted  ? "DELETED" :
+                                  sp.Map == Map.Internal ? $"Internal (cooldown={sp.IsOnCooldown}, schedule={sp.Schedule_ShouldBeActive()})" :
+                                  $"{sp.Map.Name} ({sp.X},{sp.Y}) state={sp.State}";
+                from.SendMessage(1153, $"  {sp.MemberName} [{sp.GuildName}] — {location}");
+            }
         }
 
         // ── Serialization ─────────────────────────────────────────────────
