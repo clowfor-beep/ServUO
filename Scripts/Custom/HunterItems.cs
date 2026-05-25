@@ -602,7 +602,7 @@ namespace Server.Custom
 
             // Count how many bags of holding are anywhere in the pack
             var bags = owner.Backpack.FindItemsByType(typeof(BaseBagOfHolding));
-            if (bags.Count > 1)
+            if (bags.Length > 1)
             {
                 owner.SendMessage(0x22, "You may only carry one bag of holding at a time.");
                 MoveToWorld(owner.Location, owner.Map);
