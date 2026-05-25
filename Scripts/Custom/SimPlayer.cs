@@ -80,7 +80,24 @@ namespace Server.Custom
             Name  = memberName;
             Title = guildName;
 
-            // Wanderers — Warrior stats (Phase 1)
+            ApplyTemplate(); // stats, skills, gear — overridden by guild subclasses
+
+            // Start hidden in internal map — manager will activate via Activate()
+            MoveToWorld(Point3D.Zero, Map.Internal);
+            _state         = SimState.OnCooldown;
+            _cooldownUntil = DateTime.UtcNow; // immediately eligible
+        }
+
+        public SimPlayer(Serial serial) : base(serial) { }
+
+        // ── Template — overridden by guild subclasses ─────────────────────
+        /// <summary>
+        /// Applies guild-specific stats, skills, and gear.
+        /// Default is the Wanderer Warrior template.
+        /// Subclasses override this — it is called from the main constructor.
+        /// </summary>
+        protected virtual void ApplyTemplate()
+        {
             SetStr(60, 60);
             SetDex(55, 55);
             SetInt(35, 35);
@@ -92,9 +109,8 @@ namespace Server.Custom
             VirtualArmor = 15;
             Fame  = 0;
             Karma = 1000;
-            Kills = 0; // blue — Wanderers are not red (overrides BaseFBCombatNPC default of 5)
+            Kills = 0; // blue — Wanderers are not red
 
-            // Equipment — leather armour + sword
             AddItem(new LeatherChest());
             AddItem(new LeatherLegs());
             AddItem(new LeatherGorget());
@@ -102,14 +118,7 @@ namespace Server.Custom
             AddItem(new LeatherGloves());
             AddItem(new Boots());
             AddItem(new Longsword());
-
-            // Start hidden in internal map — manager will activate via Activate()
-            MoveToWorld(Point3D.Zero, Map.Internal);
-            _state         = SimState.OnCooldown;
-            _cooldownUntil = DateTime.UtcNow; // immediately eligible
         }
-
-        public SimPlayer(Serial serial) : base(serial) { }
 
         // ── Manager integration ───────────────────────────────────────────
 
@@ -263,6 +272,19 @@ namespace Server.Custom
                 list.Add($"[{_guildName}]");
         }
 
+        // ── Helpers ───────────────────────────────────────────────────────
+
+        /// <summary>Returns the correct ScheduleProfile for a given guild name.</summary>
+        internal static ScheduleProfile MakeSchedule(string guildName)
+        {
+            int drift = Utility.RandomMinMax(-30, 30);
+            if (guildName == FBGuilds.CraftsmenLeague)   return ScheduleProfile.CraftsmensLeague(drift);
+            if (guildName == FBGuilds.IronCompany)       return ScheduleProfile.IronCompany(drift);
+            if (guildName == FBGuilds.ArcaneBrotherhood) return ScheduleProfile.ArcaneBrotherhood(drift);
+            if (guildName == FBGuilds.SilverWolves)      return ScheduleProfile.SilverWolves(drift);
+            return ScheduleProfile.Wanderers(drift); // default / Wanderers
+        }
+
         // ── Serialization ─────────────────────────────────────────────────
         public override void Serialize(GenericWriter writer)
         {
@@ -290,7 +312,7 @@ namespace Server.Custom
             _homeZone      = (SpawnZone)reader.ReadInt();
 
             // Re-create transient sub-systems (not serialized)
-            _schedule  = ScheduleProfile.Wanderers(Utility.RandomMinMax(-30, 30));
+            _schedule  = MakeSchedule(_guildName);
             _chatBrain = new SimChatBrain(_guildName);
 
             // Restore active state or schedule re-activation

@@ -93,6 +93,40 @@ namespace Server.Custom
             CreateSimPlayer(FBGuilds.Wanderers, "Old Thomas",        wandHome, SpawnZone.Britain_Roads, -20);
             CreateSimPlayer(FBGuilds.Wanderers, "Lena Farwalker",    wandHome, SpawnZone.Britain_Roads, 10);
 
+            // THE CRAFTSMEN'S LEAGUE — 3 members
+            Point3D craftHome = FBZones.CraftsmensLeague_Home;
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Garrett the Smith",
+                craftHome, SpawnZone.Britain_Roads, ScheduleProfile.CraftsmensLeague(0)));
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Fisherman Pete",
+                craftHome, SpawnZone.Britain_Roads, ScheduleProfile.CraftsmensLeague(20)));
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Woodcutter Bram",
+                craftHome, SpawnZone.Britain_Roads, ScheduleProfile.CraftsmensLeague(-15)));
+
+            // IRON COMPANY — 3 members
+            Point3D ironHome = FBZones.IronCompany_Home;
+            _allSimPlayers.Add(new IronCompanySimPlayer("Sergeant Vale",
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(0)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Brother Kael",
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(10)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Ironhide",
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(-10)));
+
+            // ARCANE BROTHERHOOD — 3 members
+            Point3D arcaneHome = FBZones.ArcaneBrotherhood_Home;
+            _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("Scholar Aldric",
+                arcaneHome, SpawnZone.Britain_Roads, ScheduleProfile.ArcaneBrotherhood(0)));
+            _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("Mistress Verna",
+                arcaneHome, SpawnZone.Britain_Roads, ScheduleProfile.ArcaneBrotherhood(25)));
+            _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("The Recluse",
+                arcaneHome, SpawnZone.Britain_Roads, ScheduleProfile.ArcaneBrotherhood(-30)));
+
+            // SILVER WOLVES — 2 members
+            Point3D wolvesHome = FBZones.SilverWolves_Home;
+            _allSimPlayers.Add(new SilverWolvesSimPlayer("Captain Rowena",
+                wolvesHome, SpawnZone.Britain_Roads, ScheduleProfile.SilverWolves(0)));
+            _allSimPlayers.Add(new SilverWolvesSimPlayer("Scout Finn",
+                wolvesHome, SpawnZone.Britain_Roads, ScheduleProfile.SilverWolves(15)));
+
             Console.WriteLine($"[SimPlayer] Roster created: {_allSimPlayers.Count} SimPlayers.");
         }
 
