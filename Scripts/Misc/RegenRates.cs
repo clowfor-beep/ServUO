@@ -69,7 +69,10 @@ namespace Server.Misc
 
         private static TimeSpan Mobile_HitsRegenRate(Mobile from)
         {
-            return TimeSpan.FromSeconds(1.0 / (0.1 * (1 + HitPointRegen(from))));
+            double rate = 0.1 * (1 + HitPointRegen(from));
+            // Skill synergy: Camping doubles HP regen at GM (skill 100+)
+            rate *= Server.Custom.SkillSynergies.GetHPRegenMultiplier(from);
+            return TimeSpan.FromSeconds(1.0 / rate);
         }
 
         private static TimeSpan Mobile_StamRegenRate(Mobile from)

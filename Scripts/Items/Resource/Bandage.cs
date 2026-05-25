@@ -507,6 +507,9 @@ namespace Server.Items
                     // Skill synergy: Anatomy + Healing mastery multiplies final heal amount
                     toHeal *= 1.0 + SkillSynergies.GetHealBonus(m_Healer);
 
+                    // Skill synergy: Forensic Eval + Veterinary add bandage heal bonus
+                    toHeal *= 1.0 + SkillSynergies.GetBandageHealBonus(m_Healer);
+
                     if (m_Patient.Body.IsMonster || m_Patient.Body.IsAnimal)
                     {
                         toHeal += m_Patient.HitsMax / 100;

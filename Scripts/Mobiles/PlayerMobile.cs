@@ -1013,6 +1013,16 @@ namespace Server.Mobiles
                 max -= 5;
             }
 
+            // Skill synergy: resist cap raises from crafting/gathering skills
+            switch (type)
+            {
+                case ResistanceType.Physical: max += Server.Custom.SkillSynergies.GetPhysicalResistCap(this); break;
+                case ResistanceType.Fire:     max += Server.Custom.SkillSynergies.GetFireResistCap(this);     break;
+                case ResistanceType.Cold:     max += Server.Custom.SkillSynergies.GetColdResistCap(this);     break;
+                case ResistanceType.Poison:   max += Server.Custom.SkillSynergies.GetPoisonResistCap(this);   break;
+                case ResistanceType.Energy:   max += Server.Custom.SkillSynergies.GetEnergyResistCap(this);   break;
+            }
+
             return max;
         }
 
@@ -1059,6 +1069,13 @@ namespace Server.Mobiles
                 Resistances[3] += setItem != null && setItem.SetEquipped ? setItem.SetResistBonus(ResistanceType.Poison) : item.PoisonResistance;
                 Resistances[4] += setItem != null && setItem.SetEquipped ? setItem.SetResistBonus(ResistanceType.Energy) : item.EnergyResistance;
             }
+
+            // Skill synergy: resist bonuses from crafting/gathering/combat skills
+            Resistances[0] += Server.Custom.SkillSynergies.GetPhysicalResistBonus(this);
+            Resistances[1] += Server.Custom.SkillSynergies.GetFireResistBonus(this);
+            Resistances[2] += Server.Custom.SkillSynergies.GetColdResistBonus(this);
+            Resistances[3] += Server.Custom.SkillSynergies.GetPoisonResistBonus(this);
+            Resistances[4] += Server.Custom.SkillSynergies.GetEnergyResistBonus(this);
 
             for (int i = 0; i < Resistances.Length; ++i)
             {
@@ -1917,6 +1934,9 @@ namespace Server.Mobiles
                 // Skill Masteries
                 strOffs += ToughnessSpell.GetHPBonus(this);
                 strOffs += InvigorateSpell.GetHPBonus(this);
+
+                // Skill synergy: HP bonus from Herding, Animal Taming, Fishing
+                strOffs += Server.Custom.SkillSynergies.GetBonusHP(this);
 
                 return (strBase / 2) + 50 + strOffs;
             }

@@ -56,7 +56,7 @@ namespace Server.Custom
         }
 
         // ============================================================
-        // LOGIC
+        // OFFENSIVE SYNERGIES
         // ============================================================
 
         public static double GetWeaponDamageBonus(Mobile attacker, BaseWeapon weapon)
@@ -130,6 +130,188 @@ namespace Server.Custom
             bonus += (bard.Skills[SkillName.Tracking].Value  / 100.0) * TrackingBardingBonus  * 10.0;
             bonus += (bard.Skills[SkillName.Carpentry].Value / 100.0) * CarpentryBardingBonus * 10.0;
             return bonus;
+        }
+
+        // ============================================================
+        // DEFENSIVE SYNERGIES — Step 9
+        // ============================================================
+
+        // ── Helpers ───────────────────────────────────────────────────────
+
+        /// <summary>Returns 0.0 at skill &lt;80, 1.0 at skill 100+, linear between.</summary>
+        private static double SynergyScale(double skillValue)
+        {
+            if (skillValue < 80.0) return 0.0;
+            return System.Math.Min(1.0, (skillValue - 80.0) / 20.0);
+        }
+
+        /// <summary>Returns 0 below 100, bonusAt100 at skill 100, bonusAt120 at skill 120+.</summary>
+        private static int CapScale(double skillValue, int bonusAt100, int bonusAt120)
+        {
+            if (skillValue < 100.0) return 0;
+            if (skillValue >= 120.0) return bonusAt120;
+            return bonusAt100 + (int)((skillValue - 100.0) / 20.0 * (bonusAt120 - bonusAt100));
+        }
+
+        // ── Section A — Resist bonuses (% points) ─────────────────────────
+
+        public static int GetPhysicalResistBonus(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0;
+            double sum = 0;
+            sum += SynergyScale(m.Skills[SkillName.Blacksmith].Value)    * 10;
+            sum += SynergyScale(m.Skills[SkillName.Mining].Value)        *  5;
+            sum += SynergyScale(m.Skills[SkillName.Lumberjacking].Value) *  5;
+            sum += SynergyScale(m.Skills[SkillName.Carpentry].Value)     *  3;
+            sum += SynergyScale(m.Skills[SkillName.Camping].Value)       *  5;
+            sum += SynergyScale(m.Skills[SkillName.AnimalTaming].Value)  *  5;
+            sum += SynergyScale(m.Skills[SkillName.Wrestling].Value)     *  8;
+            return (int)sum;
+        }
+
+        public static int GetFireResistBonus(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0;
+            double sum = 0;
+            sum += SynergyScale(m.Skills[SkillName.Blacksmith].Value) *  5;
+            sum += SynergyScale(m.Skills[SkillName.Mining].Value)     *  5;
+            sum += SynergyScale(m.Skills[SkillName.Alchemy].Value)    * 12;
+            sum += SynergyScale(m.Skills[SkillName.TasteID].Value)    *  5;
+            return (int)sum;
+        }
+
+        public static int GetColdResistBonus(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0;
+            double sum = 0;
+            sum += SynergyScale(m.Skills[SkillName.Lumberjacking].Value) * 8;
+            sum += SynergyScale(m.Skills[SkillName.Carpentry].Value)     * 5;
+            sum += SynergyScale(m.Skills[SkillName.Camping].Value)       * 8;
+            sum += SynergyScale(m.Skills[SkillName.Herding].Value)       * 5;
+            sum += SynergyScale(m.Skills[SkillName.Fishing].Value)       * 5;
+            sum += SynergyScale(m.Skills[SkillName.Inscribe].Value)      * 5;
+            return (int)sum;
+        }
+
+        public static int GetPoisonResistBonus(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0;
+            double sum = 0;
+            sum += SynergyScale(m.Skills[SkillName.TasteID].Value)     * 12;
+            sum += SynergyScale(m.Skills[SkillName.Herding].Value)      *  8;
+            sum += SynergyScale(m.Skills[SkillName.AnimalTaming].Value) *  5;
+            sum += SynergyScale(m.Skills[SkillName.Alchemy].Value)      *  5;
+            return (int)sum;
+        }
+
+        public static int GetEnergyResistBonus(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0;
+            double sum = 0;
+            sum += SynergyScale(m.Skills[SkillName.Inscribe].Value) * 12;
+            sum += SynergyScale(m.Skills[SkillName.Fishing].Value)  *  3;
+            return (int)sum;
+        }
+
+        // ── Section B — Resist cap raises ─────────────────────────────────
+
+        public static int GetPhysicalResistCap(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0;
+            int cap = 0;
+            cap += CapScale(m.Skills[SkillName.Blacksmith].Value,    5, 8); // primary
+            cap += CapScale(m.Skills[SkillName.Lumberjacking].Value, 2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.Carpentry].Value,     2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.Camping].Value,       2, 3); // secondary
+            return cap;
+        }
+
+        public static int GetFireResistCap(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0;
+            int cap = 0;
+            cap += CapScale(m.Skills[SkillName.Alchemy].Value,    5, 8); // primary
+            cap += CapScale(m.Skills[SkillName.Blacksmith].Value, 2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.Mining].Value,     2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.TasteID].Value,    2, 3); // secondary
+            return cap;
+        }
+
+        public static int GetColdResistCap(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0;
+            int cap = 0;
+            cap += CapScale(m.Skills[SkillName.Camping].Value,       5, 8); // primary
+            cap += CapScale(m.Skills[SkillName.Lumberjacking].Value, 2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.Herding].Value,       2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.Inscribe].Value,      2, 3); // secondary
+            return cap;
+        }
+
+        public static int GetPoisonResistCap(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0;
+            int cap = 0;
+            cap += CapScale(m.Skills[SkillName.TasteID].Value,      5, 8); // primary
+            cap += CapScale(m.Skills[SkillName.Alchemy].Value,      2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.Herding].Value,      2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.AnimalTaming].Value, 2, 3); // secondary
+            return cap;
+        }
+
+        public static int GetEnergyResistCap(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0;
+            int cap = 0;
+            cap += CapScale(m.Skills[SkillName.Inscribe].Value, 5, 8); // primary
+            cap += CapScale(m.Skills[SkillName.Fishing].Value,  2, 3); // secondary
+            return cap;
+        }
+
+        // ── Section C — DCI bonus (fraction, e.g. 0.08 = +8%) ────────────
+
+        public static double GetDCIBonus(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0.0;
+            double bonus = 0.0;
+            bonus += SynergyScale(m.Skills[SkillName.Tracking].Value)     * 0.08;
+            bonus += SynergyScale(m.Skills[SkillName.DetectHidden].Value) * 0.10;
+            return bonus;
+        }
+
+        // ── Section D — HP bonus ──────────────────────────────────────────
+
+        public static int GetBonusHP(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0;
+            double sum = 0;
+            sum += SynergyScale(m.Skills[SkillName.Herding].Value)      * 20;
+            sum += SynergyScale(m.Skills[SkillName.AnimalTaming].Value) * 15;
+            sum += SynergyScale(m.Skills[SkillName.Fishing].Value)      * 10;
+            return (int)sum;
+        }
+
+        // ── Section E — Bandage heal bonus (multiplier fraction) ──────────
+
+        public static double GetBandageHealBonus(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 0.0;
+            double bonus = 0.0;
+            bonus += SynergyScale(m.Skills[SkillName.Forensics].Value)  * 0.25;
+            bonus += SynergyScale(m.Skills[SkillName.Veterinary].Value) * 0.20;
+            return bonus;
+        }
+
+        // ── Section F — HP regen multiplier (1.0 = no change) ────────────
+
+        /// <summary>
+        /// Returns 1.0 at Camping &lt;80, 2.0 (double regen) at Camping 100+, linear between.
+        /// Applied as a multiplier to the regen rate in RegenRates.cs.
+        /// </summary>
+        public static double GetHPRegenMultiplier(Mobile m)
+        {
+            if (!(m is PlayerMobile)) return 1.0;
+            return 1.0 + SynergyScale(m.Skills[SkillName.Camping].Value);
         }
     }
 }

@@ -1139,6 +1139,9 @@ namespace Server.Items
             if (bonus > max)
                 bonus = max;
 
+            // Skill synergy: DCI from Tracking + Detect Hidden (additive, outside item cap)
+            bonus += (int)(Server.Custom.SkillSynergies.GetDCIBonus(defender) * 100);
+
             theirValue = (defValue + 20.0) * (100 + bonus);
 
             bonus = 0;
