@@ -27,11 +27,19 @@ cp website/update-status.php /var/www/html/update-status.php
 chmod +x /home/servuo/restart.sh 2>/dev/null || true
 
 echo "Saving world before restart..."
+# Snapshot log line count before issuing worldsave
+LOG_LINES=$(docker exec servuo bash -c "strings /home/servuo/servuo.log 2>/dev/null | wc -l" 2>/dev/null || echo 0)
 docker exec servuo bash -c "screen -S servuo -p 0 -X stuff 'worldsave\015'" 2>/dev/null || true
 
-echo "Waiting 5s for world save to complete..."
+# World save typically completes in < 1s — wait 5s then verify via log
 sleep 5
-echo "World save complete."
+FOUND=$(docker exec servuo bash -c "strings /home/servuo/servuo.log 2>/dev/null | tail -n +${LOG_LINES} | grep -ic 'sav'" 2>/dev/null || true)
+FOUND="${FOUND//[^0-9]/}"
+if [ "${FOUND:-0}" -gt 0 ]; then
+    echo "World save confirmed."
+else
+    echo "WARNING: Could not confirm world save in log — proceeding anyway."
+fi
 
 echo "Applying prod config..."
 cp Config/env/prod/Server.cfg Config/Server.cfg
