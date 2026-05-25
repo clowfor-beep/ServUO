@@ -536,6 +536,68 @@ namespace Server.Custom
     }
 
     // ============================================================
+    // BAG OF HOLDING
+    // ============================================================
+    //
+    // Blessed container. Holds up to 5 items.
+    // All items stored inside have their weight reduced by 50%.
+    // Purchased from the Hunter Token Shop for 10 tokens.
+    // ============================================================
+
+    public class BagOfHolding : Bag
+    {
+        private const int MaxItems = 5;
+
+        [Constructable]
+        public BagOfHolding() : base()
+        {
+            Name     = "a bag of holding";
+            Hue      = 0x4B5;   // deep blue-purple
+            Weight   = 2.0;
+            LootType = LootType.Blessed;
+        }
+
+        public BagOfHolding(Serial serial) : base(serial) { }
+
+        // Reduce stored item weights by 50%
+        public override int DefaultWeightReduction => 50;
+
+        // Enforce 5-item limit
+        public override int DefaultMaxItems => MaxItems;
+
+        public override bool CheckHold(Mobile m, Item item, bool message, bool checkItems, int plusItems, int plusWeight)
+        {
+            if (checkItems && (Items.Count + plusItems) >= MaxItems)
+            {
+                if (message)
+                    m.SendMessage(0x22, "The bag of holding can only hold 5 items.");
+                return false;
+            }
+            return base.CheckHold(m, item, message, checkItems, plusItems, plusWeight);
+        }
+
+        public override void GetProperties(ObjectPropertyList list)
+        {
+            base.GetProperties(list);
+            list.Add("Holds up to 5 items");
+            list.Add("50% weight reduction on stored items");
+            list.Add("Blessed — will not drop on death");
+        }
+
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.Write(0); // version
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            reader.ReadInt();
+        }
+    }
+
+    // ============================================================
     // HUNTER'S COMPASS
     // ============================================================
     //

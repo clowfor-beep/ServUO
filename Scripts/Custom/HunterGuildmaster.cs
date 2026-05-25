@@ -377,6 +377,7 @@ namespace Server.Custom
             ("Hunter's Tabard (cosmetic robe)",       10, typeof(Robe)),
             ("Hunter's Map (highlights spawn zones)",  5, typeof(BlankScroll)),
             ("Hunter's Compass (find active hunts)",   8, typeof(HunterCompass)),
+            ("Bag of Holding (5 items, -50% weight)", 10, typeof(BagOfHolding)),
             ("Tracking Orb (+3 tracking range)",      20, typeof(EssenceShard)),
             ("Title Deed: 'the Monster Hunter'",      30, typeof(Gold)),
         };
@@ -389,7 +390,7 @@ namespace Server.Custom
             int tokens = CountTokens(from);
 
             AddPage(0);
-            AddBackground(0, 0, 360, 250, 9270);
+            AddBackground(0, 0, 360, 280, 9270);
             AddLabel(20, 15, 0x4AA, "Hunter Token Shop");
             AddLabel(20, 35, 1153, $"Your tokens: {tokens}");
 
@@ -483,12 +484,17 @@ namespace Server.Custom
                     _from.SendMessage(0x35, "You receive a Hunter's Compass. Double-click it to find active hunts.");
                     break;
 
-                case 3: // Tracking Orb — Essence Shards as placeholder
+                case 3: // Bag of Holding
+                    _from.AddToBackpack(new BagOfHolding());
+                    _from.SendMessage(0x35, "You receive a Bag of Holding. It holds 5 items at half weight, and will never drop on death.");
+                    break;
+
+                case 4: // Tracking Orb — Essence Shards as placeholder
                     _from.AddToBackpack(new EssenceShard(5));
                     _from.SendMessage(0x35, "You receive a Tracking Orb (grants +3 tracking range when held).");
                     break;
 
-                case 4: // Title Deed
+                case 5: // Title Deed
                     _from.SendMessage(0x35, "'The Monster Hunter' title has been unlocked for you.");
                     HunterSystem.GrantTitleDeed(_from, "the Monster Hunter");
                     break;
