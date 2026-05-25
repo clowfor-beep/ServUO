@@ -38,8 +38,9 @@ echo "Waiting for world save to complete..."
 SAVE_DONE=0
 for i in $(seq 1 18); do
     sleep 5
-    FOUND=$(docker exec servuo bash -c "strings /home/servuo/servuo.log 2>/dev/null | tail -n +${LOG_LINES} | grep -ic 'world.*sav'" 2>/dev/null || echo 0)
-    if [ "${FOUND:-0}" -gt 0 ]; then
+    FOUND=$(docker exec servuo bash -c "strings /home/servuo/servuo.log 2>/dev/null | tail -n +${LOG_LINES} | grep -ic 'world.*sav'" 2>/dev/null)
+    FOUND="${FOUND//[^0-9]/}"
+    if [ "${FOUND:-0}" -gt 0 ] 2>/dev/null; then
         echo "World save detected in log after $((i * 5))s."
         SAVE_DONE=1
         break
