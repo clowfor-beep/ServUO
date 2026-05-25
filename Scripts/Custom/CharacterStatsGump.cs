@@ -41,12 +41,23 @@ namespace Server.Gumps
         public static void Initialize()
         {
             CommandSystem.Register("statwnd", AccessLevel.Player, OnCommand);
+            EventSink.PaperdollRequest += OnPaperdollRequest;
         }
 
         private static void OnCommand(CommandEventArgs e)
         {
             e.Mobile.CloseGump(typeof(CharacterStatsGump));
             e.Mobile.SendGump(new CharacterStatsGump(e.Mobile));
+        }
+
+        private static void OnPaperdollRequest(PaperdollRequestEventArgs e)
+        {
+            // Auto-open stats window only when a player views their own paperdoll
+            if (e.Beholder == e.Beheld && e.Beholder is PlayerMobile)
+            {
+                e.Beholder.CloseGump(typeof(CharacterStatsGump));
+                e.Beholder.SendGump(new CharacterStatsGump(e.Beholder));
+            }
         }
 
         // ═════════════════════════════════════════════════════════════════
