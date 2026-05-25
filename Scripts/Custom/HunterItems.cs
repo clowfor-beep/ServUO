@@ -553,13 +553,11 @@ namespace Server.Custom
             Hue      = 0x4B5;   // deep blue-purple
             Weight   = 2.0;
             LootType = LootType.Blessed;
-            MaxItems = 5;
+            MaxItems        = 5;
+            WeightReduction = 50;
         }
 
         public BagOfHolding(Serial serial) : base(serial) { }
-
-        // Reduce stored item weights by 50%
-        public override int WeightReduction => 50;
 
         public override void GetProperties(ObjectPropertyList list)
         {
