@@ -136,7 +136,7 @@ namespace Server.Items
             new AtlasLocation("Despise",          1296, 1082,  0, Map.Felucca),
             new AtlasLocation("Destard",          1176, 2637,  0, Map.Felucca),
             new AtlasLocation("Shame",             514, 1561,  0, Map.Felucca),
-            new AtlasLocation("Wrong",            2042,  226,  0, Map.Felucca),
+            new AtlasLocation("Wrong",            2043,  236, 13, Map.Felucca),
             new AtlasLocation("Covetous",         2499,  919,  0, Map.Felucca),
             new AtlasLocation("Hythloth",         4721, 3822,  0, Map.Felucca),
             new AtlasLocation("Ice Dungeon",      5875,  150, 15, Map.Felucca),
