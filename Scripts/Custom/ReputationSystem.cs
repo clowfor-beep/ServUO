@@ -274,7 +274,7 @@ namespace Server.Custom
             // PlayerMobile pm = victim as PlayerMobile;
             // if (pm == null) return;
             // string simGuild = GetSimGuild(killer);
-            // if (simGuild == Guilds.BloodPact)
+            // if (simGuild == FBGuilds.BloodPact)
             //     ; // No change
         }
 
