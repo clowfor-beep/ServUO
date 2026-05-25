@@ -365,9 +365,9 @@ namespace Server.Gumps
         {
             if (a[AosAttribute.LowerRegCost]        > 0) sb.Append("lower reagent cost lrc ");
             if (a[AosAttribute.LowerManaCost]       > 0) sb.Append("lower mana cost lmc ");
-            if (a[AosAttribute.SpellDamageIncrease] > 0) sb.Append("spell damage increase sdi ");
-            if (a[AosAttribute.FasterCasting]       > 0) sb.Append("faster casting fc ");
-            if (a[AosAttribute.FasterCastRecovery]  > 0) sb.Append("faster cast recovery fcr ");
+            if (a[AosAttribute.SpellDamage]         > 0) sb.Append("spell damage increase sdi ");
+            if (a[AosAttribute.CastSpeed]           > 0) sb.Append("faster casting fc cast speed ");
+            if (a[AosAttribute.CastRecovery]        > 0) sb.Append("faster cast recovery fcr ");
             if (a[AosAttribute.DefendChance]        > 0) sb.Append("defense chance increase dci ");
             if (a[AosAttribute.AttackChance]        > 0) sb.Append("hit chance increase hci ");
             if (a[AosAttribute.WeaponDamage]        > 0) sb.Append("damage increase di ");
@@ -385,8 +385,6 @@ namespace Server.Gumps
             if (a[AosAttribute.EnhancePotions]      > 0) sb.Append("enhance potions ep ");
             if (a[AosAttribute.ReflectPhysical]     > 0) sb.Append("reflect physical damage rpd ");
             if (a[AosAttribute.NightSight]          > 0) sb.Append("night sight ");
-            if (a[AosAttribute.CastSpeed]           > 0) sb.Append("cast speed ");
-            if (a[AosAttribute.CastRecovery]        > 0) sb.Append("cast recovery ");
         }
 
         private static void AppendArmorAttributes(System.Text.StringBuilder sb, AosArmorAttributes a)
@@ -412,7 +410,6 @@ namespace Server.Gumps
             if (a.SplinteringWeapon > 0) sb.Append("splintering ");
             if (a.BattleLust      > 0) sb.Append("battle lust ");
             if (a.BloodDrinker    > 0) sb.Append("blood drinker ");
-            if (a.SearingWeapon   > 0) sb.Append("searing ");
         }
 
         // ── Helpers ────────────────────────────────────────────────
