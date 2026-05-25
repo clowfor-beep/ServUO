@@ -18,6 +18,9 @@ namespace Server.Mobiles
                 Add(new GenericBuyInfo(typeof(IronIngot), 5, 16, 0x1BF2, 0, true));
                 Add(new GenericBuyInfo(typeof(Tongs), 13, 14, 0xFBB, 0));
 
+                // Repair deeds — Smithing
+                Add(new GenericBuyInfo(typeof(RepairDeed), 50, 10, 0x14F0, 0, new object[] { RepairSkillType.Smithing, 100.0 }));
+
                 Add(new GenericBuyInfo(typeof(BronzeShield), 66, 20, 0x1B72, 0));
                 Add(new GenericBuyInfo(typeof(Buckler), 50, 20, 0x1B73, 0));
                 Add(new GenericBuyInfo(typeof(MetalKiteShield), 123, 20, 0x1B74, 0));
