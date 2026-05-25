@@ -393,16 +393,19 @@ namespace Server.Custom
             int tokens = CountTokens(from);
 
             AddPage(0);
-            AddBackground(0, 0, 360, 380, 9270);
+            // Height: 65px header + 9 items * 33px rows + 20px footer padding
+            int gumpHeight = 65 + ShopItems.Length * 33 + 20;
+            AddBackground(0, 0, 400, gumpHeight, 9270);
             AddLabel(20, 15, 0x4AA, "Hunter Token Shop");
             AddLabel(20, 35, 1153, $"Your tokens: {tokens}");
 
             for (int i = 0; i < ShopItems.Length; i++)
             {
-                int y = 70 + i * 30;
+                int y = 65 + i * 33;
                 bool canAfford = tokens >= ShopItems[i].cost;
                 AddButton(20, y, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
-                AddLabel(55, y, canAfford ? 1 : 0x22,
+                // 1153 = bright white (affordable), 0x22 = red (can't afford)
+                AddLabel(55, y, canAfford ? 1153 : 0x22,
                     $"{ShopItems[i].name} — {ShopItems[i].cost} tokens");
             }
         }
