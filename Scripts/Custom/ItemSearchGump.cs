@@ -17,6 +17,7 @@ using Server.Items;
 using Server.Mobiles;
 using Server.Multis;
 using Server.Network;
+using Server.Spells;
 
 namespace Server.Gumps
 {
@@ -281,7 +282,7 @@ namespace Server.Gumps
 
         /// <summary>
         /// Recursively scans a container and all sub-containers.
-        /// Items that match are added to results with their location path.
+        /// Matches against item name AND searchable property text.
         /// </summary>
         private static void ScanContainer(Container cont, string query,
                                            string location, List<ItemSearchResult> results)
@@ -292,38 +293,147 @@ namespace Server.Gumps
             {
                 if (item == null || item.Deleted) continue;
 
-                // Match against custom name then type name
-                string name = GetLabel(item);
-                if (name.ToLowerInvariant().Contains(query))
-                    results.Add(new ItemSearchResult(Capitalise(name), item.Amount, location));
+                string label      = GetLabel(item);
+                string searchable = (label + " " + GetItemProperties(item)).ToLowerInvariant();
 
-                // Recurse into sub-containers (bags inside bags, etc.)
+                if (searchable.Contains(query))
+                    results.Add(new ItemSearchResult(Capitalise(label), item.Amount, location));
+
+                // Recurse into sub-containers
                 if (item is Container sub)
-                    ScanContainer(sub, query, $"{location} › {GetLabel(item)}", results);
+                    ScanContainer(sub, query, $"{location} › {label}", results);
             }
+        }
+
+        // ── Property text builder ──────────────────────────────────
+
+        /// <summary>
+        /// Returns a space-separated lower-case string of searchable property text:
+        /// spell name + reagents for scrolls, magic attributes for equipment.
+        /// </summary>
+        private static string GetItemProperties(Item item)
+        {
+            var sb = new System.Text.StringBuilder();
+
+            // Spell scrolls — spell name + reagent names
+            if (item is SpellScroll scroll)
+            {
+                try
+                {
+                    Spell spell = SpellRegistry.NewSpell(scroll.SpellID, null, null);
+                    if (spell?.Info != null)
+                    {
+                        sb.Append(spell.Info.Name.ToLower()).Append(' ');
+                        if (spell.Info.Reagents != null)
+                            foreach (Type t in spell.Info.Reagents)
+                                sb.Append(CamelToWords(t.Name)).Append(' ');
+                    }
+                }
+                catch { }
+            }
+
+            // AOS attributes on weapons, armor, jewelry, clothing
+            AosAttributes       attrs       = null;
+            AosArmorAttributes  armorAttrs  = null;
+            AosWeaponAttributes weaponAttrs = null;
+
+            if (item is BaseWeapon bw)
+            {
+                attrs       = bw.Attributes;
+                weaponAttrs = bw.WeaponAttributes;
+                sb.Append(CamelToWords(bw.Skill.ToString())).Append(' ');
+                sb.Append($"damage {bw.MinDamage}-{bw.MaxDamage} ");
+            }
+            else if (item is BaseArmor ba)
+            {
+                attrs      = ba.Attributes;
+                armorAttrs = ba.ArmorAttributes;
+                sb.Append($"physical {ba.BasePhysicalResistance} fire {ba.BaseFireResistance} ");
+                sb.Append($"cold {ba.BaseColdResistance} poison {ba.BasePoisonResistance} energy {ba.BaseEnergyResistance} ");
+            }
+            else if (item is BaseJewel bj)  attrs = bj.Attributes;
+            else if (item is BaseClothing bc) attrs = bc.Attributes;
+
+            if (attrs       != null) AppendAosAttributes(sb, attrs);
+            if (armorAttrs  != null) AppendArmorAttributes(sb, armorAttrs);
+            if (weaponAttrs != null) AppendWeaponAttributes(sb, weaponAttrs);
+
+            return sb.ToString();
+        }
+
+        private static void AppendAosAttributes(System.Text.StringBuilder sb, AosAttributes a)
+        {
+            if (a[AosAttribute.LowerRegCost]        > 0) sb.Append("lower reagent cost lrc ");
+            if (a[AosAttribute.LowerManaCost]       > 0) sb.Append("lower mana cost lmc ");
+            if (a[AosAttribute.SpellDamageIncrease] > 0) sb.Append("spell damage increase sdi ");
+            if (a[AosAttribute.FasterCasting]       > 0) sb.Append("faster casting fc ");
+            if (a[AosAttribute.FasterCastRecovery]  > 0) sb.Append("faster cast recovery fcr ");
+            if (a[AosAttribute.DefendChance]        > 0) sb.Append("defense chance increase dci ");
+            if (a[AosAttribute.AttackChance]        > 0) sb.Append("hit chance increase hci ");
+            if (a[AosAttribute.WeaponDamage]        > 0) sb.Append("damage increase di ");
+            if (a[AosAttribute.WeaponSpeed]         > 0) sb.Append("swing speed increase ssi ");
+            if (a[AosAttribute.BonusStr]            > 0) sb.Append("strength bonus str ");
+            if (a[AosAttribute.BonusDex]            > 0) sb.Append("dexterity bonus dex ");
+            if (a[AosAttribute.BonusInt]            > 0) sb.Append("intelligence bonus int ");
+            if (a[AosAttribute.BonusHits]           > 0) sb.Append("hit point increase hp ");
+            if (a[AosAttribute.BonusStam]           > 0) sb.Append("stamina increase stam ");
+            if (a[AosAttribute.BonusMana]           > 0) sb.Append("mana increase ");
+            if (a[AosAttribute.RegenHits]           > 0) sb.Append("hit point regeneration hpr ");
+            if (a[AosAttribute.RegenStam]           > 0) sb.Append("stamina regeneration ");
+            if (a[AosAttribute.RegenMana]           > 0) sb.Append("mana regeneration mr ");
+            if (a[AosAttribute.Luck]                > 0) sb.Append("luck ");
+            if (a[AosAttribute.EnhancePotions]      > 0) sb.Append("enhance potions ep ");
+            if (a[AosAttribute.ReflectPhysical]     > 0) sb.Append("reflect physical damage rpd ");
+            if (a[AosAttribute.NightSight]          > 0) sb.Append("night sight ");
+            if (a[AosAttribute.CastSpeed]           > 0) sb.Append("cast speed ");
+            if (a[AosAttribute.CastRecovery]        > 0) sb.Append("cast recovery ");
+        }
+
+        private static void AppendArmorAttributes(System.Text.StringBuilder sb, AosArmorAttributes a)
+        {
+            if (a.MageArmor       > 0) sb.Append("mage armor ");
+            if (a.LowerStatReq    > 0) sb.Append("lower requirements lr ");
+            if (a.DurabilityBonus > 0) sb.Append("durability ");
+            if (a.SoulCharge      > 0) sb.Append("soul charge ");
+        }
+
+        private static void AppendWeaponAttributes(System.Text.StringBuilder sb, AosWeaponAttributes a)
+        {
+            if (a.HitLeechHits    > 0) sb.Append("hit life leech hll ");
+            if (a.HitLeechMana    > 0) sb.Append("hit mana leech hml ");
+            if (a.HitLeechStam    > 0) sb.Append("hit stamina leech hsl ");
+            if (a.HitLowerAttack  > 0) sb.Append("hit lower attack hla ");
+            if (a.HitLowerDefend  > 0) sb.Append("hit lower defense hld ");
+            if (a.HitDispel       > 0) sb.Append("hit dispel ");
+            if (a.HitFireball     > 0) sb.Append("hit fireball ");
+            if (a.HitLightning    > 0) sb.Append("hit lightning ");
+            if (a.HitMagicArrow   > 0) sb.Append("hit magic arrow ");
+            if (a.HitHarm         > 0) sb.Append("hit harm ");
+            if (a.SplinteringWeapon > 0) sb.Append("splintering ");
+            if (a.BattleLust      > 0) sb.Append("battle lust ");
+            if (a.BloodDrinker    > 0) sb.Append("blood drinker ");
+            if (a.SearingWeapon   > 0) sb.Append("searing ");
         }
 
         // ── Helpers ────────────────────────────────────────────────
 
-        /// <summary>
-        /// Returns the best available display name for an item.
-        /// Prefers the custom Name, falls back to the class type name.
-        /// </summary>
         private static string GetLabel(Item item)
         {
             if (item == null) return "Item";
+            if (!string.IsNullOrEmpty(item.Name)) return item.Name;
+            return CamelToWords(item.GetType().Name);
+        }
 
-            if (!string.IsNullOrEmpty(item.Name))
-                return item.Name;
-
-            // Convert CamelCase class name to spaced words e.g. "LongSword" → "Long Sword"
-            string typeName = item.GetType().Name;
+        /// <summary>Splits CamelCase into lower-case space-separated words.</summary>
+        private static string CamelToWords(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
             var sb = new System.Text.StringBuilder();
-            for (int i = 0; i < typeName.Length; i++)
+            for (int i = 0; i < s.Length; i++)
             {
-                if (i > 0 && char.IsUpper(typeName[i]) && !char.IsUpper(typeName[i - 1]))
+                if (i > 0 && char.IsUpper(s[i]) && !char.IsUpper(s[i - 1]))
                     sb.Append(' ');
-                sb.Append(typeName[i]);
+                sb.Append(char.ToLower(s[i]));
             }
             return sb.ToString();
         }
