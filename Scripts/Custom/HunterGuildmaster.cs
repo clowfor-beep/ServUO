@@ -421,9 +421,6 @@ namespace Server.Custom
                 string nameCol = canAfford ? "#DDCCAA" : "#886655";
                 string costCol = canAfford ? "#88BBFF" : "#664444";
 
-                if (i % 2 == 0)
-                    AddImageTiled(15, y - 1, W - 30, RowH - 2, 9264);
-
                 AddButton(18, y + 2, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
                 AddHtml(52,  y, 364, RowH,
                     $"<BASEFONT COLOR={nameCol}>{ShopItems[i].name}</BASEFONT>",
