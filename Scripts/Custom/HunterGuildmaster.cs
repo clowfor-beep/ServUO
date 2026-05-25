@@ -27,6 +27,27 @@ namespace Server.Custom
 
     public partial class HunterGuildmaster : BaseCreature
     {
+        // ── Hunt announcement state ───────────────────────────────────────
+        private DateTime _nextAnnounce = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+
+        private static readonly string[] _huntPrefixes = new[]
+        {
+            "Hear ye! A bounty target has been spotted",
+            "Attention hunters! A marked criminal is lurking",
+            "The Guild has placed a bounty on a target",
+            "A dangerous fugitive has been tracked",
+            "A Hunter target is on the loose",
+        };
+
+        private static readonly string[] _wantedPrefixes = new[]
+        {
+            "Wanted! A notorious outlaw is hiding",
+            "The Guild seeks a wanted criminal",
+            "A dangerous wanted criminal has been sighted",
+            "Bring them in! A wanted fugitive is near",
+            "A price is on their head — last seen",
+        };
+
         [Constructable]
         public HunterGuildmaster() : base(AIType.AI_Vendor, FightMode.None, 2, 1, 0.5, 2.0)
         {
@@ -52,6 +73,39 @@ namespace Server.Custom
 
         public override bool IsInvulnerable => true;
         public override bool ShowFameTitle  => false;
+
+        public override void OnThink()
+        {
+            base.OnThink();
+
+            if (DateTime.UtcNow < _nextAnnounce)
+                return;
+
+            _nextAnnounce = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+
+            // Announce one active hunt, alternating between hunts and wanted
+            var hunts  = HunterSystem.GetActiveHuntInfoList();
+            var wanted = HunterSystem.GetActiveWantedInfoList();
+
+            if (hunts.Count == 0 && wanted.Count == 0)
+                return;
+
+            // Pick randomly from whichever lists are populated
+            bool useHunt = hunts.Count > 0 && (wanted.Count == 0 || Utility.RandomBool());
+
+            if (useHunt)
+            {
+                string info   = hunts[Utility.Random(hunts.Count)];
+                string prefix = _huntPrefixes[Utility.Random(_huntPrefixes.Length)];
+                Say(0x44, $"{prefix} in {info}! Double-click me to claim the bounty.");
+            }
+            else
+            {
+                string info   = wanted[Utility.Random(wanted.Count)];
+                string prefix = _wantedPrefixes[Utility.Random(_wantedPrefixes.Length)];
+                Say(0x44, $"{prefix} {info}! Double-click me for details.");
+            }
+        }
 
         public override void OnDoubleClick(Mobile from)
         {
