@@ -37,31 +37,47 @@ namespace Server.Gumps
         private const int HNearCap = 43;    // orange – within 10 % of cap
         private const int HGood    = 63;    // green  – informational positive
 
+        // Tracks which players have auto-refresh enabled.
+        // Cleared when the player manually closes the gump; NOT cleared by server-side refreshes.
+        private static readonly HashSet<Serial> _refreshEnabled = new HashSet<Serial>();
+
         // ═════════════════════════════════════════════════════════════════
         public static void Initialize()
         {
             CommandSystem.Register("statwnd", AccessLevel.Player, OnCommand);
             EventSink.PaperdollRequest += OnPaperdollRequest;
+            EventSink.Logout           += OnLogout;
         }
 
         private static void OnCommand(CommandEventArgs e)
         {
-            e.Mobile.CloseGump(typeof(CharacterStatsGump));
-            e.Mobile.SendGump(new CharacterStatsGump(e.Mobile));
+            OpenFor(e.Mobile);
         }
 
         private static void OnPaperdollRequest(PaperdollRequestEventArgs e)
         {
             // Auto-open stats window only when a player views their own paperdoll
             if (e.Beholder == e.Beheld && e.Beholder is PlayerMobile)
-            {
-                e.Beholder.CloseGump(typeof(CharacterStatsGump));
-                e.Beholder.SendGump(new CharacterStatsGump(e.Beholder));
-            }
+                OpenFor(e.Beholder);
+        }
+
+        private static void OnLogout(LogoutEventArgs e)
+        {
+            _refreshEnabled.Remove(e.Mobile.Serial);
+        }
+
+        /// Open (or re-open) the gump and enable auto-refresh for this player.
+        private static void OpenFor(Mobile from)
+        {
+            _refreshEnabled.Add(from.Serial);
+            from.CloseGump(typeof(CharacterStatsGump));
+            from.SendGump(new CharacterStatsGump(from));
         }
 
         // ═════════════════════════════════════════════════════════════════
         private readonly Mobile _from;
+
+        private const double RefreshSeconds = 3.0;
 
         public CharacterStatsGump(Mobile from) : base(300, 30)
         {
@@ -72,6 +88,28 @@ namespace Server.Gumps
             Resizable  = false;
 
             BuildGump();
+
+            // Schedule one auto-refresh tick — each new gump instance chains the next
+            if (_refreshEnabled.Contains(from.Serial))
+                Timer.DelayCall(TimeSpan.FromSeconds(RefreshSeconds), DoRefresh);
+        }
+
+        private void DoRefresh()
+        {
+            // Stop if player disconnected or deleted
+            if (_from == null || _from.Deleted || _from.NetState == null)
+            {
+                _refreshEnabled.Remove(_from.Serial);
+                return;
+            }
+
+            // Stop if player manually closed the gump (flag was cleared in OnResponse)
+            if (!_refreshEnabled.Contains(_from.Serial))
+                return;
+
+            // Close this snapshot and open a fresh one (its constructor will schedule the next tick)
+            _from.CloseGump(typeof(CharacterStatsGump));
+            _from.SendGump(new CharacterStatsGump(_from));
         }
 
         // ── Top-level builder ─────────────────────────────────────────────
@@ -562,7 +600,9 @@ namespace Server.Gumps
         // ── Gump response ─────────────────────────────────────────────────
         public override void OnResponse(NetState sender, RelayInfo info)
         {
-            // Button 0 = close (Closable=true handles it automatically)
+            // Any response here means the player manually interacted with or closed the gump.
+            // Disable auto-refresh so the timer doesn't reopen it behind their back.
+            _refreshEnabled.Remove(_from.Serial);
         }
     }
 }
