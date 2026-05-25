@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Server.Commands;
+using Server.Custom;
 using Server.Items;
 using Server.Mobiles;
 using Server.Network;
@@ -611,8 +612,8 @@ namespace Server.Gumps
                 // Item Search — open without killing auto-refresh
                 if (_from is PlayerMobile pm)
                 {
-                    pm.CloseGump(typeof(Server.Custom.ItemSearchGump));
-                    pm.SendGump(new Server.Custom.ItemSearchGump(pm, "", null, 0));
+                    pm.CloseGump(typeof(ItemSearchGump));
+                    pm.SendGump(new ItemSearchGump(pm, "", null, 0));
                 }
                 return;
             }
