@@ -417,7 +417,7 @@ namespace Server.Custom
                 // lurk. GetRandomSpawnPoint samples within these for valid floor tiles.
 
                 [SpawnZone.WantedZone_NearDespise] = new ZoneData(Map.Felucca,
-                    new Rectangle2D(1285, 1545, 50, 50)),
+                    new Rectangle2D(1260, 1040, 80, 80)),  // near Despise entrance (1296,1082)
 
                 [SpawnZone.WantedZone_NearCovetous] = new ZoneData(Map.Felucca,
                     new Rectangle2D(2455,  880, 50, 50)),
