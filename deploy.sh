@@ -46,6 +46,6 @@ cp Config/env/prod/Server.cfg Config/Server.cfg
 cp Config/env/prod/DataPath.cfg Config/DataPath.cfg
 
 echo "Restarting ServUO..."
-docker exec servuo bash /home/servuo/restart.sh
+docker exec servuo bash /home/servuo/restart.sh --skip-save
 
 echo "Deploy complete."

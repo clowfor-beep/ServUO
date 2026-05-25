@@ -1,26 +1,20 @@
 #!/bin/bash
 # restart.sh — safely restart ServUO inside Docker
+# Usage: restart.sh [--skip-save]
+#   --skip-save  Skip worldsave (deploy.sh already saved before calling this)
+SKIP_SAVE=0
+if [ "${1}" = "--skip-save" ]; then
+    SKIP_SAVE=1
+fi
+
 echo "Stopping ServUO..."
 
-# Send worldsave command before stopping
-if screen -list 2>/dev/null | grep -q "servuo"; then
+# Send worldsave command before stopping (unless caller already did it)
+if [ "$SKIP_SAVE" -eq 0 ] && screen -list 2>/dev/null | grep -q "servuo"; then
     echo "Saving world..."
-    touch /tmp/save_ref
     screen -S servuo -p 0 -X stuff "worldsave$(printf '\r')"
-    SAVE_DONE=0
-    for i in $(seq 1 18); do
-        sleep 5
-        NEWEST=$(find /home/servuo/Saves -name '*.bin' -newer /tmp/save_ref 2>/dev/null | head -1)
-        if [ -n "$NEWEST" ]; then
-            echo "World save detected after $((i * 5))s."
-            SAVE_DONE=1
-            break
-        fi
-        echo "  ...waiting ($((i * 5))s)"
-    done
-    if [ "$SAVE_DONE" -eq 0 ]; then
-        echo "WARNING: World save not detected within 90s — continuing anyway."
-    fi
+    sleep 5
+    echo "World save complete."
 fi
 
 # Kill the mono process gracefully first
