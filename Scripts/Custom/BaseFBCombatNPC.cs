@@ -86,6 +86,9 @@ namespace Server.Custom
 
         // ── AI ────────────────────────────────────────────────────────────
         // Keep combatant locked — some AI paths clear it on the base call.
+        // Guards treat this NPC as always attackable — same as any hostile creature
+        public override bool AlwaysAttackable => true;
+
         public override void OnThink()
         {
             Mobile target = Combatant as Mobile;
