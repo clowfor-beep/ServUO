@@ -546,6 +546,8 @@ namespace Server.Custom
 
     public class BagOfHolding : Bag
     {
+        private const int WeightReductionPct = 50;
+
         [Constructable]
         public BagOfHolding() : base()
         {
@@ -553,11 +555,19 @@ namespace Server.Custom
             Hue      = 0x4B5;   // deep blue-purple
             Weight   = 2.0;
             LootType = LootType.Blessed;
-            MaxItems        = 5;
-            WeightReduction = 50;
+            MaxItems = 5;
         }
 
         public BagOfHolding(Serial serial) : base(serial) { }
+
+        // Reduce total weight of stored items by 50%
+        public override int GetTotal(TotalType type)
+        {
+            int total = base.GetTotal(type);
+            if (type == TotalType.Weight)
+                total -= total * WeightReductionPct / 100;
+            return total;
+        }
 
         public override void GetProperties(ObjectPropertyList list)
         {
