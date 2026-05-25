@@ -546,8 +546,6 @@ namespace Server.Custom
 
     public class BagOfHolding : Bag
     {
-        private const int WeightReductionPct = 50;
-
         [Constructable]
         public BagOfHolding() : base()
         {
@@ -560,13 +558,16 @@ namespace Server.Custom
 
         public BagOfHolding(Serial serial) : base(serial) { }
 
-        // Reduce total weight of stored items by 50%
-        public override int GetTotal(TotalType type)
+        // Intercept weight updates and propagate only half the delta upward.
+        // This means the bag's m_TotalWeight (and everything above it in the
+        // container chain, including the player's carry weight) only accumulates
+        // 50% of each stored item's weight.
+        public override void UpdateTotal(Item sender, TotalType type, int delta)
         {
-            int total = base.GetTotal(type);
-            if (type == TotalType.Weight)
-                total -= total * WeightReductionPct / 100;
-            return total;
+            if (type == TotalType.Weight && sender != this)
+                base.UpdateTotal(sender, type, (int)Math.Round(delta / 2.0));
+            else
+                base.UpdateTotal(sender, type, delta);
         }
 
         public override void GetProperties(ObjectPropertyList list)
