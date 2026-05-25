@@ -12,7 +12,7 @@
 //     OrbOfMastery         — +stat points (2 tiers)
 //     OrbOfExpansion       — +total skill cap (3 tiers)
 //     OrbOfFortitude       — +total stat cap (2 tiers)
-//     OrbOfAlacrity        — halves skill gain duration (3 tiers)
+//     OrbOfAlacrity        — doubles all skill gains for 10/20/30 min (3 tiers)
 //     OrbOfBalance         — redistribute skill/stat points (3 tiers)
 //
 //   Category 2 — Item Orbs (modify an item)
@@ -468,7 +468,14 @@ namespace Server.Custom
     }
 
     // ----------------------------------------------------------
-    // ORB OF ALACRITY — halves skill gain duration
+    // ORB OF ALACRITY — doubles all skill gains for a duration
+    //   Tier 1 (uncommon):  10 minutes
+    //   Tier 2 (rare):      20 minutes
+    //   Tier 3 (very rare): 30 minutes
+    //
+    // Implementation: hooks EventSink.SkillGain and applies a second
+    // gain equal to the first — effectively doubling every tick.
+    // Stacks naturally with the shard's low-skill multipliers.
     // ----------------------------------------------------------
 
     public class OrbOfAlacrity : Item
@@ -482,13 +489,38 @@ namespace Server.Custom
             set { _tier = Math.Max(1, Math.Min(3, value)); InvalidateProperties(); }
         }
 
-        public TimeSpan Duration => TimeSpan.FromMinutes(_tier == 1 ? 30 : _tier == 2 ? 60 : 120);
+        public TimeSpan Duration => TimeSpan.FromMinutes(_tier == 1 ? 10 : _tier == 2 ? 20 : 30);
 
-        // Tracks active Alacrity end times per mobile
+        // mobile → buff expiry time
         private static readonly Dictionary<Mobile, DateTime> _activeBuffs = new Dictionary<Mobile, DateTime>();
 
         public static bool IsActive(Mobile m) =>
             _activeBuffs.TryGetValue(m, out DateTime end) && DateTime.UtcNow < end;
+
+        // Called once at startup to wire the EventSink hook
+        public static void Initialize()
+        {
+            EventSink.SkillGain += OnSkillGain;
+        }
+
+        private static void OnSkillGain(SkillGainEventArgs e)
+        {
+            if (!(e.From is PlayerMobile pm)) return;
+            if (!IsActive(pm)) return;
+
+            // The event fires after the first gain is already applied.
+            // Apply a second gain of the same amount — effectively doubling the tick.
+            int bonus = e.Gained;
+
+            // Respect total skill cap
+            if (pm.Skills.Total + bonus > pm.Skills.Cap)
+                bonus = pm.Skills.Cap - pm.Skills.Total;
+
+            if (bonus <= 0) return;
+
+            // BaseFixedPoint: 1000 = 100.0 skill. CapFixedPoint is the individual ceiling.
+            e.Skill.BaseFixedPoint = Math.Min(e.Skill.CapFixedPoint, e.Skill.BaseFixedPoint + bonus);
+        }
 
         public static void RemoveBuff(Mobile m) => _activeBuffs.Remove(m);
 
@@ -511,7 +543,7 @@ namespace Server.Custom
         public override void GetProperties(ObjectPropertyList list)
         {
             base.GetProperties(list);
-            list.Add($"Halves skill gain duration for {(int)Duration.TotalMinutes} minutes");
+            list.Add($"Doubles all skill gains for {(int)Duration.TotalMinutes} minutes");
         }
 
         public override void OnDoubleClick(Mobile from)
@@ -529,7 +561,7 @@ namespace Server.Custom
             }
 
             _activeBuffs[from] = DateTime.UtcNow + Duration;
-            from.SendMessage(0x35, $"You feel your learning quicken! Skill gains doubled for {(int)Duration.TotalMinutes} minutes.");
+            from.SendMessage(0x35, $"You feel your learning quicken! All skill gains doubled for {(int)Duration.TotalMinutes} minutes.");
             from.PlaySound(0x1F7);
             from.FixedParticles(0x375A, 9, 20, 5016, Hue, 0, EffectLayer.Waist);
 
@@ -539,7 +571,7 @@ namespace Server.Custom
                 if (_activeBuffs.TryGetValue(from, out DateTime end) && DateTime.UtcNow >= end)
                 {
                     _activeBuffs.Remove(from);
-                    if (from.NetState != null)
+                    if (from?.NetState != null)
                         from.SendMessage(0x22, "Your alacrity buff has faded.");
                 }
             });
