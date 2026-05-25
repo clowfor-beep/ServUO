@@ -546,8 +546,6 @@ namespace Server.Custom
 
     public class BagOfHolding : Bag
     {
-        private const int MaxItems = 5;
-
         [Constructable]
         public BagOfHolding() : base()
         {
@@ -555,26 +553,13 @@ namespace Server.Custom
             Hue      = 0x4B5;   // deep blue-purple
             Weight   = 2.0;
             LootType = LootType.Blessed;
+            MaxItems = 5;
         }
 
         public BagOfHolding(Serial serial) : base(serial) { }
 
         // Reduce stored item weights by 50%
-        public override int DefaultWeightReduction => 50;
-
-        // Enforce 5-item limit
-        public override int DefaultMaxItems => MaxItems;
-
-        public override bool CheckHold(Mobile m, Item item, bool message, bool checkItems, int plusItems, int plusWeight)
-        {
-            if (checkItems && (Items.Count + plusItems) >= MaxItems)
-            {
-                if (message)
-                    m.SendMessage(0x22, "The bag of holding can only hold 5 items.");
-                return false;
-            }
-            return base.CheckHold(m, item, message, checkItems, plusItems, plusWeight);
-        }
+        public override int WeightReduction => 50;
 
         public override void GetProperties(ObjectPropertyList list)
         {
