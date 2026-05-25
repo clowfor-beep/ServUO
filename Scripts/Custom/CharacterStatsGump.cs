@@ -63,7 +63,7 @@ namespace Server.Gumps
         // ═════════════════════════════════════════════════════════════════
         private readonly Mobile _from;
 
-        public CharacterStatsGump(Mobile from) : base(30, 30)
+        public CharacterStatsGump(Mobile from) : base(300, 30)
         {
             _from      = from;
             Closable   = true;
