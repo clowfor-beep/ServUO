@@ -5,9 +5,22 @@ echo "Stopping ServUO..."
 # Send worldsave command before stopping
 if screen -list 2>/dev/null | grep -q "servuo"; then
     echo "Saving world..."
+    touch /tmp/save_ref
     screen -S servuo -p 0 -X stuff "worldsave$(printf '\r')"
-    sleep 8
-    echo "World saved."
+    SAVE_DONE=0
+    for i in $(seq 1 18); do
+        sleep 5
+        NEWEST=$(find /home/servuo/Saves -name '*.bin' -newer /tmp/save_ref 2>/dev/null | head -1)
+        if [ -n "$NEWEST" ]; then
+            echo "World save detected after $((i * 5))s."
+            SAVE_DONE=1
+            break
+        fi
+        echo "  ...waiting ($((i * 5))s)"
+    done
+    if [ "$SAVE_DONE" -eq 0 ]; then
+        echo "WARNING: World save not detected within 90s — continuing anyway."
+    fi
 fi
 
 # Kill the mono process gracefully first
