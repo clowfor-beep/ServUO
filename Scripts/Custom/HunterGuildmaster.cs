@@ -97,13 +97,15 @@ namespace Server.Custom
             {
                 string info   = hunts[Utility.Random(hunts.Count)];
                 string prefix = _huntPrefixes[Utility.Random(_huntPrefixes.Length)];
-                Say(0x44, $"{prefix} in {info}! Double-click me to claim the bounty.");
+                PublicOverheadMessage(MessageType.Regular, 0x44, false,
+                    $"{prefix}: {info}! Double-click me to claim the bounty.");
             }
             else
             {
                 string info   = wanted[Utility.Random(wanted.Count)];
                 string prefix = _wantedPrefixes[Utility.Random(_wantedPrefixes.Length)];
-                Say(0x44, $"{prefix} {info}! Double-click me for details.");
+                PublicOverheadMessage(MessageType.Regular, 0x44, false,
+                    $"{prefix}: {info}! Double-click me for details.");
             }
         }
 
