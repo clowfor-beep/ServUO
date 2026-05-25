@@ -27,21 +27,20 @@ cp website/update-status.php /var/www/html/update-status.php
 chmod +x /home/servuo/restart.sh 2>/dev/null || true
 
 echo "Saving world before restart..."
-# Touch a reference file inside the container right before the save command —
-# avoids cross-mount timestamp skew when comparing against Scripts.dll on the host.
-docker exec servuo bash -c "touch /tmp/save_ref"
-# \015 = carriage return — more reliable than $(printf '\r') through docker exec
-docker exec servuo bash -c "screen -S servuo -X stuff 'worldsave\015'" 2>/dev/null || true
+# Record current log line count before issuing worldsave — used to detect
+# the "World: Save" completion message that ServUO writes to its log.
+LOG_LINES=$(docker exec servuo bash -c "strings /home/servuo/servuo.log 2>/dev/null | wc -l" || echo 0)
+# -p 0 targets the first screen window explicitly (matches restart.sh)
+docker exec servuo bash -c "screen -S servuo -p 0 -X stuff 'worldsave\015'" 2>/dev/null || true
 
-# Wait for save to complete — poll the Saves directory for recent changes.
-# World saves can take 30-60s on a loaded server. Timeout after 90s.
+# Poll the log for ServUO's worldsave completion message. Timeout after 90s.
 echo "Waiting for world save to complete..."
 SAVE_DONE=0
 for i in $(seq 1 18); do
     sleep 5
-    NEWEST=$(docker exec servuo bash -c "find /home/servuo/Saves -name '*.bin' -newer /tmp/save_ref 2>/dev/null | head -1")
-    if [ -n "$NEWEST" ]; then
-        echo "World save detected after $((i * 5))s."
+    FOUND=$(docker exec servuo bash -c "strings /home/servuo/servuo.log 2>/dev/null | tail -n +${LOG_LINES} | grep -ic 'world.*sav'" 2>/dev/null || echo 0)
+    if [ "${FOUND:-0}" -gt 0 ]; then
+        echo "World save detected in log after $((i * 5))s."
         SAVE_DONE=1
         break
     fi
