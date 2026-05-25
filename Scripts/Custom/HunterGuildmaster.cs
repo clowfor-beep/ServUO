@@ -374,12 +374,15 @@ namespace Server.Custom
         private readonly HunterGuildmaster  _npc;
 
         private static readonly (string name, int cost, System.Type itemType)[] ShopItems = {
-            ("Hunter's Tabard (cosmetic robe)",       10, typeof(Robe)),
-            ("Hunter's Map (highlights spawn zones)",  5, typeof(BlankScroll)),
-            ("Hunter's Compass (find active hunts)",   8, typeof(HunterCompass)),
-            ("Bag of Holding (5 items, -50% weight)", 10, typeof(BagOfHolding)),
-            ("Tracking Orb (+3 tracking range)",      20, typeof(EssenceShard)),
-            ("Title Deed: 'the Monster Hunter'",      30, typeof(Gold)),
+            ("Hunter's Tabard (cosmetic robe)",               10,  typeof(Robe)),
+            ("Hunter's Map (highlights spawn zones)",          5,  typeof(BlankScroll)),
+            ("Hunter's Compass (find active hunts)",           8,  typeof(HunterCompass)),
+            ("Lesser Bag of Holding (1 item, -33% weight)",   10,  typeof(LesserBagOfHolding)),
+            ("Bag of Holding (2 items, -50% weight)",         25,  typeof(BagOfHolding)),
+            ("Greater Bag of Holding (4 items, -75% weight)", 50,  typeof(GreaterBagOfHolding)),
+            ("Supreme Bag of Holding (5 items, -100% weight)",100, typeof(SupremeBagOfHolding)),
+            ("Tracking Orb (+3 tracking range)",              20,  typeof(EssenceShard)),
+            ("Title Deed: 'the Monster Hunter'",              30,  typeof(Gold)),
         };
 
         public HunterShopGump(Mobile from, HunterGuildmaster npc) : base(50, 50)
@@ -390,7 +393,7 @@ namespace Server.Custom
             int tokens = CountTokens(from);
 
             AddPage(0);
-            AddBackground(0, 0, 360, 280, 9270);
+            AddBackground(0, 0, 360, 380, 9270);
             AddLabel(20, 15, 0x4AA, "Hunter Token Shop");
             AddLabel(20, 35, 1153, $"Your tokens: {tokens}");
 
@@ -484,17 +487,32 @@ namespace Server.Custom
                     _from.SendMessage(0x35, "You receive a Hunter's Compass. Double-click it to find active hunts.");
                     break;
 
-                case 3: // Bag of Holding
-                    _from.AddToBackpack(new BagOfHolding());
-                    _from.SendMessage(0x35, "You receive a Bag of Holding. It holds 5 items at half weight, and will never drop on death.");
+                case 3: // Lesser Bag of Holding
+                    _from.AddToBackpack(new LesserBagOfHolding());
+                    _from.SendMessage(0x35, "You receive a Lesser Bag of Holding. Holds 1 item at 33% reduced weight.");
                     break;
 
-                case 4: // Tracking Orb — Essence Shards as placeholder
+                case 4: // Bag of Holding
+                    _from.AddToBackpack(new BagOfHolding());
+                    _from.SendMessage(0x35, "You receive a Bag of Holding. Holds 2 items at 50% reduced weight.");
+                    break;
+
+                case 5: // Greater Bag of Holding
+                    _from.AddToBackpack(new GreaterBagOfHolding());
+                    _from.SendMessage(0x35, "You receive a Greater Bag of Holding. Holds 4 items at 75% reduced weight.");
+                    break;
+
+                case 6: // Supreme Bag of Holding
+                    _from.AddToBackpack(new SupremeBagOfHolding());
+                    _from.SendMessage(0x35, "You receive a Supreme Bag of Holding. Holds 5 items at zero weight.");
+                    break;
+
+                case 7: // Tracking Orb — Essence Shards as placeholder
                     _from.AddToBackpack(new EssenceShard(5));
                     _from.SendMessage(0x35, "You receive a Tracking Orb (grants +3 tracking range when held).");
                     break;
 
-                case 5: // Title Deed
+                case 8: // Title Deed
                     _from.SendMessage(0x35, "'The Monster Hunter' title has been unlocked for you.");
                     HunterSystem.GrantTitleDeed(_from, "the Monster Hunter");
                     break;

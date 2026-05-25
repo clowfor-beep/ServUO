@@ -544,38 +544,78 @@ namespace Server.Custom
     // Purchased from the Hunter Token Shop for 10 tokens.
     // ============================================================
 
-    public class BagOfHolding : Bag
+    // ============================================================
+    // BAGS OF HOLDING — base class + 4 tiers
+    //
+    // Tier       Items  Weight Reduction  Shop Cost
+    // ─────────────────────────────────────────────
+    // Lesser         1              33%   10 tokens
+    // Standard       2              50%   25 tokens
+    // Greater        4              75%   50 tokens
+    // Supreme        5             100%  100 tokens
+    //
+    // Rule: a player may carry only ONE bag of holding at a time.
+    // Placing a second in the pack ejects it to the ground.
+    // ============================================================
+
+    public abstract class BaseBagOfHolding : Bag
     {
-        [Constructable]
-        public BagOfHolding() : base()
+        // Subclasses set these
+        protected abstract int    WeightReductionPct { get; }
+        protected abstract int    BagMaxItems        { get; }
+        protected abstract string BagDisplayName     { get; }
+
+        protected BaseBagOfHolding() : base()
         {
-            Name     = "a bag of holding";
-            Hue      = 0x4B5;   // deep blue-purple
             Weight   = 2.0;
             LootType = LootType.Blessed;
-            MaxItems = 5;
+            MaxItems = BagMaxItems;
         }
 
-        public BagOfHolding(Serial serial) : base(serial) { }
+        protected BaseBagOfHolding(Serial serial) : base(serial) { }
 
-        // Intercept weight updates and propagate only half the delta upward.
-        // This means the bag's m_TotalWeight (and everything above it in the
-        // container chain, including the player's carry weight) only accumulates
-        // 50% of each stored item's weight.
+        // ── Weight reduction ──────────────────────────────────────────────
+        // Intercept weight updates and propagate only the reduced delta upward
+        // so the player's carry weight reflects the reduction.
         public override void UpdateTotal(Item sender, TotalType type, int delta)
         {
             if (type == TotalType.Weight && sender != this)
-                base.UpdateTotal(sender, type, (int)Math.Round(delta / 2.0));
+            {
+                int reducedDelta = (int)Math.Round(delta * (100 - WeightReductionPct) / 100.0);
+                base.UpdateTotal(sender, type, reducedDelta);
+            }
             else
+            {
                 base.UpdateTotal(sender, type, delta);
+            }
+        }
+
+        // ── One bag per player ────────────────────────────────────────────
+        // Called after the item is added to a parent container.
+        // If the player now has two bags of holding, eject this one.
+        public override void OnAdded(object parent)
+        {
+            base.OnAdded(parent);
+
+            Mobile owner = RootParent as Mobile;
+            if (owner == null || owner.Backpack == null) return;
+
+            // Count how many bags of holding are anywhere in the pack
+            var bags = owner.Backpack.FindItemsByType(typeof(BaseBagOfHolding));
+            if (bags.Count > 1)
+            {
+                owner.SendMessage(0x22, "You may only carry one bag of holding at a time.");
+                MoveToWorld(owner.Location, owner.Map);
+            }
         }
 
         public override void GetProperties(ObjectPropertyList list)
         {
             base.GetProperties(list);
-            list.Add("Holds up to 5 items");
-            list.Add("50% weight reduction on stored items");
+            list.Add($"Holds up to {BagMaxItems} {(BagMaxItems == 1 ? "item" : "items")}");
+            list.Add($"{WeightReductionPct}% weight reduction on stored items");
             list.Add("Blessed — will not drop on death");
+            list.Add("Limit: one bag of holding per player");
         }
 
         public override void Serialize(GenericWriter writer)
@@ -589,6 +629,74 @@ namespace Server.Custom
             base.Deserialize(reader);
             reader.ReadInt();
         }
+    }
+
+    // ── Lesser Bag of Holding ──────────────────────────────────────────────
+    public class LesserBagOfHolding : BaseBagOfHolding
+    {
+        protected override int    WeightReductionPct => 33;
+        protected override int    BagMaxItems        => 1;
+        protected override string BagDisplayName     => "a lesser bag of holding";
+
+        [Constructable]
+        public LesserBagOfHolding() : base()
+        {
+            Name = BagDisplayName;
+            Hue  = 0x47D; // pale blue
+        }
+
+        public LesserBagOfHolding(Serial serial) : base(serial) { }
+    }
+
+    // ── Bag of Holding ────────────────────────────────────────────────────
+    public class BagOfHolding : BaseBagOfHolding
+    {
+        protected override int    WeightReductionPct => 50;
+        protected override int    BagMaxItems        => 2;
+        protected override string BagDisplayName     => "a bag of holding";
+
+        [Constructable]
+        public BagOfHolding() : base()
+        {
+            Name = BagDisplayName;
+            Hue  = 0x4B5; // blue-purple
+        }
+
+        public BagOfHolding(Serial serial) : base(serial) { }
+    }
+
+    // ── Greater Bag of Holding ────────────────────────────────────────────
+    public class GreaterBagOfHolding : BaseBagOfHolding
+    {
+        protected override int    WeightReductionPct => 75;
+        protected override int    BagMaxItems        => 4;
+        protected override string BagDisplayName     => "a greater bag of holding";
+
+        [Constructable]
+        public GreaterBagOfHolding() : base()
+        {
+            Name = BagDisplayName;
+            Hue  = 0x4AA; // bright teal
+        }
+
+        public GreaterBagOfHolding(Serial serial) : base(serial) { }
+    }
+
+    // ── Supreme Bag of Holding ────────────────────────────────────────────
+    public class SupremeBagOfHolding : BaseBagOfHolding
+    {
+        protected override int    WeightReductionPct => 100;
+        protected override int    BagMaxItems        => 5;
+        protected override string BagDisplayName     => "a supreme bag of holding";
+
+        [Constructable]
+        public SupremeBagOfHolding() : base()
+        {
+            Name = BagDisplayName;
+            Hue  = 0x497; // gold
+        }
+
+        public SupremeBagOfHolding(Serial serial) : base(serial) { }
     }
 
     // ============================================================
