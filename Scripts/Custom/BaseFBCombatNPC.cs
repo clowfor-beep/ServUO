@@ -211,7 +211,7 @@ namespace Server.Custom
                     SetSkill(SkillName.Meditation,   100.0, 100.0);
                     SetSkill(SkillName.Wrestling,    100.0, 100.0);
                     SetSkill(SkillName.Focus,        100.0, 100.0);
-                    SetSkill(SkillName.Inscription,  100.0, 100.0);
+                    SetSkill(SkillName.Inscribe,  100.0, 100.0);
                     AddItem(new Robe(Utility.RandomNeutralHue()));
                     AddItem(new WizardsHat());
                     AddItem(new Sandals());
