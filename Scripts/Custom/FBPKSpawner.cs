@@ -399,6 +399,7 @@ namespace Server.Custom
             CommandSystem.Register("fbpkstatus",   AccessLevel.GameMaster, OnStatus);
             CommandSystem.Register("fbpkspawnall", AccessLevel.GameMaster, OnSpawnAll);
             CommandSystem.Register("fbpkreset",    AccessLevel.GameMaster, OnReset);
+            CommandSystem.Register("fbpkfind",     AccessLevel.GameMaster, OnFind);
         }
 
         private static void OnStatus(CommandEventArgs e)
@@ -429,6 +430,39 @@ namespace Server.Custom
                 _instance.TopUpZone(cfg);
 
             e.Mobile.SendMessage(0x35, $"Pools topped up. Total active: {_instance.TotalActive}");
+        }
+
+        private static void OnFind(CommandEventArgs e)
+        {
+            if (_instance == null || _instance.Deleted)
+            {
+                e.Mobile.SendMessage(0x22, "No FBPKSpawner in world.");
+                return;
+            }
+
+            // Collect all alive PKs across all zones
+            var all = new List<PoolPK>();
+            foreach (var pool in _instance._pools.Values)
+                foreach (PoolPK pk in pool)
+                    if (pk != null && !pk.Deleted && pk.Alive)
+                        all.Add(pk);
+
+            if (all.Count == 0)
+            {
+                e.Mobile.SendMessage(0x22, "No active PoolPKs in world right now.");
+                return;
+            }
+
+            // Optional index arg: [fbpkfind 2  jumps to #2
+            int idx = 0;
+            if (e.Arguments.Length > 0 && int.TryParse(e.Arguments[0], out int arg))
+                idx = Math.Max(0, Math.Min(arg - 1, all.Count - 1));
+
+            PoolPK target = all[idx];
+            e.Mobile.MoveToWorld(target.Location, target.Map);
+            e.Mobile.SendMessage(0x35,
+                $"Teleported to {target.Name} ({target.Zone}, T{target.Tier}) at {target.Location}. " +
+                $"({all.Count} active — use [fbpkfind 1/2/3... to pick)");
         }
 
         private static void OnReset(CommandEventArgs e)
