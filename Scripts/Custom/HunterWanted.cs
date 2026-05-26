@@ -161,16 +161,52 @@ namespace Server.Custom
             string charName = Names[Utility.Random(Names.Length)];
             InitWantedName(charName);
 
-            AddItem(new Katana());
-            AddItem(new LeatherChest());
-            AddItem(new LeatherLegs());
-            AddItem(new LeatherArms());
-            AddItem(new LeatherGorget());
-            AddItem(new WoodenShield());
+            // Magic gear — dexxer focus, randomised ±50% on each stat (drops on corpse)
+            var katana = new Katana();
+            katana.Attributes.WeaponDamage       = Utility.RandomMinMax(7,  22);
+            katana.Attributes.AttackChance       = Utility.RandomMinMax(5,  15);
+            katana.Attributes.WeaponSpeed        = Utility.RandomMinMax(5,  15);
+            katana.WeaponAttributes.HitLeechHits = Utility.RandomMinMax(10, 30);
+            AddItem(katana);
+
+            var chest = new LeatherChest();
+            chest.Attributes.BonusStr = Utility.RandomMinMax(1, 4);
+            chest.PhysicalBonus       = Utility.RandomMinMax(4, 12);
+            AddItem(chest);
+
+            var legs = new LeatherLegs();
+            legs.Attributes.BonusDex = Utility.RandomMinMax(1, 4);
+            legs.PhysicalBonus       = Utility.RandomMinMax(2, 7);
+            AddItem(legs);
+
+            var arms = new LeatherArms();
+            arms.Attributes.BonusStam = Utility.RandomMinMax(2, 7);
+            AddItem(arms);
+
+            var gorget = new LeatherGorget();
+            gorget.Attributes.RegenHits = 1;
+            AddItem(gorget);
+
+            var shield = new WoodenShield();
+            shield.Attributes.DefendChance = Utility.RandomMinMax(4, 12);
+            AddItem(shield);
+
             AddItem(new Boots(Utility.RandomNeutralHue()));
         }
 
         public WantedCutthroat(Serial serial) : base(serial) { }
+
+        public override void OnAfterSpawn()
+        {
+            base.OnAfterSpawn();
+            if (Mount == null)
+            {
+                var horse = new Horse();
+                horse.Hue = Utility.RandomList(0, 0, 0x83C, 0x901, 0x8AC);
+                horse.MoveToWorld(Location, Map);
+                horse.Rider = this;
+            }
+        }
 
         public override void GenerateLoot()
         {
@@ -232,13 +268,42 @@ namespace Server.Custom
             string charName = Names[Utility.Random(Names.Length)];
             InitWantedName(charName);
 
-            AddItem(new Katana());
-            AddItem(new RingmailChest());
-            AddItem(new RingmailLegs());
-            AddItem(new LeatherArms());
-            AddItem(new LeatherGorget());
-            AddItem(new HeaterShield());
-            AddItem(new Spellbook());
+            // Magic gear — tank-mage focus, randomised ±50% on each stat (drops on corpse)
+            var katana = new Katana();
+            katana.Attributes.WeaponDamage       = Utility.RandomMinMax(12, 37);
+            katana.Attributes.AttackChance       = Utility.RandomMinMax(7,  22);
+            katana.Attributes.WeaponSpeed        = Utility.RandomMinMax(7,  22);
+            katana.WeaponAttributes.HitLeechHits = Utility.RandomMinMax(15, 45);
+            AddItem(katana);
+
+            var chest = new RingmailChest();
+            chest.ArmorAttributes.MageArmor = 1;
+            chest.Attributes.BonusHits      = Utility.RandomMinMax(5,  15);
+            chest.PhysicalBonus             = Utility.RandomMinMax(6,  18);
+            AddItem(chest);
+
+            var legs = new RingmailLegs();
+            legs.ArmorAttributes.MageArmor = 1;
+            legs.PhysicalBonus             = Utility.RandomMinMax(5,  15);
+            AddItem(legs);
+
+            var arms = new LeatherArms();
+            arms.Attributes.BonusInt = Utility.RandomMinMax(2, 7);
+            AddItem(arms);
+
+            var gorget = new LeatherGorget();
+            gorget.Attributes.RegenMana = Utility.RandomMinMax(1, 3);
+            AddItem(gorget);
+
+            var shield = new HeaterShield();
+            shield.Attributes.DefendChance = Utility.RandomMinMax(7, 22);
+            AddItem(shield);
+
+            var spellbook = new Spellbook();
+            spellbook.Attributes.SpellDamage = Utility.RandomMinMax(5, 15);
+            spellbook.Attributes.CastSpeed   = 1;
+            AddItem(spellbook);
+
             AddItem(new Boots(Utility.RandomNeutralHue()));
         }
 
@@ -309,14 +374,50 @@ namespace Server.Custom
             string charName = Names[Utility.Random(Names.Length)];
             InitWantedName(charName);
 
-            AddItem(new BoneChest());
-            AddItem(new BoneArms());
-            AddItem(new BoneLegs());
-            AddItem(new BoneGloves());
-            AddItem(new BoneHelm());
-            AddItem(new BoneHarvester());
-            AddItem(new Spellbook());
-            AddItem(new NecromancerSpellbook());
+            // Magic gear — necromage focus, randomised ±50% on each stat (drops on corpse)
+            var harvester = new BoneHarvester();
+            harvester.Attributes.WeaponDamage        = Utility.RandomMinMax(17, 52);
+            harvester.Attributes.SpellChanneling     = 1;
+            harvester.WeaponAttributes.HitLeechHits  = Utility.RandomMinMax(20, 60);
+            harvester.WeaponAttributes.HitLeechMana  = Utility.RandomMinMax(15, 45);
+            AddItem(harvester);
+
+            var chest = new BoneChest();
+            chest.Attributes.BonusHits  = Utility.RandomMinMax(10, 30);
+            chest.Attributes.RegenHits  = Utility.RandomMinMax(1,  3);
+            chest.PhysicalBonus         = Utility.RandomMinMax(7,  22);
+            AddItem(chest);
+
+            var arms = new BoneArms();
+            arms.Attributes.BonusStr = Utility.RandomMinMax(2, 7);
+            arms.PhysicalBonus       = Utility.RandomMinMax(5, 15);
+            AddItem(arms);
+
+            var legs = new BoneLegs();
+            legs.Attributes.BonusDex = Utility.RandomMinMax(2, 7);
+            legs.PhysicalBonus       = Utility.RandomMinMax(5, 15);
+            AddItem(legs);
+
+            var gloves = new BoneGloves();
+            gloves.Attributes.BonusInt = Utility.RandomMinMax(2, 7);
+            AddItem(gloves);
+
+            var helm = new BoneHelm();
+            helm.Attributes.LowerManaCost = Utility.RandomMinMax(4, 12);
+            AddItem(helm);
+
+            var spellbook = new Spellbook();
+            spellbook.Attributes.SpellDamage   = Utility.RandomMinMax(10, 30);
+            spellbook.Attributes.CastSpeed     = 1;
+            spellbook.Attributes.CastRecovery  = Utility.RandomMinMax(1, 3);
+            spellbook.Attributes.LowerManaCost = Utility.RandomMinMax(4, 12);
+            AddItem(spellbook);
+
+            var necroBook = new NecromancerSpellbook();
+            necroBook.Attributes.SpellDamage  = Utility.RandomMinMax(7, 22);
+            necroBook.Attributes.CastRecovery = 1;
+            AddItem(necroBook);
+
             AddItem(new Sandals());
 
             PackItem(new GreaterHealPotion());
