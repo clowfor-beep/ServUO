@@ -523,18 +523,19 @@ namespace Server.Custom
         }
 
         // ── Guild home locations ──────────────────────────────────────────────
-        // Approximate Britain-area coords. Verify with [where and update before
-        // SimPlayer placement goes live.
+        // All clustered near the Britain bank steps — confirmed open road area.
+        // Spread south along Y axis (not east, which hits buildings at X>1450).
+        // ±20-tile random wander means each guild naturally covers a 40x40 area.
 
         // Tier 1 — Blue / Grey
-        public static readonly Point3D Wanderers_Home         = new Point3D(1442, 1693, 5);
-        public static readonly Point3D CraftsmensLeague_Home  = new Point3D(1460, 1693, 5);
-        public static readonly Point3D ShadowHand_Home        = new Point3D(1478, 1693, 5);
+        public static readonly Point3D Wanderers_Home         = new Point3D(1440, 1697, 5);
+        public static readonly Point3D CraftsmensLeague_Home  = new Point3D(1444, 1697, 5);
+        public static readonly Point3D ShadowHand_Home        = new Point3D(1440, 1701, 5);
 
         // Tier 2 — Blue
-        public static readonly Point3D IronCompany_Home       = new Point3D(1496, 1693, 5);
-        public static readonly Point3D ArcaneBrotherhood_Home = new Point3D(1514, 1693, 5);
-        public static readonly Point3D SilverWolves_Home      = new Point3D(1532, 1693, 5);
+        public static readonly Point3D IronCompany_Home       = new Point3D(1444, 1701, 5);
+        public static readonly Point3D ArcaneBrotherhood_Home = new Point3D(1440, 1705, 5);
+        public static readonly Point3D SilverWolves_Home      = new Point3D(1444, 1705, 5);
 
         // Tier 3 — Blue / Perm Grey / Mixed
         public static readonly Point3D PaladinOrder_Home      = new Point3D(1442, 1713, 5);

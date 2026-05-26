@@ -119,6 +119,7 @@ namespace Server.Custom
             Karma = 1000;
             Kills = 0; // blue - Wanderers are not red
 
+            AddItem(new Backpack());
             AddItem(new LeatherChest());
             AddItem(new LeatherLegs());
             AddItem(new LeatherGorget());
@@ -236,8 +237,8 @@ namespace Server.Custom
                 return;
             }
 
-            // Step toward destination
-            this.Move(this.GetDirectionTo(_travelDest));
+            // Step toward destination — DoMove handles doors and basic obstacle avoidance
+            this.DoMove(this.GetDirectionTo(_travelDest));
         }
 
         private void ArriveAtDest()
