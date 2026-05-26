@@ -423,10 +423,10 @@ namespace Server.Custom
                     new Rectangle2D(2455,  880, 50, 50)),
 
                 [SpawnZone.WantedZone_NearShame] = new ZoneData(Map.Felucca,
-                    new Rectangle2D( 490, 1455, 50, 50)),
+                    new Rectangle2D( 490, 1548, 50, 40)),  // near Shame entrance (~511,1565) — was too far north
 
                 [SpawnZone.WantedZone_NearWrong] = new ZoneData(Map.Felucca,
-                    new Rectangle2D(2025,  155, 50, 50)),
+                    new Rectangle2D(2015,  212, 50, 40)),  // near Wrong entrance (~2042,220) — was behind mountains
 
                 [SpawnZone.WantedZone_NearDestard] = new ZoneData(Map.Felucca,
                     new Rectangle2D( 965, 3055, 50, 50)),
