@@ -121,11 +121,11 @@ namespace Server.Gumps
             AddHtml(PadX, 38, 65, 22,
                 "<BASEFONT COLOR=#AAAAAA>Search:</BASEFONT>", false, false);
 
-            AddBackground(78, 35, 310, 24, 9350);
-            AddTextEntry(81, 37, 304, 20, 0, 0, _query);
+            AddBackground(78, 35, 290, 24, 9350);
+            AddTextEntry(81, 37, 284, 20, 0, 0, _query);
 
-            AddButton(402, 36, 4005, 4007, BTN_SEARCH, GumpButtonType.Reply, 0);
-            AddHtml(422, 38, 80, 20,
+            AddButton(382, 36, 4005, 4007, BTN_SEARCH, GumpButtonType.Reply, 0);
+            AddHtml(410, 38, 90, 20,
                 "<BASEFONT COLOR=#DDCCAA>Search</BASEFONT>", false, false);
 
             // ── Status / hint line ─────────────────────────────────
