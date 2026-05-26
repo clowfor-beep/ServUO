@@ -139,12 +139,12 @@ namespace Server.Custom
         {
             Hue = 0x21;
 
-            SetStr(95, 105);
-            SetDex(65, 75);
-            SetInt(25, 35);
-            SetHits(95, 105);
-            SetStam(65, 75);
-            SetMana(0);
+            SetStr(125);
+            SetDex(125);
+            SetInt(125);
+            SetHits(125);
+            SetStam(125);
+            SetMana(125);
 
             SetSkill(SkillName.Swords,      97.0, 100.0);
             SetSkill(SkillName.Tactics,     97.0, 100.0);
@@ -210,12 +210,12 @@ namespace Server.Custom
         {
             Hue = 0x47B;
 
-            SetStr(105, 115);
-            SetDex(75, 85);
-            SetInt(55, 65);
-            SetHits(105, 115);
-            SetStam(75, 85);
-            SetMana(55, 65);
+            SetStr(125);
+            SetDex(125);
+            SetInt(125);
+            SetHits(125);
+            SetStam(125);
+            SetMana(125);
 
             SetSkill(SkillName.Swords,      107.0, 112.0);
             SetSkill(SkillName.Tactics,     107.0, 112.0);
@@ -286,12 +286,12 @@ namespace Server.Custom
         {
             Hue = 0x497;
 
-            SetStr(115, 125);
-            SetDex(85, 95);
-            SetInt(95, 105);
-            SetHits(115, 125);
-            SetStam(85, 95);
-            SetMana(95, 105);
+            SetStr(125);
+            SetDex(125);
+            SetInt(125);
+            SetHits(125);
+            SetStam(125);
+            SetMana(125);
 
             SetSkill(SkillName.Magery,      117.0, 122.0);
             SetSkill(SkillName.EvalInt,     117.0, 122.0);
