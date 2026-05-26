@@ -142,7 +142,7 @@ namespace Server.Custom
             SetStr(125);
             SetDex(125);
             SetInt(125);
-            SetHits(125);
+            SetHits(400, 500);
             SetStam(125);
             SetMana(125);
 
@@ -153,6 +153,12 @@ namespace Server.Custom
             SetSkill(SkillName.Parry,       82.0, 87.0);
             SetSkill(SkillName.Hiding,      57.0, 62.0);
             SetSkill(SkillName.MagicResist, 57.0, 62.0);
+
+            SetResistance(ResistanceType.Physical, 50, 60);
+            SetResistance(ResistanceType.Fire,     35, 45);
+            SetResistance(ResistanceType.Cold,     35, 45);
+            SetResistance(ResistanceType.Poison,   35, 45);
+            SetResistance(ResistanceType.Energy,   35, 45);
 
             Fame        = 5000;
             Karma       = -5000;
@@ -249,7 +255,7 @@ namespace Server.Custom
             SetStr(125);
             SetDex(125);
             SetInt(125);
-            SetHits(125);
+            SetHits(600, 800);
             SetStam(125);
             SetMana(125);
 
@@ -260,6 +266,12 @@ namespace Server.Custom
             SetSkill(SkillName.Parry,       97.0, 100.0);
             SetSkill(SkillName.Magery,      77.0, 82.0);
             SetSkill(SkillName.MagicResist, 77.0, 82.0);
+
+            SetResistance(ResistanceType.Physical, 65, 75);
+            SetResistance(ResistanceType.Fire,     45, 55);
+            SetResistance(ResistanceType.Cold,     45, 55);
+            SetResistance(ResistanceType.Poison,   45, 55);
+            SetResistance(ResistanceType.Energy,   45, 55);
 
             Fame        = 12000;
             Karma       = -12000;
@@ -354,7 +366,7 @@ namespace Server.Custom
             SetStr(125);
             SetDex(125);
             SetInt(125);
-            SetHits(125);
+            SetHits(1000, 1200);
             SetStam(125);
             SetMana(125);
 
@@ -366,6 +378,12 @@ namespace Server.Custom
             SetSkill(SkillName.Swords,      107.0, 112.0);
             SetSkill(SkillName.Tactics,     107.0, 112.0);
             SetSkill(SkillName.DetectHidden, 77.0, 82.0);
+
+            SetResistance(ResistanceType.Physical, 55, 65);
+            SetResistance(ResistanceType.Fire,     45, 55);
+            SetResistance(ResistanceType.Cold,     60, 70);
+            SetResistance(ResistanceType.Poison,   65, 75);
+            SetResistance(ResistanceType.Energy,   50, 60);
 
             Fame        = 22000;
             Karma       = -22000;
