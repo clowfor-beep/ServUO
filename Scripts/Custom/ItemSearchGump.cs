@@ -163,7 +163,7 @@ namespace Server.Gumps
                 int y = 88;
 
                 // Column headers
-                AddHtml(PadX + 22, y, 200, 20, "<BASEFONT COLOR=#666655>Item</BASEFONT>",      false, false);
+                AddHtml(PadX + 36, y, 200, 20, "<BASEFONT COLOR=#666655>Item</BASEFONT>",      false, false);
                 AddHtml(240,       y,  60, 20, "<BASEFONT COLOR=#666655>Qty</BASEFONT>",       false, false);
                 AddHtml(304,       y, W - 304 - PadX, 20, "<BASEFONT COLOR=#666655>Location</BASEFONT>", false, false);
                 y += 20;
@@ -179,7 +179,7 @@ namespace Server.Gumps
                     AddItem(PadX, y - 2, r.ItemID);
                     AddItemProperty(r.Serial);
 
-                    AddHtml(PadX + 22, y, 200, RowH,
+                    AddHtml(PadX + 36, y, 200, RowH,
                         $"<BASEFONT COLOR={color}>{r.ItemName}</BASEFONT>", false, false);
                     AddHtml(240, y,  60, RowH,
                         $"<BASEFONT COLOR={color}>{(r.Amount > 1 ? r.Amount.ToString() : "—")}</BASEFONT>",
