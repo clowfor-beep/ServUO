@@ -153,7 +153,7 @@ namespace Server.Gumps
             // ── Bottom button row ─────────────────────────────────────────
             int btnY = GH - 30;
             AddButton(CL, btnY, 4005, 4007, 1, GumpButtonType.Reply, 0);
-            AddHtml(CL + 22, btnY + 2, 120, 20,
+            AddHtml(CL + 30, btnY + 2, 120, 20,
                 "<BASEFONT COLOR=#DDCCAA>Item Search</BASEFONT>", false, false);
         }
 
