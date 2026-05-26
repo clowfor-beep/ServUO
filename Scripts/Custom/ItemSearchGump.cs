@@ -27,12 +27,16 @@ namespace Server.Gumps
         public string ItemName;
         public int    Amount;
         public string Location;
+        public int    Serial;   // for AddItemProperty tooltip on hover
+        public int    ItemID;   // for item graphic
 
-        public ItemSearchResult(string itemName, int amount, string location)
+        public ItemSearchResult(string itemName, int amount, string location, int serial, int itemID)
         {
             ItemName = itemName;
             Amount   = amount;
             Location = location;
+            Serial   = serial;
+            ItemID   = itemID;
         }
     }
 
@@ -159,9 +163,9 @@ namespace Server.Gumps
                 int y = 88;
 
                 // Column headers
-                AddHtml(PadX,  y, 220, 20, "<BASEFONT COLOR=#666655>Item</BASEFONT>",      false, false);
-                AddHtml(238,   y,  60, 20, "<BASEFONT COLOR=#666655>Qty</BASEFONT>",       false, false);
-                AddHtml(302,   y, W - 302 - PadX, 20, "<BASEFONT COLOR=#666655>Location</BASEFONT>", false, false);
+                AddHtml(PadX + 22, y, 200, 20, "<BASEFONT COLOR=#666655>Item</BASEFONT>",      false, false);
+                AddHtml(240,       y,  60, 20, "<BASEFONT COLOR=#666655>Qty</BASEFONT>",       false, false);
+                AddHtml(304,       y, W - 304 - PadX, 20, "<BASEFONT COLOR=#666655>Location</BASEFONT>", false, false);
                 y += 20;
                 AddImageTiled(PadX, y, W - PadX * 2, 1, 9264);
                 y += 5;
@@ -171,12 +175,16 @@ namespace Server.Gumps
                     var    r     = _results[i];
                     string color = (i % 2 == 0) ? "#DDCCAA" : "#BBAA88";
 
-                    AddHtml(PadX, y, 220, RowH,
+                    // Item icon — hover for full tooltip
+                    AddItem(PadX, y - 2, r.ItemID);
+                    AddItemProperty(r.Serial);
+
+                    AddHtml(PadX + 22, y, 200, RowH,
                         $"<BASEFONT COLOR={color}>{r.ItemName}</BASEFONT>", false, false);
-                    AddHtml(238,  y,  60, RowH,
+                    AddHtml(240, y,  60, RowH,
                         $"<BASEFONT COLOR={color}>{(r.Amount > 1 ? r.Amount.ToString() : "—")}</BASEFONT>",
                         false, false);
-                    AddHtml(302,  y, W - 302 - PadX, RowH,
+                    AddHtml(304, y, W - 304 - PadX, RowH,
                         $"<BASEFONT COLOR={color}>{r.Location}</BASEFONT>", false, false);
 
                     y += RowH;
@@ -297,7 +305,7 @@ namespace Server.Gumps
                 string searchable = (label + " " + GetItemProperties(item)).ToLowerInvariant();
 
                 if (searchable.Contains(query))
-                    results.Add(new ItemSearchResult(Capitalise(label), item.Amount, location));
+                    results.Add(new ItemSearchResult(Capitalise(label), item.Amount, location, item.Serial.Value, item.ItemID));
 
                 // Recurse into sub-containers
                 if (item is Container sub)
