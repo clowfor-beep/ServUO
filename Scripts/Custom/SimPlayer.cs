@@ -237,8 +237,8 @@ namespace Server.Custom
                 return;
             }
 
-            // Step toward destination — DoMove handles doors and basic obstacle avoidance
-            this.DoMove(this.GetDirectionTo(_travelDest));
+            // Step toward destination
+            this.Move(this.GetDirectionTo(_travelDest));
         }
 
         private void ArriveAtDest()
