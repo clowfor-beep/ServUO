@@ -84,8 +84,8 @@ namespace Server.Custom
                 killerName,
                 DateTime.UtcNow));
 
-            // Tokens (Murderer and Dread Lord only)
-            int tokens = WantedTier == 11 ? 2 : WantedTier == 12 ? 5 : 0;
+            // Tokens: 1 / 2 / 3 for Cutthroat / Murderer / Dread Lord
+            int tokens = WantedTier == 10 ? 1 : WantedTier == 11 ? 2 : WantedTier == 12 ? 3 : 0;
             if (tokens > 0)
                 corpse.DropItem(new HunterToken(tokens));
 
