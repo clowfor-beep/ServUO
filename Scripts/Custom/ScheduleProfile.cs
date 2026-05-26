@@ -30,7 +30,7 @@ namespace Server.Custom
             return Utility.RandomDouble() < _hourlyChance[hour];
         }
 
-        // ── Wanderers — friendly, daytime-focused ─────────────────────────
+        // -- Wanderers -- friendly, daytime-focused -------------------
         public static ScheduleProfile Wanderers(int driftMinutes = 0)
         {
             double[] chance = new double[24];
@@ -45,7 +45,7 @@ namespace Server.Custom
             return new ScheduleProfile(chance, driftMinutes);
         }
 
-        // ── Craftsmen's League — workday schedule ─────────────────────────
+        // -- Craftsmen's League -- workday schedule -------------------
         public static ScheduleProfile CraftsmensLeague(int driftMinutes = 0)
         {
             double[] chance = new double[24];
@@ -59,7 +59,7 @@ namespace Server.Custom
             return new ScheduleProfile(chance, driftMinutes);
         }
 
-        // ── Iron Company — prime time heavy ──────────────────────────────
+        // -- Iron Company -- prime time heavy -------------------------
         public static ScheduleProfile IronCompany(int driftMinutes = 0)
         {
             double[] chance = new double[24];
@@ -73,7 +73,7 @@ namespace Server.Custom
             return new ScheduleProfile(chance, driftMinutes);
         }
 
-        // ── Arcane Brotherhood — late night heavy ─────────────────────────
+        // -- Arcane Brotherhood -- late night heavy -------------------
         public static ScheduleProfile ArcaneBrotherhood(int driftMinutes = 0)
         {
             double[] chance = new double[24];
@@ -87,7 +87,7 @@ namespace Server.Custom
             return new ScheduleProfile(chance, driftMinutes);
         }
 
-        // ── Silver Wolves — consistent patrol presence ────────────────────
+        // -- Silver Wolves -- consistent patrol presence --------------
         public static ScheduleProfile SilverWolves(int driftMinutes = 0)
         {
             double[] chance = new double[24];
@@ -96,6 +96,20 @@ namespace Server.Custom
                 if      (h >= 0  && h < 6)  chance[h] = 0.40;
                 else if (h >= 6  && h < 22) chance[h] = 0.75;
                 else                        chance[h] = 0.50;
+            }
+            return new ScheduleProfile(chance, driftMinutes);
+        }
+
+        // -- Shadow Hand -- town thieves, peak-hours focus ------------
+        public static ScheduleProfile ShadowHand(int driftMinutes = 0)
+        {
+            double[] chance = new double[24];
+            for (int h = 0; h < 24; h++)
+            {
+                if      (h >= 0  && h < 6)  chance[h] = 0.10; // sleeping
+                else if (h >= 6  && h < 10) chance[h] = 0.50; // morning shift
+                else if (h >= 10 && h < 22) chance[h] = 0.80; // prime picking hours
+                else                        chance[h] = 0.30; // late nights
             }
             return new ScheduleProfile(chance, driftMinutes);
         }

@@ -3,7 +3,7 @@
 // Scripts/Custom/PlayerSimulatorManager.cs
 //
 // Singleton Item that owns all SimPlayers.
-// - Creates the Phase 1 roster (4 Wanderers) on first load.
+// - Creates the roster (18 members across 6 guilds) on first load.
 // - Activates eligible SimPlayers up to MaxActiveSimultaneous.
 // - Ticks every minute to top up the active pool.
 //
@@ -22,21 +22,21 @@ namespace Server.Custom
 {
     public class PlayerSimulatorManager : Item
     {
-        // ── Singleton ─────────────────────────────────────────────────────
+        // -- Singleton ------------------------------------------------
         private static PlayerSimulatorManager _instance;
         public  static PlayerSimulatorManager Instance => _instance;
 
         // Fixed location for the manager item (invisible, internal map)
         private static readonly Point3D ManagerLocation = new Point3D(0, 0, 0);
 
-        // ── Config ────────────────────────────────────────────────────────
+        // -- Config ---------------------------------------------------
         public const int MaxActiveSimultaneous = 30;
 
-        // ── Roster ────────────────────────────────────────────────────────
-        // All SimPlayers (Phase 1: 4). Persisted via item serialization.
+        // -- Roster ---------------------------------------------------
+        // All SimPlayers. Persisted via item serialization.
         private List<SimPlayer> _allSimPlayers = new List<SimPlayer>();
 
-        // ── Initialize() — auto-called at server startup ──────────────────
+        // -- Initialize() -- auto-called at server startup ------------
         public static void Initialize()
         {
             // Register staff commands
@@ -71,7 +71,7 @@ namespace Server.Custom
             Timer.DelayCall(TimeSpan.FromMinutes(1.0), _instance.OnManageTick);
         }
 
-        // ── Constructors ──────────────────────────────────────────────────
+        // -- Constructors ---------------------------------------------
         [Constructable]
         public PlayerSimulatorManager() : base(0x1)
         {
@@ -82,14 +82,14 @@ namespace Server.Custom
 
         public PlayerSimulatorManager(Serial serial) : base(serial) { }
 
-        // ── Roster creation — runs once on first world load ───────────────
+        // -- Roster creation -- runs once on first world load ---------
         private void CreateRosterIfEmpty()
         {
             if (_allSimPlayers.Count > 0) return;
 
-            Console.WriteLine("[SimPlayer] Creating Phase 1 roster...");
+            Console.WriteLine("[SimPlayer] Creating roster...");
 
-            // THE WANDERERS — 4 members
+            // THE WANDERERS -- 4 members
             // Home: Britain bank area (FBZones.Wanderers_Home)
             Point3D wandHome = FBZones.Wanderers_Home;
 
@@ -98,7 +98,7 @@ namespace Server.Custom
             CreateSimPlayer(FBGuilds.Wanderers, "Old Thomas",        wandHome, SpawnZone.Britain_Roads, -20);
             CreateSimPlayer(FBGuilds.Wanderers, "Lena Farwalker",    wandHome, SpawnZone.Britain_Roads, 10);
 
-            // THE CRAFTSMEN'S LEAGUE — 3 members
+            // THE CRAFTSMEN'S LEAGUE -- 3 members
             Point3D craftHome = FBZones.CraftsmensLeague_Home;
             _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Garrett the Smith",
                 craftHome, SpawnZone.Britain_Roads, ScheduleProfile.CraftsmensLeague(0)));
@@ -107,7 +107,7 @@ namespace Server.Custom
             _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Woodcutter Bram",
                 craftHome, SpawnZone.Britain_Roads, ScheduleProfile.CraftsmensLeague(-15)));
 
-            // IRON COMPANY — 3 members
+            // IRON COMPANY -- 3 members
             Point3D ironHome = FBZones.IronCompany_Home;
             _allSimPlayers.Add(new IronCompanySimPlayer("Sergeant Vale",
                 ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(0)));
@@ -116,7 +116,7 @@ namespace Server.Custom
             _allSimPlayers.Add(new IronCompanySimPlayer("Ironhide",
                 ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(-10)));
 
-            // ARCANE BROTHERHOOD — 3 members
+            // ARCANE BROTHERHOOD -- 3 members
             Point3D arcaneHome = FBZones.ArcaneBrotherhood_Home;
             _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("Scholar Aldric",
                 arcaneHome, SpawnZone.Britain_Roads, ScheduleProfile.ArcaneBrotherhood(0)));
@@ -125,14 +125,23 @@ namespace Server.Custom
             _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("The Recluse",
                 arcaneHome, SpawnZone.Britain_Roads, ScheduleProfile.ArcaneBrotherhood(-30)));
 
-            // SILVER WOLVES — 2 members
+            // SILVER WOLVES -- 2 members
             Point3D wolvesHome = FBZones.SilverWolves_Home;
             _allSimPlayers.Add(new SilverWolvesSimPlayer("Captain Rowena",
                 wolvesHome, SpawnZone.Britain_Roads, ScheduleProfile.SilverWolves(0)));
             _allSimPlayers.Add(new SilverWolvesSimPlayer("Scout Finn",
                 wolvesHome, SpawnZone.Britain_Roads, ScheduleProfile.SilverWolves(15)));
 
-            Console.WriteLine($"[SimPlayer] Roster created: {_allSimPlayers.Count} SimPlayers.");
+            // THE SHADOW HAND -- 3 members (Phase 2)
+            Point3D shadowHome = FBZones.ShadowHand_Home;
+            _allSimPlayers.Add(new ShadowHandSimPlayer("Fingers Malory",
+                shadowHome, SpawnZone.Britain_Roads, ScheduleProfile.ShadowHand(0)));
+            _allSimPlayers.Add(new ShadowHandSimPlayer("The Whisper",
+                shadowHome, SpawnZone.Britain_Roads, ScheduleProfile.ShadowHand(25)));
+            _allSimPlayers.Add(new ShadowHandSimPlayer("Slick Fen",
+                shadowHome, SpawnZone.Britain_Roads, ScheduleProfile.ShadowHand(-20)));
+
+            Console.WriteLine($"[SimPlayer] Roster created: {_allSimPlayers.Count} SimPlayers (18 across 6 guilds).");
         }
 
         private void CreateSimPlayer(string guild, string memberName, Point3D home,
@@ -143,7 +152,7 @@ namespace Server.Custom
             _allSimPlayers.Add(sp);
         }
 
-        // ── Active pool management ────────────────────────────────────────
+        // -- Active pool management -----------------------------------
         private void ActivateEligibleSimPlayers()
         {
             int active = CountActive();
@@ -179,10 +188,10 @@ namespace Server.Custom
             Timer.DelayCall(TimeSpan.FromMinutes(1.0), OnManageTick);
         }
 
-        // ── Staff commands ────────────────────────────────────────────────
+        // -- Staff commands -------------------------------------------
 
         /// <summary>
-        /// [simreset — wipe all SimPlayers and rebuild the full roster from scratch.
+        /// [simreset -- wipe all SimPlayers and rebuild the full roster from scratch.
         /// Use after adding new guild members to the roster definition.
         /// </summary>
         public static void SimReset(Mobile from)
@@ -205,7 +214,7 @@ namespace Server.Custom
             _instance._allSimPlayers.Clear();
 
             from.SendMessage(0x35, $"[SimPlayer] Deleted {deleted} SimPlayers. Rebuilding roster...");
-            Console.WriteLine($"[SimPlayer] simreset by {from.Name} — deleted {deleted} SimPlayers.");
+            Console.WriteLine($"[SimPlayer] simreset by {from.Name} -- deleted {deleted} SimPlayers.");
 
             _instance.CreateRosterIfEmpty();
             _instance.ActivateEligibleSimPlayers();
@@ -214,7 +223,7 @@ namespace Server.Custom
         }
 
         /// <summary>
-        /// [simstatus — show roster state to the invoking staff member.
+        /// [simstatus -- show roster state to the invoking staff member.
         /// </summary>
         public static void SimStatus(Mobile from)
         {
@@ -230,11 +239,11 @@ namespace Server.Custom
                 string location = sp.Deleted  ? "DELETED" :
                                   sp.Map == Map.Internal ? $"Internal (cooldown={sp.IsOnCooldown}, schedule={sp.Schedule_ShouldBeActive()})" :
                                   $"{sp.Map.Name} ({sp.X},{sp.Y}) state={sp.State}";
-                from.SendMessage(1153, $"  {sp.MemberName} [{sp.GuildName}] — {location}");
+                from.SendMessage(1153, $"  {sp.MemberName} [{sp.GuildName}] -- {location}");
             }
         }
 
-        // ── Serialization ─────────────────────────────────────────────────
+        // -- Serialization --------------------------------------------
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
