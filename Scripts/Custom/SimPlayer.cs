@@ -170,9 +170,13 @@ namespace Server.Custom
         {
             _chatBrain.TryAmbientSpeech(this);
 
-            // Trigger banking trip if due
+            // Trigger banking trip if due — return early so _idleUntil check
+            // can't fire in the same tick and overwrite _travelIsBankTrip.
             if (!_inBankingCycle && DateTime.UtcNow >= _nextBankingTime)
+            {
                 StartBankingTrip();
+                return;
+            }
 
             if (DateTime.UtcNow >= _idleUntil)
                 StartTravelling();
