@@ -58,6 +58,13 @@ namespace Server.Custom
             _resolvedName = HunterCreatureName;  // evaluate random name exactly once
             Name  = $"[Hunted] {_resolvedName} {HunterTitle}";
             Title = string.Empty;
+
+            // Apply stat multipliers after subclass has set all values:
+            //   HP x2   — double staying power vs base creature
+            //   Str x1.25, Int x1.25 — 25% more melee and spell damage
+            SetHits(HitsMax * 2);
+            SetStr((int)(RawStr * 1.25));
+            SetInt((int)(RawInt * 1.25));
         }
 
         protected void StartPresenceShouts()
@@ -147,10 +154,18 @@ namespace Server.Custom
             if (HunterTier == 4 && Utility.RandomDouble() < 0.05)
                 corpse.DropItem(GenerateTier4Artifact());
 
-            // Tiered minor artifact: T2=10%, T3=25%, T4=50%
-            double artifactChance = HunterTier == 2 ? 0.10
-                                  : HunterTier == 3 ? 0.25
-                                  : HunterTier == 4 ? 0.50
+            // Power scroll drops: T2=15%→105, T3=30%→105-110, T4=50%→110-120
+            if (HunterTier == 2 && Utility.RandomDouble() < 0.15)
+                corpse.DropItem(PowerScroll.CreateRandomNoCraft(5, 5));
+            else if (HunterTier == 3 && Utility.RandomDouble() < 0.30)
+                corpse.DropItem(PowerScroll.CreateRandomNoCraft(5, 10));
+            else if (HunterTier == 4 && Utility.RandomDouble() < 0.50)
+                corpse.DropItem(PowerScroll.CreateRandomNoCraft(10, 20));
+
+            // Tiered minor artifact: T2=2%, T3=5%, T4=15%
+            double artifactChance = HunterTier == 2 ? 0.02
+                                  : HunterTier == 3 ? 0.05
+                                  : HunterTier == 4 ? 0.15
                                   : 0.0;
             if (artifactChance > 0.0 && Utility.RandomDouble() < artifactChance)
             {
@@ -289,8 +304,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.Rich, 2);
-            PackGold(50, 200);
+            AddLoot(LootPack.UltraRich, 3);
+            PackGold(400, 1000);
             PackItem(new MandrakeRoot(Utility.RandomMinMax(30, 50)));
             PackItem(new BlackPearl(Utility.RandomMinMax(30, 50)));
         }
@@ -336,8 +351,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.Rich, 2);
-            PackGold(50, 200);
+            AddLoot(LootPack.UltraRich, 3);
+            PackGold(400, 1000);
             PackItem(new Bandage(Utility.RandomMinMax(30, 50)));
         }
 
@@ -382,8 +397,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.Rich, 2);
-            PackGold(50, 200);
+            AddLoot(LootPack.UltraRich, 3);
+            PackGold(400, 1000);
         }
 
         public override void Serialize(GenericWriter writer) { base.Serialize(writer); writer.Write(0); }
@@ -427,8 +442,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.Rich, 2);
-            PackGold(50, 200);
+            AddLoot(LootPack.UltraRich, 3);
+            PackGold(400, 1000);
         }
 
         public override void Serialize(GenericWriter writer) { base.Serialize(writer); writer.Write(0); }
@@ -473,8 +488,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.Rich, 2);
-            PackGold(50, 200);
+            AddLoot(LootPack.UltraRich, 3);
+            PackGold(400, 1000);
             PackItem(new SpidersSilk(Utility.RandomMinMax(30, 50)));
             PackItem(new SulfurousAsh(Utility.RandomMinMax(30, 50)));
         }
@@ -527,7 +542,8 @@ namespace Server.Custom
         public override void GenerateLoot()
         {
             AddLoot(LootPack.UltraRich, 3);
-            PackGold(200, 800);
+            AddLoot(LootPack.SuperBoss, 1);
+            PackGold(800, 2000);
             for (int i = 0; i < Utility.RandomMinMax(2, 4); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new MandrakeRoot(Utility.RandomMinMax(50, 80)));
@@ -578,7 +594,8 @@ namespace Server.Custom
         public override void GenerateLoot()
         {
             AddLoot(LootPack.UltraRich, 3);
-            PackGold(200, 800);
+            AddLoot(LootPack.SuperBoss, 1);
+            PackGold(800, 2000);
             for (int i = 0; i < Utility.RandomMinMax(2, 4); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
         }
@@ -628,7 +645,8 @@ namespace Server.Custom
         public override void GenerateLoot()
         {
             AddLoot(LootPack.UltraRich, 3);
-            PackGold(200, 800);
+            AddLoot(LootPack.SuperBoss, 1);
+            PackGold(800, 2000);
             for (int i = 0; i < Utility.RandomMinMax(2, 4); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new BatWing(Utility.RandomMinMax(50, 80)));
@@ -679,7 +697,8 @@ namespace Server.Custom
         public override void GenerateLoot()
         {
             AddLoot(LootPack.UltraRich, 3);
-            PackGold(200, 800);
+            AddLoot(LootPack.SuperBoss, 1);
+            PackGold(800, 2000);
             for (int i = 0; i < Utility.RandomMinMax(2, 4); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
         }
@@ -732,8 +751,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.UltraRich, 4);
-            PackGold(500, 1500);
+            AddLoot(LootPack.SuperBoss, 3);
+            PackGold(1500, 4000);
             for (int i = 0; i < Utility.RandomMinMax(3, 5); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new GreaterHealPotion());
@@ -788,8 +807,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.UltraRich, 4);
-            PackGold(500, 1500);
+            AddLoot(LootPack.SuperBoss, 3);
+            PackGold(1500, 4000);
             for (int i = 0; i < Utility.RandomMinMax(3, 5); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new GreaterHealPotion());
@@ -845,8 +864,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.UltraRich, 4);
-            PackGold(500, 1500);
+            AddLoot(LootPack.SuperBoss, 3);
+            PackGold(1500, 4000);
             for (int i = 0; i < Utility.RandomMinMax(3, 5); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new GreaterHealPotion());
@@ -897,8 +916,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.UltraRich, 4);
-            PackGold(500, 1500);
+            AddLoot(LootPack.SuperBoss, 3);
+            PackGold(1500, 4000);
             for (int i = 0; i < Utility.RandomMinMax(3, 5); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new GreaterHealPotion());
@@ -950,8 +969,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.UltraRich, 4);
-            PackGold(500, 1500);
+            AddLoot(LootPack.SuperBoss, 3);
+            PackGold(1500, 4000);
             for (int i = 0; i < Utility.RandomMinMax(3, 5); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new GreaterHealPotion());
@@ -1004,8 +1023,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.UltraRich, 5);
-            PackGold(500, 2000);
+            AddLoot(LootPack.SuperBoss, 4);
+            PackGold(3000, 8000);
             for (int i = 0; i < Utility.RandomMinMax(4, 6); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new GreaterHealPotion());
@@ -1063,8 +1082,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.UltraRich, 5);
-            PackGold(500, 2000);
+            AddLoot(LootPack.SuperBoss, 4);
+            PackGold(3000, 8000);
             for (int i = 0; i < Utility.RandomMinMax(4, 6); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new GreaterHealPotion());
@@ -1122,8 +1141,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.UltraRich, 5);
-            PackGold(500, 2000);
+            AddLoot(LootPack.SuperBoss, 4);
+            PackGold(3000, 8000);
             for (int i = 0; i < Utility.RandomMinMax(4, 6); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new GreaterHealPotion());
@@ -1180,8 +1199,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.UltraRich, 5);
-            PackGold(500, 2000);
+            AddLoot(LootPack.SuperBoss, 4);
+            PackGold(3000, 8000);
             for (int i = 0; i < Utility.RandomMinMax(4, 6); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new GreaterHealPotion());
@@ -1237,8 +1256,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.UltraRich, 5);
-            PackGold(500, 2000);
+            AddLoot(LootPack.SuperBoss, 4);
+            PackGold(3000, 8000);
             for (int i = 0; i < Utility.RandomMinMax(4, 6); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new GreaterHealPotion());
@@ -1294,8 +1313,8 @@ namespace Server.Custom
 
         public override void GenerateLoot()
         {
-            AddLoot(LootPack.UltraRich, 5);
-            PackGold(500, 2000);
+            AddLoot(LootPack.SuperBoss, 4);
+            PackGold(3000, 8000);
             for (int i = 0; i < Utility.RandomMinMax(4, 6); i++)
                 PackItem(Loot.RandomScroll(6, 7, SpellbookType.Regular));
             PackItem(new GreaterHealPotion());
