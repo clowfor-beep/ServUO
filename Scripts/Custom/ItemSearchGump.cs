@@ -261,11 +261,11 @@ namespace Server.Gumps
 
             // 1. Backpack
             if (player.Backpack != null)
-                ScanContainer(player.Backpack, query, "Backpack", results);
+                ScanContainer(player.Backpack, query, "Backpack", results, player);
 
             // 2. Bank box
             if (player.BankBox != null)
-                ScanContainer(player.BankBox, query, "Bank", results);
+                ScanContainer(player.BankBox, query, "Bank", results, player);
 
             // 3. All house secure containers
             var houses = BaseHouse.GetHouses(player);
@@ -281,7 +281,7 @@ namespace Server.Gumps
                     if (cont == null) continue;
 
                     string label = GetLabel(si.Item);
-                    ScanContainer(cont, query, $"House › {label}", results);
+                    ScanContainer(cont, query, $"House › {label}", results, player);
                 }
             }
 
@@ -293,7 +293,8 @@ namespace Server.Gumps
         /// Matches against item name AND searchable property text.
         /// </summary>
         private static void ScanContainer(Container cont, string query,
-                                           string location, List<ItemSearchResult> results)
+                                           string location, List<ItemSearchResult> results,
+                                           PlayerMobile player)
         {
             if (cont == null) return;
 
@@ -305,11 +306,15 @@ namespace Server.Gumps
                 string searchable = (label + " " + GetItemProperties(item)).ToLowerInvariant();
 
                 if (searchable.Contains(query))
+                {
+                    // Push OPL data to client so AddItemProperty tooltip works on hover
+                    item.SendPropertiesTo(player);
                     results.Add(new ItemSearchResult(Capitalise(label), item.Amount, location, item.Serial.Value, item.ItemID));
+                }
 
                 // Recurse into sub-containers
                 if (item is Container sub)
-                    ScanContainer(sub, query, $"{location} › {label}", results);
+                    ScanContainer(sub, query, $"{location} › {label}", results, player);
             }
         }
 
