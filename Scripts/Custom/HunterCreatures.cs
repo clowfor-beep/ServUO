@@ -143,9 +143,21 @@ namespace Server.Custom
                 corpse.DropItem(HunterWeaponFactory.GenerateNamedWeapon(HunterTier,
                     _resolvedName));
 
-            // Tier 4 rare artifact (5%)
+            // Tier 4 unique boss artifact (5%) — subclass-specific flavor drop
             if (HunterTier == 4 && Utility.RandomDouble() < 0.05)
                 corpse.DropItem(GenerateTier4Artifact());
+
+            // Tiered minor artifact: T2=10%, T3=25%, T4=50%
+            double artifactChance = HunterTier == 2 ? 0.10
+                                  : HunterTier == 3 ? 0.25
+                                  : HunterTier == 4 ? 0.50
+                                  : 0.0;
+            if (artifactChance > 0.0 && Utility.RandomDouble() < artifactChance)
+            {
+                Item artifact = GenerateMinorArtifact(HunterTier);
+                if (artifact != null)
+                    corpse.DropItem(artifact);
+            }
 
             // Orb drop
             double orbChance = HunterSystem.TierOrbChance(HunterTier);
@@ -158,6 +170,53 @@ namespace Server.Custom
         }
 
         protected virtual Item GenerateTier4Artifact() => new HunterToken(1); // override in boss classes
+
+        // -- Minor artifact pools --------------------------------------
+        // T2: accessible desirables.  T3: adds mid-tier pieces.  T4: full pool.
+        private static readonly Type[] ArtifactPoolT2 = {
+            typeof(CaptainJohnsHat),
+            typeof(DetectiveBoots),
+            typeof(OblivionsNeedle),
+            typeof(ANecromancerShroud),
+            typeof(TheMostKnowledgePerson),
+        };
+
+        private static readonly Type[] ArtifactPoolT3 = {
+            typeof(CaptainJohnsHat),
+            typeof(DetectiveBoots),
+            typeof(OblivionsNeedle),
+            typeof(ANecromancerShroud),
+            typeof(TheMostKnowledgePerson),
+            typeof(BraveKnightOfTheBritannia),
+            typeof(LieutenantOfTheBritannianRoyalGuard),
+            typeof(TokenOfHolyFavor),
+            typeof(ProtectoroftheBattleMage),
+        };
+
+        private static readonly Type[] ArtifactPoolT4 = {
+            typeof(CaptainJohnsHat),
+            typeof(DetectiveBoots),
+            typeof(OblivionsNeedle),
+            typeof(ANecromancerShroud),
+            typeof(TheMostKnowledgePerson),
+            typeof(BraveKnightOfTheBritannia),
+            typeof(LieutenantOfTheBritannianRoyalGuard),
+            typeof(TokenOfHolyFavor),
+            typeof(ProtectoroftheBattleMage),
+            typeof(ShroudOfDeceit),
+            typeof(RoyalGuardSurvivalKnife),
+            typeof(RoyalGuardInvestigatorsCloak),
+        };
+
+        private static Item GenerateMinorArtifact(int tier)
+        {
+            Type[] pool = tier >= 4 ? ArtifactPoolT4
+                        : tier == 3 ? ArtifactPoolT3
+                        : ArtifactPoolT2;
+
+            Type t = pool[Utility.Random(pool.Length)];
+            return Loot.Construct(t);
+        }
 
         private static Item GenerateOrb()
         {
