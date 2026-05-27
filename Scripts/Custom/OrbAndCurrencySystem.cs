@@ -501,6 +501,35 @@ namespace Server.Custom
         public static void Initialize()
         {
             EventSink.SkillGain += OnSkillGain;
+            Server.Commands.CommandSystem.Register("removealacrity", Server.AccessLevel.GameMaster, OnRemoveAlacrity);
+        }
+
+        private static void OnRemoveAlacrity(Server.Commands.CommandEventArgs e)
+        {
+            e.Mobile.SendMessage("Target the player to remove or check their alacrity buff.");
+            e.Mobile.Target = new AlacrityTarget();
+        }
+
+        private class AlacrityTarget : Server.Targeting.Target
+        {
+            public AlacrityTarget() : base(12, false, Server.Targeting.TargetFlags.None) { }
+
+            protected override void OnTarget(Mobile from, object targeted)
+            {
+                Mobile m = targeted as Mobile;
+                if (m == null) { from.SendMessage("That is not a mobile."); return; }
+
+                if (IsActive(m))
+                {
+                    RemoveBuff(m);
+                    from.SendMessage(0x35, $"Alacrity buff removed from {m.Name}.");
+                    m.SendMessage(0x22, "Your alacrity buff has been removed by a staff member.");
+                }
+                else
+                {
+                    from.SendMessage(0x22, $"{m.Name} does not have an alacrity buff active.");
+                }
+            }
         }
 
         private static void OnSkillGain(SkillGainEventArgs e)
