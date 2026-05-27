@@ -353,6 +353,12 @@ namespace Server.Custom
         }
 
         // -- Properties ------------------------------------------------
+
+        // SimPlayers are town residents — not attackable, not red.
+        // BaseFBCombatNPC sets AlwaysAttackable = true for combat NPCs; override it here.
+        public override bool AlwaysAttackable => false;
+        public override bool AlwaysInnocent   => true;
+
         public override void GetProperties(ObjectPropertyList list)
         {
             base.GetProperties(list);
