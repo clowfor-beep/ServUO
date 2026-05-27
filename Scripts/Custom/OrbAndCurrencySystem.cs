@@ -541,13 +541,12 @@ namespace Server.Custom
             // Apply a second gain of the same amount — effectively doubling the tick.
             int bonus = e.Gained;
 
-            // Respect total skill cap
-            if (pm.Skills.Total + bonus > pm.Skills.Cap)
-                bonus = pm.Skills.Cap - pm.Skills.Total;
-
             if (bonus <= 0) return;
 
-            // BaseFixedPoint: 1000 = 100.0 skill. CapFixedPoint is the individual ceiling.
+            // Clamp to individual skill ceiling only.
+            // The engine already handles total cap rebalancing via skill locks — checking
+            // pm.Skills.Total here incorrectly zeroes the bonus for players at cap who are
+            // shifting points between skills (gaining one, losing another).
             e.Skill.BaseFixedPoint = Math.Min(e.Skill.CapFixedPoint, e.Skill.BaseFixedPoint + bonus);
         }
 
