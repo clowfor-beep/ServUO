@@ -24,7 +24,7 @@ namespace Server.Custom
     // ABSTRACT WANTED BASE
     // ============================================================
 
-    public abstract class BaseWantedNPC : BasePKNPC
+    public abstract class BaseWantedNPC : BaseFBCombatNPC
     {
         protected abstract int    WantedTier  { get; }   // 10=Cutthroat, 11=Murderer, 12=DreadLord
         protected abstract string WantedLabel { get; }   // "the Cutthroat" etc.
@@ -35,6 +35,22 @@ namespace Server.Custom
         }
 
         public BaseWantedNPC(Serial serial) : base(serial) { }
+
+        // Absorbs the legacy BasePKNPC version int that was written before this
+        // class extended BaseFBCombatNPC directly.
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.Write(1); // version (was BasePKNPC version=0, now BaseWantedNPC version=1)
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            int version = reader.ReadInt();
+            // version 0 = legacy BasePKNPC int — nothing extra to read
+            // version 1 = BaseWantedNPC owns this layer
+        }
 
         protected void InitWantedName(string characterName)
         {
