@@ -92,7 +92,67 @@ namespace Server.Custom
             "Don't mind me.",
         };
 
-        // -- Bank chat — all guilds when in Banking state -------------
+        // -- Paladin Order --------------------------------------------
+        private static readonly string[] PaladinOrderAmbient = {
+            "Evil will not stand while we draw breath.",
+            "Honour, duty, sacrifice -- these are not suggestions.",
+            "Have you seen anything suspicious near the city gates?",
+            "The Blood Pact grows bold. We will answer.",
+            "By the Virtues, this city will not fall.",
+            "Every red name near Britain is an affront to justice.",
+        };
+
+        // -- Dead Watchers --------------------------------------------
+        private static readonly string[] DeadWatchersAmbient = {
+            "We watch. We wait. We end.",
+            "The living do not see what moves in the dark.",
+            "Every soul passes through. We are there when it does.",
+            "Judge not the dead -- they did not ask for this.",
+            "There is peace in the silence between heartbeats.",
+            "Speak carefully. The wrong words linger long after death.",
+        };
+
+        // -- Dread Hunters --------------------------------------------
+        private static readonly string[] DreadHuntersAmbient = {
+            "The deep dungeons hold no mysteries for us.",
+            "Tier four clears in under six minutes when we focus.",
+            "Call your target before you engage. Every time.",
+            "I've hunted worse than this in Hythloth level three.",
+            "Coordination wins fights. Ego loses them.",
+            "We don't hunt for glory. We hunt because someone has to.",
+        };
+
+        // -- Blood Pact -----------------------------------------------
+        private static readonly string[] BloodPactAmbient = {
+            "They should not have come here alone.",
+            "The ritual demands payment. It always does.",
+            "Power is not given. It is taken.",
+            "Curious... you are still breathing.",
+            "The pact was made long before you arrived.",
+            "Every drop of blood is a contract fulfilled.",
+        };
+
+        // -- The Void -------------------------------------------------
+        private static readonly string[] TheVoidAmbient = {
+            "Everything burns. Everything ends.",
+            "The silence is loudest just before the collapse.",
+            "You were never really here.",
+            "Names mean nothing. Only the Void remains.",
+            "I have seen the edge of what is. There is nothing.",
+            "Come closer. Or don't. It does not matter.",
+        };
+
+        // -- Shadowblade ----------------------------------------------
+        private static readonly string[] ShadowbladeAmbient = {
+            "Contract accepted.",
+            "The client asked for silence. I provide it.",
+            "I was never here.",
+            "Precision costs more. It is worth it.",
+            "Amateur work leaves witnesses.",
+            "The job is already done. You just don't know it yet.",
+        };
+
+        // -- Bank chat -- all guilds when in Banking state ------------
         private static readonly string[] BankAmbient = {
             "WTS 10k iron ingots, 2gp each. PM me.",
             "LFG Hythloth -- need one more mage.",
@@ -195,6 +255,12 @@ namespace Server.Custom
             if (_guildName == FBGuilds.ArcaneBrotherhood) return ArcaneBrotherhoodAmbient;
             if (_guildName == FBGuilds.SilverWolves)      return SilverWolvesAmbient;
             if (_guildName == FBGuilds.ShadowHand)        return ShadowHandAmbient;
+            if (_guildName == FBGuilds.PaladinOrder)      return PaladinOrderAmbient;
+            if (_guildName == FBGuilds.DeadWatchers)      return DeadWatchersAmbient;
+            if (_guildName == FBGuilds.DreadHunters)      return DreadHuntersAmbient;
+            if (_guildName == FBGuilds.BloodPact)         return BloodPactAmbient;
+            if (_guildName == FBGuilds.TheVoid)           return TheVoidAmbient;
+            if (_guildName == FBGuilds.Shadowblade)       return ShadowbladeAmbient;
             return WandererAmbient; // fallback
         }
     }

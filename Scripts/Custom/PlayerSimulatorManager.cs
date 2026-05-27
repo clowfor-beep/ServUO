@@ -3,7 +3,7 @@
 // Scripts/Custom/PlayerSimulatorManager.cs
 //
 // Singleton Item that owns all SimPlayers.
-// - Creates the roster (18 members across 6 guilds) on first load.
+// - Creates the roster (36 members across 12 guilds) on first load.
 // - Activates eligible SimPlayers up to MaxActiveSimultaneous.
 // - Ticks every minute to top up the active pool.
 //
@@ -132,7 +132,7 @@ namespace Server.Custom
             _allSimPlayers.Add(new SilverWolvesSimPlayer("Scout Finn",
                 wolvesHome, SpawnZone.Britain_Roads, ScheduleProfile.SilverWolves(15)));
 
-            // THE SHADOW HAND -- 3 members (Phase 2)
+            // THE SHADOW HAND -- 3 members
             Point3D shadowHome = FBZones.ShadowHand_Home;
             _allSimPlayers.Add(new ShadowHandSimPlayer("Fingers Malory",
                 shadowHome, SpawnZone.Britain_Roads, ScheduleProfile.ShadowHand(0)));
@@ -141,7 +141,64 @@ namespace Server.Custom
             _allSimPlayers.Add(new ShadowHandSimPlayer("Slick Fen",
                 shadowHome, SpawnZone.Britain_Roads, ScheduleProfile.ShadowHand(-20)));
 
-            Console.WriteLine($"[SimPlayer] Roster created: {_allSimPlayers.Count} SimPlayers (18 across 6 guilds).");
+            // PALADIN ORDER -- 3 members
+            Point3D paladinHome = FBZones.PaladinOrder_Home;
+            _allSimPlayers.Add(new PaladinOrderSimPlayer("Commander Aldric",
+                paladinHome, SpawnZone.Britain_Roads, ScheduleProfile.PaladinOrder(0)));
+            _allSimPlayers.Add(new PaladinOrderSimPlayer("Sister Isolde",
+                paladinHome, SpawnZone.Britain_Roads, ScheduleProfile.PaladinOrder(20)));
+            _allSimPlayers.Add(new PaladinOrderSimPlayer("Sir Edwyn the Pure",
+                paladinHome, SpawnZone.Britain_Roads, ScheduleProfile.PaladinOrder(-15)));
+
+            // DEAD WATCHERS -- 3 members
+            Point3D deadHome = FBZones.DeadWatchers_Home;
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("The Pale Warden",
+                deadHome, SpawnZone.Britain_Roads, ScheduleProfile.DeadWatchers(0)));
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("Morwen of the Veil",
+                deadHome, SpawnZone.Britain_Roads, ScheduleProfile.DeadWatchers(30)));
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("Ashborn",
+                deadHome, SpawnZone.Britain_Roads, ScheduleProfile.DeadWatchers(-20)));
+
+            // DREAD HUNTERS -- 3 members
+            Point3D dreadHome = FBZones.DreadHunters_Home;
+            _allSimPlayers.Add(new DreadHuntersSimPlayer("Huntmaster Caelyn",
+                dreadHome, SpawnZone.Britain_Roads, ScheduleProfile.DreadHunters(0)));
+            _allSimPlayers.Add(new DreadHuntersSimPlayer("Voryn the Relentless",
+                dreadHome, SpawnZone.Britain_Roads, ScheduleProfile.DreadHunters(15)));
+            _allSimPlayers.Add(new DreadHuntersSimPlayer("Iron Nessa",
+                dreadHome, SpawnZone.Britain_Roads, ScheduleProfile.DreadHunters(-25)));
+
+            // BLOOD PACT -- 3 members
+            // Home: Destard outskirts (NOT a city zone)
+            Point3D bloodHome = FBZones.BloodPact_Home;
+            _allSimPlayers.Add(new BloodPactSimPlayer("Magister Vael",
+                bloodHome, SpawnZone.Britain_Roads, ScheduleProfile.BloodPact(0)));
+            _allSimPlayers.Add(new BloodPactSimPlayer("Sorrow",
+                bloodHome, SpawnZone.Britain_Roads, ScheduleProfile.BloodPact(20)));
+            _allSimPlayers.Add(new BloodPactSimPlayer("The Hollow Priest",
+                bloodHome, SpawnZone.Britain_Roads, ScheduleProfile.BloodPact(-15)));
+
+            // THE VOID -- 3 members
+            // Home: Deceit outskirts (NOT a city zone)
+            Point3D voidHome = FBZones.TheVoid_Home;
+            _allSimPlayers.Add(new TheVoidSimPlayer("The Nameless",
+                voidHome, SpawnZone.Britain_Roads, ScheduleProfile.TheVoid(0)));
+            _allSimPlayers.Add(new TheVoidSimPlayer("Unraveller",
+                voidHome, SpawnZone.Britain_Roads, ScheduleProfile.TheVoid(35)));
+            _allSimPlayers.Add(new TheVoidSimPlayer("Fracture",
+                voidHome, SpawnZone.Britain_Roads, ScheduleProfile.TheVoid(-30)));
+
+            // SHADOWBLADE -- 3 members
+            // Home: Wrong outskirts (NOT a city zone)
+            Point3D bladeHome = FBZones.Shadowblade_Home;
+            _allSimPlayers.Add(new ShadowbladeSimPlayer("Silentmark",
+                bladeHome, SpawnZone.Britain_Roads, ScheduleProfile.Shadowblade(0)));
+            _allSimPlayers.Add(new ShadowbladeSimPlayer("Cinder",
+                bladeHome, SpawnZone.Britain_Roads, ScheduleProfile.Shadowblade(10)));
+            _allSimPlayers.Add(new ShadowbladeSimPlayer("The Ledger",
+                bladeHome, SpawnZone.Britain_Roads, ScheduleProfile.Shadowblade(-20)));
+
+            Console.WriteLine($"[SimPlayer] Roster created: {_allSimPlayers.Count} SimPlayers (36 across 12 guilds).");
         }
 
         private void CreateSimPlayer(string guild, string memberName, Point3D home,
