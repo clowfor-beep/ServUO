@@ -383,6 +383,9 @@ namespace Server.Custom
             ("Supreme Bag of Holding (5 items, -100% weight)",100, typeof(SupremeBagOfHolding)),
             ("Tracking Orb (+3 tracking range)",              20,  typeof(EssenceShard)),
             ("Title Deed: 'the Monster Hunter'",              30,  typeof(Gold)),
+            ("Orb of Alacrity (uncommon) — 2x skill gains 10 min",  2,  typeof(OrbOfAlacrity)),
+            ("Orb of Alacrity (rare) — 2x skill gains 20 min",      4,  typeof(OrbOfAlacrity)),
+            ("Orb of Alacrity (very rare) — 2x skill gains 40 min", 5,  typeof(OrbOfAlacrity)),
         };
 
         public HunterShopGump(Mobile from, HunterGuildmaster npc) : base(50, 50)
@@ -539,6 +542,21 @@ namespace Server.Custom
                 case 8: // Title Deed
                     _from.SendMessage(0x35, "'The Monster Hunter' title has been unlocked for you.");
                     HunterSystem.GrantTitleDeed(_from, "the Monster Hunter");
+                    break;
+
+                case 9: // Orb of Alacrity — uncommon (10 min)
+                    _from.AddToBackpack(new OrbOfAlacrity(1));
+                    _from.SendMessage(0x35, "You receive an Orb of Alacrity (uncommon). Double-click to double skill gains for 10 minutes.");
+                    break;
+
+                case 10: // Orb of Alacrity — rare (20 min)
+                    _from.AddToBackpack(new OrbOfAlacrity(2));
+                    _from.SendMessage(0x35, "You receive an Orb of Alacrity (rare). Double-click to double skill gains for 20 minutes.");
+                    break;
+
+                case 11: // Orb of Alacrity — very rare (40 min)
+                    _from.AddToBackpack(new OrbOfAlacrity(3));
+                    _from.SendMessage(0x35, "You receive an Orb of Alacrity (very rare). Double-click to double skill gains for 40 minutes.");
                     break;
             }
         }

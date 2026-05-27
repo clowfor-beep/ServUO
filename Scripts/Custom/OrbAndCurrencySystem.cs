@@ -489,7 +489,7 @@ namespace Server.Custom
             set { _tier = Math.Max(1, Math.Min(3, value)); InvalidateProperties(); }
         }
 
-        public TimeSpan Duration => TimeSpan.FromMinutes(_tier == 1 ? 10 : _tier == 2 ? 20 : 30);
+        public TimeSpan Duration => TimeSpan.FromMinutes(_tier == 1 ? 10 : _tier == 2 ? 20 : 40);
 
         // mobile → buff expiry time
         private static readonly Dictionary<Mobile, DateTime> _activeBuffs = new Dictionary<Mobile, DateTime>();
@@ -596,7 +596,8 @@ namespace Server.Custom
             from.SendMessage(0x35, $"You feel your learning quicken! All skill gains doubled for {(int)Duration.TotalMinutes} minutes.");
             from.PlaySound(0x1F7);
             from.FixedParticles(0x375A, 9, 20, 5016, Hue, 0, EffectLayer.Waist);
-            BuffInfo.AddBuff(from, new BuffInfo(BuffIcon.Agility, 1038441, Duration, from, $"Orb of Alacrity\tSkill gains doubled for {(int)Duration.TotalMinutes} minutes"));
+            // 1075841 = Agility title cliloc; 1114057 = "~1_val~" blank cliloc used as description slot
+            BuffInfo.AddBuff(from, new BuffInfo(BuffIcon.Agility, 1075841, 1114057, Duration, from, $"Orb of Alacrity - Skill gains doubled for {(int)Duration.TotalMinutes} minutes"));
 
             // Auto-expire
             Timer.DelayCall(Duration, () =>
