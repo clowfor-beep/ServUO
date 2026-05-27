@@ -537,30 +537,38 @@ namespace Server.Custom
             if (!(e.From is PlayerMobile pm)) return;
             if (!IsActive(pm)) return;
 
-            // The event fires AFTER the engine has already applied the first gain tick
-            // (and already stolen from a down-locked skill if the player was at total cap).
-            // We apply a second tick of the same size — effectively doubling the gain.
             int bonus = e.Gained;
             if (bonus <= 0) return;
 
+            // Defer by one server tick so the client sees two distinct SkillChange packets.
+            // Without the delay, the engine's gain and our bonus both update the same skill
+            // in the same processing cycle — the client deduplicates them, showing only one
+            // gain message even though both gains are applied.
+            Skill skill = e.Skill;
+            Timer.DelayCall(TimeSpan.Zero, () => ApplyBonusTick(pm, skill, bonus));
+        }
+
+        private static void ApplyBonusTick(PlayerMobile pm, Skill skill, int bonus)
+        {
+            if (pm.Deleted || !IsActive(pm)) return;
+
             // Clamp to this skill's individual ceiling.
-            bonus = Math.Min(e.Skill.CapFixedPoint - e.Skill.BaseFixedPoint, bonus);
+            bonus = Math.Min(skill.CapFixedPoint - skill.BaseFixedPoint, bonus);
             if (bonus <= 0) return;
 
-            // If applying the bonus would push Skills.Total over cap, we must manually
-            // steal from down-locked skills — the engine won't do it for our synthetic tick.
+            // If applying the bonus would push Skills.Total over cap, steal from
+            // down-locked skills — the engine won't do it for our synthetic tick.
             int headroom = pm.Skills.Cap - pm.Skills.Total;
             if (bonus > headroom)
             {
                 int needed = bonus - headroom;
-                int stolen = StealFromDownSkills(pm, e.Skill, needed);
-                // Only apply as much as we can cover (existing headroom + what we stole)
+                int stolen = StealFromDownSkills(pm, skill, needed);
                 bonus = headroom + stolen;
             }
 
             if (bonus <= 0) return;
 
-            e.Skill.BaseFixedPoint = Math.Min(e.Skill.CapFixedPoint, e.Skill.BaseFixedPoint + bonus);
+            skill.BaseFixedPoint = Math.Min(skill.CapFixedPoint, skill.BaseFixedPoint + bonus);
         }
 
         // Reduces down-locked skills to make room for a synthetic gain tick.
