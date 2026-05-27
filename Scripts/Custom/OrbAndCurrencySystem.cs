@@ -551,7 +551,11 @@ namespace Server.Custom
             e.Skill.BaseFixedPoint = Math.Min(e.Skill.CapFixedPoint, e.Skill.BaseFixedPoint + bonus);
         }
 
-        public static void RemoveBuff(Mobile m) => _activeBuffs.Remove(m);
+        public static void RemoveBuff(Mobile m)
+        {
+            _activeBuffs.Remove(m);
+            BuffInfo.RemoveBuff(m, BuffIcon.Agility);
+        }
 
         [Constructable]
         public OrbOfAlacrity() : this(1) { }
@@ -593,13 +597,14 @@ namespace Server.Custom
             from.SendMessage(0x35, $"You feel your learning quicken! All skill gains doubled for {(int)Duration.TotalMinutes} minutes.");
             from.PlaySound(0x1F7);
             from.FixedParticles(0x375A, 9, 20, 5016, Hue, 0, EffectLayer.Waist);
+            BuffInfo.AddBuff(from, new BuffInfo(BuffIcon.Agility, 1038441, Duration, from, $"Orb of Alacrity\tSkill gains doubled for {(int)Duration.TotalMinutes} minutes"));
 
             // Auto-expire
             Timer.DelayCall(Duration, () =>
             {
                 if (_activeBuffs.TryGetValue(from, out DateTime end) && DateTime.UtcNow >= end)
                 {
-                    _activeBuffs.Remove(from);
+                    RemoveBuff(from);
                     if (from?.NetState != null)
                         from.SendMessage(0x22, "Your alacrity buff has faded.");
                 }
