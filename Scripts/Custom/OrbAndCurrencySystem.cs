@@ -537,17 +537,49 @@ namespace Server.Custom
             if (!(e.From is PlayerMobile pm)) return;
             if (!IsActive(pm)) return;
 
-            // The event fires after the first gain is already applied.
-            // Apply a second gain of the same amount — effectively doubling the tick.
+            // The event fires AFTER the engine has already applied the first gain tick
+            // (and already stolen from a down-locked skill if the player was at total cap).
+            // We apply a second tick of the same size — effectively doubling the gain.
             int bonus = e.Gained;
+            if (bonus <= 0) return;
+
+            // Clamp to this skill's individual ceiling.
+            bonus = Math.Min(e.Skill.CapFixedPoint - e.Skill.BaseFixedPoint, bonus);
+            if (bonus <= 0) return;
+
+            // If applying the bonus would push Skills.Total over cap, we must manually
+            // steal from down-locked skills — the engine won't do it for our synthetic tick.
+            int headroom = pm.Skills.Cap - pm.Skills.Total;
+            if (bonus > headroom)
+            {
+                int needed = bonus - headroom;
+                int stolen = StealFromDownSkills(pm, e.Skill, needed);
+                // Only apply as much as we can cover (existing headroom + what we stole)
+                bonus = headroom + stolen;
+            }
 
             if (bonus <= 0) return;
 
-            // Clamp to individual skill ceiling only.
-            // The engine already handles total cap rebalancing via skill locks — checking
-            // pm.Skills.Total here incorrectly zeroes the bonus for players at cap who are
-            // shifting points between skills (gaining one, losing another).
             e.Skill.BaseFixedPoint = Math.Min(e.Skill.CapFixedPoint, e.Skill.BaseFixedPoint + bonus);
+        }
+
+        // Reduces down-locked skills to make room for a synthetic gain tick.
+        // Returns how many fixed-points were actually taken.
+        private static int StealFromDownSkills(PlayerMobile pm, Skill skipSkill, int amount)
+        {
+            int stolen = 0;
+            for (int i = 0; i < pm.Skills.Length && stolen < amount; i++)
+            {
+                Skill s = pm.Skills[i];
+                if (s == skipSkill)            continue;
+                if (s.Lock != SkillLock.Down)  continue;
+                if (s.BaseFixedPoint <= 0)     continue;
+
+                int take = Math.Min(amount - stolen, s.BaseFixedPoint);
+                s.BaseFixedPoint -= take;
+                stolen += take;
+            }
+            return stolen;
         }
 
         public static void RemoveBuff(Mobile m)
