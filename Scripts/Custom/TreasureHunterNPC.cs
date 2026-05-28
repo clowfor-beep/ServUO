@@ -267,7 +267,19 @@ namespace Server.Custom
                         tMap.Completed   = true;
                         tMap.CompletedBy = pl ?? this;
 
-                        Say("Trap disarmed. Chest is yours!");
+                        // Spawn 4 guardians — same count as normal digging in the new system
+                        for (int i = 0; i < 4; i++)
+                        {
+                            bool isGuardian = Utility.RandomDouble() >= 0.3;
+                            BaseCreature gc = TreasureMap.Spawn(tMap.Level, dest, tMap.Facet, pl, isGuardian);
+                            if (gc != null && isGuardian)
+                            {
+                                gc.Hue = 2725;
+                                chest.Guardians.Add(gc);
+                            }
+                        }
+
+                        Say("Guardians! Defend yourself — chest is yours!");
 
                         // T+6.0s: open return gate, NPC departs
                         Timer.DelayCall(TimeSpan.FromSeconds(2.0), () =>
