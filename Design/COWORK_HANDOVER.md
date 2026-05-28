@@ -1,5 +1,5 @@
 # COWORK HANDOVER — Forsaken Britannia
-**Last updated:** 2026-05-24
+**Last updated:** 2026-05-28
 **Read this first, every time, before doing any work on this codebase.**
 
 ---
@@ -100,44 +100,40 @@ Any `public static void Initialize()` in Scripts/ is called automatically on ser
 
 | File | What it does | Notes |
 |------|-------------|-------|
-| `SkillSynergies.cs` | Offensive weapon damage bonuses, backstab multiplier | Defensive synergies designed but NOT yet hooked — see Section 6 |
+| `FBZones.cs` | Single source of truth for all world coordinates | Step 1 |
+| `FBEventBus.cs` | Cross-system event bus (decouples all systems) | Step 1 |
+| `BaseFBCombatNPC.cs` | Shared combat base for all PK/SimPlayer types — 7 templates | Step 2 |
+| `SkillSynergies.cs` | Offensive + defensive weapon/resist/heal bonuses | Offensive and defensive synergies both live |
 | `CooldownSystem.cs` | Player cooldown HUD gump with progress bars | Fully working. Uses `Skills.OnSkillUsed` delegate |
 | `NovicePlayerKiller.cs` | Original simple Newbie-tier PK NPC | Predates PlayerKillerNPCs.cs. Still used by GraveyardPKEncounter |
 | `PlayerKillerNPCs.cs` | All 21 PK classes — 7 archetypes × 3 tiers | Contains `BasePKNPC` shared base. All serialised. |
 | `GraveyardPKEncounter.cs` | Britain graveyard PK trigger (single zone) | Old system — still active. Will be retired once PKEncounterSystem is validated |
 | `PKEncounterSystem.cs` | Multi-zone PK encounter system — all facets | Replaces GraveyardPKEncounter. 40+ zones, floor-tier logic, 30-min cooldown per player |
 | `PKTestCommand.cs` | `[pktest` staff command with tier override | Tests PKEncounterSystem. Usage: `[pktest`, `[pktest advanced`, `[pktest <name> expert` |
+| `FBPKSpawner.cs` | Pool-managed patrol PKs on roads and in dungeons | Step 3 |
+| `ForsakenBritannia.xml` | Static world objects via XmlSpawner (boards, NPCs) | Step 3 — Data/Spawns/ |
+| `ReputationSystem.cs` | Player standing with each of 12 guilds | Step 4 |
 | `WorldAtlas.cs` | Item: dungeon/town atlas with gump | Note: Luna/Umbra/Zento Z coordinates unverified in-game |
 | `HunterSystem.cs` | Hunter spawn timer, persistence, player points, rank | Core of Hunter System. Spawn coords now in FBZones. Kill events fire via FBEventBus. |
 | `HunterCreatures.cs` | All Hunter target creature classes (Tiers 1-4) | Extends existing ServUO monsters |
 | `HunterWanted.cs` | Wanted PK NPC targets (Cutthroat / Murderer / Dread Lord) | Extends BasePKNPC |
-| `HunterGuildmaster.cs` | Guildmaster NPC + turn-in gump + token shop | Placed in Britain, Trinsic, Minoc |
+| `HunterGuildmaster.cs` | Guildmaster NPC + turn-in gump + token shop | Placed in Britain, Trinsic, Minoc. Has OrbOfAlacrity tiers in token shop. |
 | `HunterItems.cs` | HunterHead, HunterMedallion, HunterToken, named weapons | All serialised |
-| `OrbAndCurrencySystem.cs` | All orbs (12 types), scrolls (4 types), EssenceShard | Category 1 (character), 2 (item), 3 (scrolls) all implemented |
+| `OrbAndCurrencySystem.cs` | All orbs (12 types incl. OrbOfAlacrity 3 tiers), scrolls (4 types), EssenceShard | OrbOfAlacrity: 10/20/40 min, doubles skill gains, handles skill cap correctly |
 | `PlayerCountExport.cs` | Utility — exports player count | No dependencies |
+| `SimPlayer.cs` | Base SimPlayer class + state machine + chat brain hook | Step 5. AlwaysInnocent override makes them appear blue in towns. |
+| `PlayerSimulatorManager.cs` | Creates/manages 36 SimPlayers (12 guilds × 3 members), active pool | Step 5+9. MaxActive=30. |
+| `SimPlayerGuilds.cs` | All 12 SimGuild subclasses (Tier 1–3) | Step 9. Red guilds spawn off-city. |
+| `SimChatBrain.cs` | Ambient/bank speech for all 12 guilds | Step 5+9 |
+| `ScheduleProfile.cs` | Daily schedule factory methods for all 12 guilds | Step 5+9 |
+| `QuestTrackerHUD.cs` | Always-visible quest objective HUD gump | Step 6 |
 
 ### NOT YET BUILT — Pending Implementation
 
-These are listed in build order (see Section 5). Do not skip steps.
-
 | File | What it does | Depends on |
 |------|-------------|-----------|
-| `FBZones.cs` | Single source of truth for all world coordinates | Nothing | **DONE** |
-| `FBEventBus.cs` | Cross-system event bus (decouples all systems) | Nothing | **DONE** |
-| `BaseFBCombatNPC.cs` | Shared combat base for all PK/SimPlayer types — 7 templates | FBZones |
-| `FBPKSpawner.cs` | Pool-managed patrol PKs on roads and in dungeons | BaseFBCombatNPC, FBZones |
-| `ForsakenBritannia.xml` | Static world objects via XmlSpawner (boards, NPCs) | Nothing |
-| `ReputationSystem.cs` | Player standing with each of 12 guilds | FBEventBus |
-| `SimPlayer.cs` | Base class for all 144 AI guild members | BaseFBCombatNPC, FBEventBus |
-| `PlayerSimulatorManager.cs` | Creates/manages all SimPlayers, active pool | SimPlayer, FBZones |
-| `SimStateMachine.cs` | State machine: Idle, Hunting, Combat, Banking, etc. | SimPlayer |
-| `SimPersonality.cs` | Personality types: Warrior, Mage, Crafter, Rogue, PK | SimPlayer |
-| `SimChatBrain.cs` | Ambient/reactive/combat speech per guild | SimPlayer, SimPersonality |
-| `ScheduleProfile.cs` | Daily schedule per SimPlayer with ±30 min drift | SimPlayer |
-| `QuestTrackerHUD.cs` | Always-visible quest objective gump (like CooldownSystem) | Nothing (standalone) |
-| `QuestFactory.cs` | Generates Hunt/Clear quests from SimGuild activity | FBEventBus, ReputationSystem |
-| `BountyBoardFB.cs` | Physical bounty board item in towns | QuestFactory |
-| `CrossClassSkillSystem.cs` | Epic quest cross-class skill unlock at 80 outside 700 cap | Phase 3 only |
+| `QuestFactory.cs` | Hunt + Gather quests, BountyBoard item, HUD + rep integration | FBEventBus, ReputationSystem, QuestTrackerHUD — **Step 7** |
+| `CrossClassSkillSystem.cs` | Epic quest cross-class skill unlock at 80 outside 700 cap | Phase 3 only — **Step 10** |
 
 ---
 
@@ -146,46 +142,34 @@ These are listed in build order (see Section 5). Do not skip steps.
 This is the authoritative sequence. Do not build out of order.
 
 ```
-STEP 0  Fix NovicePlayerKiller.cs OnDeath: protected → public  ✓ DONE — confirmed public in live file
-STEP 1  FBZones.cs + FBEventBus.cs         (no dependencies — pure data/events)
-STEP 2  BaseFBCombatNPC.cs                 (7 templates, equipment rule enforced)
-        Refactor NovicePlayerKiller.cs     (extend BaseFBCombatNPC, no behaviour change)
-STEP 3  FBPKSpawner.cs                     (model from BountyQuestSpawner.cs)
-        ForsakenBritannia.xml              (Britain bank board only to start)
-STEP 4  ReputationSystem.cs               (hooks FBEventBus events)
-STEP 5  SimPlayer.cs (base class only)
-        PlayerSimulatorManager.cs
-        Wanderers guild first (4 members) — verify performance before expanding
-STEP 6  QuestTrackerHUD.cs               (standalone, no FB dependencies)
-STEP 7  QuestFactory.cs                  (Hunt quests from bounty targets)
-STEP 8  Defensive skill synergies        (hook into PlayerMobile — see Section 6)
-STEP 9  All 12 SimGuilds                 (only after Phase 1 is stable)
-STEP 10 CrossClassSkillSystem.cs         (Phase 3 — last)
+STEP 0  Fix NovicePlayerKiller.cs OnDeath: protected → public  ✓ DONE
+STEP 1  FBZones.cs + FBEventBus.cs         ✓ DONE
+STEP 2  BaseFBCombatNPC.cs                 ✓ DONE
+        Refactor NovicePlayerKiller.cs     ✓ DONE
+STEP 3  FBPKSpawner.cs                     ✓ DONE
+        ForsakenBritannia.xml              ✓ DONE
+STEP 4  ReputationSystem.cs               ✓ DONE
+STEP 5  SimPlayer.cs + PlayerSimulatorManager.cs + Wanderers   ✓ DONE
+STEP 6  QuestTrackerHUD.cs               ✓ DONE
+STEP 7  QuestFactory.cs                  ← NEXT (Claude 2 work instruction written)
+STEP 8  Defensive skill synergies        ✓ DONE
+STEP 9  All 12 SimGuilds                 ✓ DONE (36 members, 12 guilds)
+STEP 10 CrossClassSkillSystem.cs         Phase 3 — last
 ```
 
 ---
 
-## 6. DEFENSIVE SKILL SYNERGIES — PENDING HOOKS
+## 6. DEFENSIVE SKILL SYNERGIES — ✓ DONE
 
-`SkillSynergies.cs` has offensive synergies working. The defensive synergies are fully designed (see `Design/SkillSynergies_DesignDoc.txt`) but need hooks added.
+`SkillSynergies.cs` has both offensive and defensive synergies implemented and hooked.
 
-Methods to ADD to `SkillSynergies.cs`:
-- `GetPhysicalResistBonus(Mobile)`, `GetFireResistBonus`, `GetColdResistBonus`, `GetPoisonResistBonus`, `GetEnergyResistBonus`
-- `GetPhysicalResistCap(Mobile)` ... (one per type)
-- `GetDCIBonus(Mobile)` → double
-- `GetBonusHP(Mobile)` → int
-- `GetBandageHealBonus(Mobile)` → double
-- `GetHPRegenMultiplier(Mobile)` → double
-- `GetDebuffDurationMultiplier(Mobile)` → double
-
-Hook locations (in vanilla ServUO files):
+Hooks live in vanilla ServUO files:
 - Resist bonuses → `PlayerMobile.ComputeResistances()`
 - Resist caps → `PlayerMobile.GetMaxResistance()`
 - DCI bonus → `BaseWeapon.CheckHit()`
 - HP bonus → `PlayerMobile.HitsMax` getter
-- Bandage heal → `Bandage.cs` heal amount
+- Bandage heal → `Bandage.cs`
 - HP regen → `PlayerMobile.GetHitsRegenRate()`
-- Debuff duration → individual spell timer setup
 
 **Applies to PlayerMobile only. NOT SimPlayers (they use fixed SetResistance values).**
 
@@ -226,7 +210,8 @@ Phase 1 implementation: Wanderers only (4 members). Verify performance before ex
 | 6 | `Skills.cs` compiles before `Scripts/Custom/` | Permanent | Use static delegate pattern — already done in CooldownSystem.cs |
 | 7 | PowerShell Danish locale | Permanent | No Unicode in `Write-Host`. Plain ASCII only in PS scripts. |
 | 8 | `AddImageTiledPart` does not exist | Permanent | Use two `AddImageTiled` calls |
-| 9 | Reds (Blood Pact, Void) in cities = instant death from guards | Design constraint | Never gate evil guilds into Felucca cities |
+| 9 | Reds (Blood Pact, Void) in cities = instant death from guards | **FIXED** | Blood Pact→Destard_L1, TheVoid→Deceit_L1, Shadowblade→WantedZone_NearWrong |
+| 10 | SimPlayers appearing grey (attackable) in towns | **FIXED** | SimPlayer base overrides AlwaysAttackable=false + AlwaysInnocent=true |
 
 ---
 

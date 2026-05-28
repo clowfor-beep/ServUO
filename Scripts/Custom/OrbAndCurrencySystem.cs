@@ -540,24 +540,17 @@ namespace Server.Custom
             int bonus = e.Gained;
             if (bonus <= 0) return;
 
-            // Defer by one server tick so the client sees two distinct SkillChange packets.
-            // Without the delay, the engine's gain and our bonus both update the same skill
-            // in the same processing cycle — the client deduplicates them, showing only one
-            // gain message even though both gains are applied.
             Skill skill = e.Skill;
-            Timer.DelayCall(TimeSpan.Zero, () => ApplyBonusTick(pm, skill, bonus));
-        }
 
-        private static void ApplyBonusTick(PlayerMobile pm, Skill skill, int bonus)
-        {
-            if (pm.Deleted || !IsActive(pm)) return;
-
-            // Clamp to this skill's individual ceiling.
+            // Clamp to this skill's individual ceiling first.
             bonus = Math.Min(skill.CapFixedPoint - skill.BaseFixedPoint, bonus);
             if (bonus <= 0) return;
 
-            // If applying the bonus would push Skills.Total over cap, steal from
-            // down-locked skills — the engine won't do it for our synthetic tick.
+            // If we are at the total skill cap, steal from down-locked skills NOW —
+            // in the SAME server tick as the engine's own steal.
+            // Both steal packets (engine's and ours) arrive in the same client cycle,
+            // so ClassicUO deduplicates them into one combined loss notification
+            // instead of showing two separate loss messages.
             int headroom = pm.Skills.Cap - pm.Skills.Total;
             if (bonus > headroom)
             {
@@ -568,7 +561,31 @@ namespace Server.Custom
 
             if (bonus <= 0) return;
 
+            // Defer only the GAIN by one server tick.
+            // Without the delay, engine gain + our bonus both update the same skill
+            // in the same processing cycle — client deduplicates them and the player
+            // sees only one gain message.  The deferred tick produces a second distinct
+            // SkillChange packet so the bonus shows up separately.
+            Timer.DelayCall(TimeSpan.Zero, () => ApplyBonusTick(pm, skill, bonus));
+        }
+
+        private static void ApplyBonusTick(PlayerMobile pm, Skill skill, int bonus)
+        {
+            if (pm.Deleted || !IsActive(pm)) return;
+
+            // Headroom was pre-created in OnSkillGain (same tick as engine steal).
+            // Re-clamp in case another gain fired between ticks and consumed headroom.
+            bonus = Math.Min(skill.CapFixedPoint - skill.BaseFixedPoint, bonus);
+            int headroom = pm.Skills.Cap - pm.Skills.Total;
+            bonus = Math.Min(bonus, headroom);
+            if (bonus <= 0) return;
+
             skill.BaseFixedPoint = Math.Min(skill.CapFixedPoint, skill.BaseFixedPoint + bonus);
+
+            // Send an explicit orb message so the player can see the bonus was applied
+            // (the SkillChange packet fires the normal skill-up notification, but this
+            // confirms it came from the Orb of Alacrity).
+            pm.SendMessage(0x59, $"[Alacrity] {skill.Name} +{bonus / 10.0:F1}");
         }
 
         // Reduces down-locked skills to make room for a synthetic gain tick.

@@ -590,6 +590,67 @@ namespace Server.Custom
             }
         }
 
+        // ── CheckHold override ────────────────────────────────────────────
+        // The base CheckHold propagates item.TotalWeight unchanged to parent
+        // containers.  This means the weight check against the player's carry
+        // limit always uses the FULL item weight, even though items stored here
+        // benefit from WeightReductionPct once inside.
+        //
+        // Fix: when propagating upward, offset plusWeight by the reduction so
+        // the parent sees the post-reduction effective weight instead.
+        //
+        // Math:  parent checks (TotalWeight + plusWeight + item.TotalWeight) > cap
+        //        We pass plusWeight += (reducedItemWeight - fullItemWeight)
+        //        → parent effectively checks reducedItemWeight instead of fullItemWeight.
+        public override bool CheckHold(Mobile m, Item item, bool message, bool checkItems, int plusItems, int plusWeight)
+        {
+            if (!m.IsStaff())
+            {
+                // Item-slot limit of this bag
+                int maxItems = MaxItems;
+                if (checkItems && maxItems != 0 &&
+                    (TotalItems + plusItems + item.TotalItems + (item.IsVirtualItem ? 0 : 1)) > maxItems)
+                {
+                    if (message) SendFullItemsMessage(m, item);
+                    return false;
+                }
+
+                // This bag's own weight capacity — checked against full item weight
+                int maxWeight = MaxWeight;
+                if (maxWeight != 0 && (TotalWeight + plusWeight + item.TotalWeight + item.PileWeight) > maxWeight)
+                {
+                    if (message) SendFullWeightMessage(m, item);
+                    return false;
+                }
+            }
+
+            // Walk up to parent containers, injecting the weight reduction offset
+            // so the player's carry limit check uses the reduced weight.
+            var parent = Parent;
+            while (parent != null)
+            {
+                if (parent is Container parentContainer)
+                {
+                    int fullItemWeight    = item.TotalWeight + item.PileWeight;
+                    int reducedItemWeight = (int)Math.Round(fullItemWeight * (100 - WeightReductionPct) / 100.0);
+                    int weightOffset      = reducedItemWeight - fullItemWeight; // negative (reduction)
+
+                    return parentContainer.CheckHold(m, item, message, checkItems,
+                        plusItems, plusWeight + weightOffset);
+                }
+                else if (parent is Item parentItem)
+                {
+                    parent = parentItem.Parent;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return true;
+        }
+
         // ── One bag per player ────────────────────────────────────────────
         // Called after the item is added to a parent container.
         // If the player now has two bags of holding, eject this one.
