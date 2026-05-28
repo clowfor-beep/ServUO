@@ -67,6 +67,16 @@ namespace Server.Custom
         private const int MaxConcurrentHunts  = 5;  // hunt monster targets
         private const int MaxConcurrentWanted = 5;  // wanted PK NPCs
 
+        // Dungeons that are guarded or peaceful — wanted NPCs would be killed
+        // by guards the moment they spawn there.
+        private static readonly System.Collections.Generic.HashSet<string> _guardedDungeons =
+            new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "Prism of Light",  // guarded zone
+                "Wind",            // mage city — guarded
+                "Sanctuary",       // peaceful haven — no aggression
+            };
+
         private static void PruneHunts()  =>
             _activeHunts .RemoveAll(r => { Mobile m = World.FindMobile(r.Serial); return m == null || m.Deleted; });
         private static void PruneWanted() =>
@@ -335,9 +345,13 @@ namespace Server.Custom
             BaseWantedNPC npc = CreateWantedNPC(wantedTier);
             if (npc == null) return;
 
-            // Pick a random dungeon from the full Atlas list (all facets)
+            // Pick a random dungeon — skip guarded / peaceful zones where guards
+            // would kill the wanted NPC immediately on spawn.
             var dungeons = Server.Items.AtlasGump.Dungeons;
-            AtlasLocation dungeon = dungeons[Utility.Random(dungeons.Count)];
+            AtlasLocation dungeon;
+            int pickAttempts = 0;
+            do { dungeon = dungeons[Utility.Random(dungeons.Count)]; }
+            while (_guardedDungeons.Contains(dungeon.Name) && ++pickAttempts < 50);
 
             // Find a valid tile near the dungeon entrance with a small random jitter
             Point3D loc = Point3D.Zero;

@@ -155,30 +155,30 @@ namespace Server.Custom
         {
             Hue = 0x21;
 
-            SetStr(125);
-            SetDex(125);
-            SetInt(125);
-            SetHits(400, 500);
-            SetStam(125);
-            SetMana(125);
+            SetStr(175, 200);
+            SetDex(175, 200);   // high dex = fast swing speed + hard to hit
+            SetInt(75,  100);
+            SetHits(550, 700);
+            SetStam(175, 200);
+            SetMana(75,  100);
 
-            SetSkill(SkillName.Swords,      97.0, 100.0);
-            SetSkill(SkillName.Tactics,     97.0, 100.0);
-            SetSkill(SkillName.Anatomy,     87.0, 92.0);
-            SetSkill(SkillName.Healing,     87.0, 92.0);
-            SetSkill(SkillName.Parry,       82.0, 87.0);
-            SetSkill(SkillName.Hiding,      57.0, 62.0);
-            SetSkill(SkillName.MagicResist, 57.0, 62.0);
+            SetSkill(SkillName.Swords,      105.0, 110.0);
+            SetSkill(SkillName.Tactics,     105.0, 110.0);
+            SetSkill(SkillName.Anatomy,      97.0, 100.0);
+            SetSkill(SkillName.Healing,      97.0, 100.0);
+            SetSkill(SkillName.Parry,        97.0, 100.0);
+            SetSkill(SkillName.Hiding,       57.0,  62.0);
+            SetSkill(SkillName.MagicResist,  75.0,  80.0);
 
-            SetResistance(ResistanceType.Physical, 50, 60);
-            SetResistance(ResistanceType.Fire,     35, 45);
-            SetResistance(ResistanceType.Cold,     35, 45);
-            SetResistance(ResistanceType.Poison,   35, 45);
-            SetResistance(ResistanceType.Energy,   35, 45);
+            SetResistance(ResistanceType.Physical, 55, 65);
+            SetResistance(ResistanceType.Fire,     40, 50);
+            SetResistance(ResistanceType.Cold,     40, 50);
+            SetResistance(ResistanceType.Poison,   40, 50);
+            SetResistance(ResistanceType.Energy,   40, 50);
 
             Fame        = 5000;
             Karma       = -5000;
-            VirtualArmor = 28;
+            VirtualArmor = 42;
 
             string charName = Names[Utility.Random(Names.Length)];
             InitWantedName(charName);
@@ -268,30 +268,31 @@ namespace Server.Custom
         {
             Hue = 0x47B;
 
-            SetStr(125);
-            SetDex(125);
-            SetInt(125);
-            SetHits(600, 800);
-            SetStam(125);
-            SetMana(125);
+            SetStr(150, 175);
+            SetDex(125, 150);
+            SetInt(175, 200);   // large mana pool for sustained casting
+            SetHits(750, 950);
+            SetStam(125, 150);
+            SetMana(175, 200);
 
             SetSkill(SkillName.Swords,      107.0, 112.0);
             SetSkill(SkillName.Tactics,     107.0, 112.0);
-            SetSkill(SkillName.Anatomy,     87.0, 92.0);
-            SetSkill(SkillName.Healing,     87.0, 92.0);
-            SetSkill(SkillName.Parry,       97.0, 100.0);
-            SetSkill(SkillName.Magery,      77.0, 82.0);
-            SetSkill(SkillName.MagicResist, 77.0, 82.0);
+            SetSkill(SkillName.Anatomy,      87.0,  92.0);
+            SetSkill(SkillName.Healing,      97.0, 100.0);
+            SetSkill(SkillName.Parry,        97.0, 100.0);
+            SetSkill(SkillName.Magery,      107.0, 112.0);  // casts 7th/8th circle
+            SetSkill(SkillName.EvalInt,     107.0, 112.0);
+            SetSkill(SkillName.MagicResist,  97.0, 100.0);
 
             SetResistance(ResistanceType.Physical, 65, 75);
-            SetResistance(ResistanceType.Fire,     45, 55);
-            SetResistance(ResistanceType.Cold,     45, 55);
-            SetResistance(ResistanceType.Poison,   45, 55);
-            SetResistance(ResistanceType.Energy,   45, 55);
+            SetResistance(ResistanceType.Fire,     50, 60);
+            SetResistance(ResistanceType.Cold,     50, 60);
+            SetResistance(ResistanceType.Poison,   50, 60);
+            SetResistance(ResistanceType.Energy,   50, 60);
 
             Fame        = 12000;
             Karma       = -12000;
-            VirtualArmor = 42;
+            VirtualArmor = 55;
 
             string charName = Names[Utility.Random(Names.Length)];
             InitWantedName(charName);
@@ -379,31 +380,31 @@ namespace Server.Custom
         {
             Hue = 0x497;
 
-            SetStr(125);
-            SetDex(125);
-            SetInt(125);
-            SetHits(1000, 1200);
-            SetStam(125);
-            SetMana(125);
+            SetStr(175, 200);
+            SetDex(100, 125);
+            SetInt(225, 250);   // necromage needs massive mana for sustained necro+magery
+            SetHits(1300, 1600);
+            SetStam(100, 125);
+            SetMana(225, 250);
 
-            SetSkill(SkillName.Magery,      117.0, 122.0);
-            SetSkill(SkillName.EvalInt,     117.0, 122.0);
-            SetSkill(SkillName.MagicResist, 117.0, 122.0);
-            SetSkill(SkillName.Necromancy,  117.0, 122.0);
-            SetSkill(SkillName.SpiritSpeak, 117.0, 122.0);
-            SetSkill(SkillName.Swords,      107.0, 112.0);
-            SetSkill(SkillName.Tactics,     107.0, 112.0);
-            SetSkill(SkillName.DetectHidden, 77.0, 82.0);
+            SetSkill(SkillName.Magery,       120.0, 125.0);
+            SetSkill(SkillName.EvalInt,       120.0, 125.0);
+            SetSkill(SkillName.MagicResist,   120.0, 125.0);
+            SetSkill(SkillName.Necromancy,    120.0, 125.0);
+            SetSkill(SkillName.SpiritSpeak,   120.0, 125.0);
+            SetSkill(SkillName.Swords,        107.0, 112.0);
+            SetSkill(SkillName.Tactics,       107.0, 112.0);
+            SetSkill(SkillName.DetectHidden,   97.0, 100.0);
 
-            SetResistance(ResistanceType.Physical, 55, 65);
-            SetResistance(ResistanceType.Fire,     45, 55);
-            SetResistance(ResistanceType.Cold,     60, 70);
-            SetResistance(ResistanceType.Poison,   65, 75);
-            SetResistance(ResistanceType.Energy,   50, 60);
+            SetResistance(ResistanceType.Physical, 60, 70);
+            SetResistance(ResistanceType.Fire,     50, 60);
+            SetResistance(ResistanceType.Cold,     65, 75);
+            SetResistance(ResistanceType.Poison,   70, 80);
+            SetResistance(ResistanceType.Energy,   55, 65);
 
             Fame        = 22000;
             Karma       = -22000;
-            VirtualArmor = 35;
+            VirtualArmor = 65;
 
             string charName = Names[Utility.Random(Names.Length)];
             InitWantedName(charName);
