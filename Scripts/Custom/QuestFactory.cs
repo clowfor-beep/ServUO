@@ -655,53 +655,119 @@ namespace Server.Custom
     // ============================================================
     // BountyBoardGump
     // Shows:
+    //   - Tab row: [All] + one tab per guild that currently has quests
     //   - Active quest (if any): progress, Abandon, Turn In (gather only)
-    //   - Available quests (if no active): list with Accept buttons
+    //   - Available quests filtered by selected guild tab
     // ============================================================
 
     public class BountyBoardGump : Gump
     {
-        private readonly Mobile      _from;
-        private readonly BountyBoard _board;
+        private readonly Mobile       _from;
+        private readonly BountyBoard  _board;
+        private readonly string       _selectedGuild; // null = All
+        private readonly List<string> _tabGuilds;     // guilds with quests, in board order
 
-        private const int W    = 430;
+        private const int W    = 500;
         private const int PadX = 18;
 
-        // Button IDs
-        private const int BTN_CLOSE   = 0;
-        private const int BTN_ABANDON = 100;
-        private const int BTN_TURNIN  = 200;
-        // 1-N: accept quest by index
+        // Button ID ranges — no overlaps
+        private const int BTN_CLOSE    = 0;
+        private const int BTN_ABANDON  = 100;
+        private const int BTN_TURNIN   = 200;
+        private const int BTN_TAB_ALL  = 300;   // "All" tab
+        private const int BTN_TAB_BASE = 301;   // 301+i = guild tab i  (max 12 guilds → up to 313)
+        // 1–99: accept quest by display index
 
-        public BountyBoardGump(Mobile from, BountyBoard board) : base(50, 40)
+        public BountyBoardGump(Mobile from, BountyBoard board, string selectedGuild = null)
+            : base(50, 40)
         {
-            _from  = from;
-            _board = board;
+            _from          = from;
+            _board         = board;
+            _selectedGuild = selectedGuild;
 
-            PlayerQuestState active = QuestFactory.GetActiveQuestState(from);
-            List<FBQuest>    quests = QuestFactory.BoardQuests; // snapshot of live board
+            PlayerQuestState active   = QuestFactory.GetActiveQuestState(from);
+            List<FBQuest>    allBoard = QuestFactory.BoardQuests;
 
-            // Calculate gump height
-            int activeRows  = active != null ? (active.Quest.Type == QuestType.Gather ? 4 : 3) : 0;
-            int questRows   = active == null ? quests.Count : 0;
-            int h = 55                         // header
-                  + activeRows * 24            // active quest section
-                  + (active != null ? 12 : 0)  // divider gap
-                  + questRows * 58             // quest list rows
-                  + 20;                        // bottom padding
+            // Build ordered list of guilds that have at least one quest posted right now
+            _tabGuilds = new List<string>();
+            foreach (FBQuest q in allBoard)
+                if (!string.IsNullOrEmpty(q.GiverGuild) && !_tabGuilds.Contains(q.GiverGuild))
+                    _tabGuilds.Add(q.GiverGuild);
+
+            // Filtered list for the quest panel
+            List<FBQuest> displayQuests = _selectedGuild == null
+                ? allBoard
+                : allBoard.FindAll(q => q.GiverGuild == _selectedGuild);
+
+            // ── Height ────────────────────────────────────────────────────────────
+            // Tab row: up to 2 rows of tabs (each 20px) + 6px gap below
+            int tabAreaH    = 48;
+            int activeH     = active != null
+                ? (active.Quest.Type == QuestType.Gather ? 4 : 3) * 24 + 14
+                : 0;
+            int questH      = active == null
+                ? Math.Max(displayQuests.Count * 58, 26)
+                : 0;
+            int h = 50 + tabAreaH + activeH + questH + 20;
 
             AddBackground(0, 0, W, h, 9270);
             AddAlphaRegion(2, 2, W - 4, h - 4);
 
-            // Header
+            // ── Header ────────────────────────────────────────────────────────────
             AddLabel(PadX, 12, 0x4AA, "Bounty Board");
-            AddImageTiled(PadX, 32, W - PadX * 2, 1, 9264);
+            AddImageTiled(PadX, 30, W - PadX * 2, 1, 9264);
 
-            int y = 40;
+            // ── Tab row ───────────────────────────────────────────────────────────
+            // Tabs wrap automatically.  We use 6 px/char as the UO font width estimate
+            // (proportional, mixed case).  Button graphic = 4005/4007 (18px wide arrow)
+            // placed to the left; label sits 35px to the right.
+            const int charPx  = 6;
+            const int btnW    = 35; // width occupied by the button glyph
+            const int tabGap  = 6;  // gap between tabs
+            const int tabRowH = 20;
+            int maxTabX = W - PadX;
 
+            int tabX = PadX, tabY = 36;
+
+            // "All" tab
+            bool   allActive  = (_selectedGuild == null);
+            string allLabel   = $"All ({allBoard.Count})";
+            int    allLabelW  = allLabel.Length * charPx;
+            AddButton(tabX, tabY, 4005, 4007, BTN_TAB_ALL, GumpButtonType.Reply, 0);
+            AddLabel(tabX + btnW, tabY, allActive ? 0x35 : 2119, allLabel);
+            tabX += btnW + allLabelW + tabGap;
+
+            // Per-guild tabs
+            for (int t = 0; t < _tabGuilds.Count; t++)
+            {
+                string guild    = _tabGuilds[t];
+                string abbrev   = AbbrevGuild(guild);
+                int    cnt      = allBoard.Count(q => q.GiverGuild == guild);
+                string lbl      = $"{abbrev} ({cnt})";
+                int    lblW     = lbl.Length * charPx;
+                int    tabTotal = btnW + lblW + tabGap;
+
+                // Wrap to next row if this tab would overflow
+                if (tabX + tabTotal > maxTabX)
+                {
+                    tabX  = PadX;
+                    tabY += tabRowH;
+                }
+
+                bool isActive = guild == _selectedGuild;
+                AddButton(tabX, tabY, 4005, 4007, BTN_TAB_BASE + t, GumpButtonType.Reply, 0);
+                AddLabel(tabX + btnW, tabY, isActive ? 0x35 : 2119, lbl);
+                tabX += tabTotal;
+            }
+
+            // Divider below tab area
+            int y = 36 + tabAreaH - 2;
+            AddImageTiled(PadX, y, W - PadX * 2, 1, 9264);
+            y += 8;
+
+            // ── Active quest section ──────────────────────────────────────────────
             if (active != null)
             {
-                // Active quest display
                 FBQuest q = active.Quest;
                 AddLabel(PadX, y, 0x35, $"Active: {q.Title}");
                 y += 22;
@@ -709,48 +775,40 @@ namespace Server.Custom
                 string progressText = q.Type == QuestType.Hunt
                     ? $"Kills: {active.Progress} / {q.KillsRequired}"
                     : $"Items: {active.Progress} / {q.ItemAmount} {q.ItemType}";
-
                 AddLabel(PadX + 6, y, 1153, progressText);
                 y += 22;
 
-                // Abandon button
                 AddButton(PadX, y, 4005, 4007, BTN_ABANDON, GumpButtonType.Reply, 0);
                 AddLabel(PadX + 35, y, 0x22, "Abandon Quest");
                 y += 22;
 
-                // Turn-in button (gather only)
                 if (q.Type == QuestType.Gather)
                 {
                     AddButton(PadX, y, 4005, 4007, BTN_TURNIN, GumpButtonType.Reply, 0);
                     AddLabel(PadX + 35, y, 0x35, $"Turn In ({q.ItemType} x{q.ItemAmount})");
-                    y += 22;
                 }
-
-                y += 6;
-                AddImageTiled(PadX, y, W - PadX * 2, 1, 9264);
-                y += 8;
-                AddLabel(PadX, y, 2119, "Complete your current quest before accepting another.");
             }
-            else if (quests.Count == 0)
+            // ── Quest list ────────────────────────────────────────────────────────
+            else if (displayQuests.Count == 0)
             {
-                AddLabel(PadX, y, 2119, "The board is empty. Check back soon — contracts refresh every 30 minutes.");
+                string emptyMsg = _selectedGuild == null
+                    ? "The board is empty — contracts refresh every 30 minutes."
+                    : $"No contracts from {_selectedGuild} right now.";
+                AddLabel(PadX, y, 2119, emptyMsg);
             }
             else
             {
-                // Quest list — grouped with tier badges
-                for (int i = 0; i < quests.Count; i++)
+                for (int i = 0; i < displayQuests.Count; i++)
                 {
-                    FBQuest q = quests[i];
+                    FBQuest q = displayQuests[i];
 
-                    // Tier badge colour and label
-                    string tierLabel;
-                    int    tierHue;
+                    string tierLabel; int tierHue;
                     switch (q.Tier)
                     {
-                        case QuestTier.Uncommon:  tierLabel = "[Uncommon]";  tierHue = 0x44;  break; // green
-                        case QuestTier.Rare:      tierLabel = "[Rare]";      tierHue = 0x4AA; break; // blue
-                        case QuestTier.Legendary: tierLabel = "[Legendary]"; tierHue = 0x22;  break; // orange
-                        default:                  tierLabel = "[Common]";    tierHue = 0x9C2; break; // grey
+                        case QuestTier.Uncommon:  tierLabel = "[Uncommon]";  tierHue = 0x44;  break;
+                        case QuestTier.Rare:      tierLabel = "[Rare]";      tierHue = 0x4AA; break;
+                        case QuestTier.Legendary: tierLabel = "[Legendary]"; tierHue = 0x22;  break;
+                        default:                  tierLabel = "[Common]";    tierHue = 0x9C2; break;
                     }
 
                     int    typeHue = q.Type == QuestType.Hunt ? 0x4AA : 0x35;
@@ -758,15 +816,15 @@ namespace Server.Custom
                     string goal    = q.Type == QuestType.Hunt
                         ? $"Kill {q.KillsRequired}"
                         : $"Deliver {q.ItemAmount} {q.ItemType}";
-                    string desc    = q.Description.Length > 52
-                        ? q.Description.Substring(0, 52) + "..."
+                    int    descMax = 64;
+                    string desc    = q.Description.Length > descMax
+                        ? q.Description.Substring(0, descMax) + "..."
                         : q.Description;
-                    string reward  = $"{q.RewardGold}gp  +{q.RepAmount} {q.RepGuild} rep";
+                    string reward  = $"{q.RewardGold}gp  +{q.RepAmount} {AbbrevGuild(q.RepGuild)} rep";
 
-                    // Tier + type + title on one line
-                    AddLabel(PadX,      y, tierHue, tierLabel);
-                    AddLabel(PadX + 80, y, typeHue, typeTag);
-                    AddLabel(PadX + 130, y, 1153,  q.Title);
+                    AddLabel(PadX,       y, tierHue, tierLabel);
+                    AddLabel(PadX + 90,  y, typeHue, typeTag);
+                    AddLabel(PadX + 145, y, 1153,    q.Title);
                     y += 16;
 
                     AddLabel(PadX + 6, y, 2119, desc);
@@ -774,7 +832,6 @@ namespace Server.Custom
                     AddLabel(PadX + 6, y, 2119, $"{goal}  |  Reward: {reward}");
                     y += 14;
 
-                    // Accept button — stores index into the snapshot; AcceptQuest validates by Id
                     AddButton(PadX + 6, y, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
                     AddLabel(PadX + 42, y, 0x35, "Accept");
                     y += 20;
@@ -790,29 +847,82 @@ namespace Server.Custom
             int btn = info.ButtonID;
             if (btn == BTN_CLOSE) return;
 
+            // ── Abandon ──────────────────────────────────────────────────────────
             if (btn == BTN_ABANDON)
             {
                 QuestFactory.AbandonQuest(_from);
-                _from.SendGump(new BountyBoardGump(_from, _board));
+                _from.SendGump(new BountyBoardGump(_from, _board, _selectedGuild));
                 return;
             }
 
+            // ── Turn in ──────────────────────────────────────────────────────────
             if (btn == BTN_TURNIN)
             {
                 QuestFactory.CheckGatherProgress(_from);
-                // Reopen board to reflect new state
-                _from.SendGump(new BountyBoardGump(_from, _board));
+                _from.SendGump(new BountyBoardGump(_from, _board, _selectedGuild));
                 return;
             }
 
-            // Accept quest by index into the board snapshot (buttons 1..N)
-            int idx = btn - 1;
-            var board = QuestFactory.BoardQuests; // fresh snapshot for Id lookup
-            if (idx >= 0 && idx < board.Count)
+            // ── Tab: All ─────────────────────────────────────────────────────────
+            if (btn == BTN_TAB_ALL)
             {
-                QuestFactory.AcceptQuest(_from, board[idx].Id);
-                _from.SendGump(new BountyBoardGump(_from, _board));
+                _from.SendGump(new BountyBoardGump(_from, _board, null));
+                return;
             }
+
+            // ── Tab: specific guild ───────────────────────────────────────────────
+            if (btn >= BTN_TAB_BASE && btn < BTN_TAB_BASE + FBGuilds.All.Length + 1)
+            {
+                int tabIdx = btn - BTN_TAB_BASE;
+                // Rebuild guild order from a fresh board snapshot so we always match
+                // what the constructor would have built at this moment.
+                var fresh     = QuestFactory.BoardQuests;
+                var freshTabs = new List<string>();
+                foreach (FBQuest q in fresh)
+                    if (!string.IsNullOrEmpty(q.GiverGuild) && !freshTabs.Contains(q.GiverGuild))
+                        freshTabs.Add(q.GiverGuild);
+
+                string clickedGuild = tabIdx < freshTabs.Count ? freshTabs[tabIdx] : null;
+                _from.SendGump(new BountyBoardGump(_from, _board, clickedGuild));
+                return;
+            }
+
+            // ── Accept quest (buttons 1–99) ───────────────────────────────────────
+            if (btn >= 1 && btn <= 99)
+            {
+                int idx = btn - 1;
+                var snapshot  = QuestFactory.BoardQuests;
+                var displayed = _selectedGuild == null
+                    ? snapshot
+                    : snapshot.FindAll(q => q.GiverGuild == _selectedGuild);
+
+                if (idx < displayed.Count)
+                    QuestFactory.AcceptQuest(_from, displayed[idx].Id);
+
+                _from.SendGump(new BountyBoardGump(_from, _board, _selectedGuild));
+            }
+        }
+
+        // ── Guild abbreviations for tab labels ────────────────────────────────────
+        private static string AbbrevGuild(string guild)
+        {
+            if (guild == null)                              return string.Empty;
+            if (guild == FBGuilds.Wanderers)                return "Wanderers";
+            if (guild == FBGuilds.CraftsmenLeague)          return "Craftsmen";
+            if (guild == FBGuilds.ShadowHand)               return "Shadow Hand";
+            if (guild == FBGuilds.IronCompany)              return "Iron Co.";
+            if (guild == FBGuilds.ArcaneBrotherhood)        return "Arcane Bro.";
+            if (guild == FBGuilds.SilverWolves)             return "Silver Wolves";
+            if (guild == FBGuilds.PaladinOrder)             return "Paladins";
+            if (guild == FBGuilds.DeadWatchers)             return "Dead Watch.";
+            if (guild == FBGuilds.DreadHunters)             return "Dread Hunt.";
+            if (guild == FBGuilds.BloodPact)                return "Blood Pact";
+            if (guild == FBGuilds.TheVoid)                  return "The Void";
+            if (guild == FBGuilds.Shadowblade)              return "Shadowblade";
+            // Fallback: strip "The " prefix and truncate at 12 chars
+            string s = guild.StartsWith("The ", StringComparison.OrdinalIgnoreCase)
+                ? guild.Substring(4) : guild;
+            return s.Length > 12 ? s.Substring(0, 12) : s;
         }
     }
 }
