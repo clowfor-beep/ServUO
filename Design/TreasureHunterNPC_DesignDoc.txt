@@ -1,0 +1,328 @@
+TREASURE HUNTER NPC — DESIGN DOCUMENT
+Forsaken Britannia
+Last updated: 2026-05-28
+
+═══════════════════════════════════════════════════════════════
+1. OVERVIEW
+═══════════════════════════════════════════════════════════════
+
+A placeable NPC that offers players two paid services for decoded
+treasure maps. Players who lack Cartography, Lockpicking, or Remove
+Trap skill can hire the NPC to do the legwork. Payment comes from
+their bank account upfront.
+
+Two services:
+
+  ┌─────────────────────────────────────────────────────────┐
+  │ SERVICE 1 — Portal Only                                  │
+  │   Opens a one-way gate directly to the chest location.  │
+  │   Player steps through and digs/unlocks themselves.     │
+  │   Cost: 50% of reference gold for that map level.       │
+  ├─────────────────────────────────────────────────────────┤
+  │ SERVICE 2 — Full Assistance                              │
+  │   NPC and player both gate to the location. NPC digs,   │
+  │   disarms the trap, and lockpicks the chest. NPC then   │
+  │   opens a return gate and departs.                       │
+  │   Cost: 80% of reference gold for that map level.       │
+  └─────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════
+2. FEE TABLE
+═══════════════════════════════════════════════════════════════
+
+Reference gold = midpoint of GetGoldCount() range per level.
+Portal fee    = 30% of reference gold.
+Full fee      = 80% of reference gold.
+
+  Level    TreasureLevel  Gold Range      Ref Gold   Portal    Full
+  ─────    ─────────────  ──────────────  ─────────  ────────  ────────
+  0        Stash          10,000–40,000    25,000     7,500    20,000
+  1        Supply         20,000–50,000    35,000    10,500    28,000
+  2        Cache          30,000–60,000    45,000    13,500    36,000
+  3        Hoard          40,000–70,000    55,000    16,500    44,000
+  4        Trove          50,000–70,000    60,000    18,000    48,000
+
+These values are hardcoded as a lookup table in TreasureHunterNPC.cs.
+
+Design note: The player is guaranteed to break even only on an average
+roll. A poor roll on a Stash (10k gold) costs them 20k for Full Service.
+This is intentional — the convenience premium is real. Consider it a
+luxury tax for players who want the content without the skills.
+
+═══════════════════════════════════════════════════════════════
+3. NPC SPECIFICATION
+═══════════════════════════════════════════════════════════════
+
+Class:      TreasureHunterNPC   (Scripts/Custom/TreasureHunterNPC.cs)
+Base:       BaseCreature with AIType.AI_Animal, FightMode.None
+Name:       "Treasure Hunter"
+Title:      "the Treasure Hunter"  (shown on nameplate)
+Body:       0x190 (male human)
+Hue:        tanned/weathered — Utility.RandomSkinHue()
+Clothing:   A worn robe and leather gloves (visual only)
+Invulnerable: true
+Movable:    false (placed by staff, should not wander)
+
+[Constructable]
+
+Placed by staff: [add TreasureHunterNPC
+Serialized: yes (standard Serialize/Deserialize, version 0)
+
+Suggested placement: Britain bank, Trinsic bank, Minoc bank
+(the same towns where HunterGuildmaster NPCs are placed).
+
+═══════════════════════════════════════════════════════════════
+4. INTERACTION FLOW
+═══════════════════════════════════════════════════════════════
+
+  1. Player double-clicks the NPC.
+  2. NPC says: "Greetings, traveller. Show me a decoded treasure map
+     and I can be of service."
+  3. ServiceGump opens showing the two services with prices for
+     "a decoded map in your pack".
+     — The gump does NOT know the level yet at this stage; it shows
+       a prompt to drag a map from the backpack.
+     — Actually: the gump opens a targeting cursor after showing the
+       two options so the player first picks the service, then targets
+       the map. See Section 5.
+
+═══════════════════════════════════════════════════════════════
+5. GUMP + TARGET FLOW
+═══════════════════════════════════════════════════════════════
+
+Step A — ServiceSelectGump (service picker, no map yet)
+
+  ┌──────────────────────────────────────────────────────────┐
+  │  Treasure Hunter Services                         [Close] │
+  ├──────────────────────────────────────────────────────────┤
+  │  "I can offer two services for your decoded map:"        │
+  │                                                          │
+  │  [Portal Only]   — 50% of chest gold value, from bank   │
+  │  [Full Service]  — 80% of chest gold value, from bank   │
+  │                                                          │
+  │  "Show me your map and I'll tell you the exact price."   │
+  └──────────────────────────────────────────────────────────┘
+
+  Buttons: BTN_CLOSE=0, BTN_PORTAL=1, BTN_FULL=2
+
+Step B — After selecting a service, open a targeting cursor:
+  "Which map would you like me to examine?"
+  Player clicks a TreasureMap in their backpack.
+
+Step C — Validate map:
+  - Is it a TreasureMap?                → else: "That is not a treasure map."
+  - Is it in the player's backpack?     → else: "The map must be in your pack."
+  - Is map.Decoder != null?             → else: "The map must be decoded first."
+  - Is map.Completed == false?          → else: "That treasure has already been claimed."
+  - map.Facet != null                   → should always be true
+
+Step D — ConfirmGump (show level, exact price, confirm/cancel):
+
+  ┌──────────────────────────────────────────────────────────┐
+  │  Confirm: Full Service                            [Close] │
+  ├──────────────────────────────────────────────────────────┤
+  │  Map:     A Hoard map (Level 3)                          │
+  │  Service: Full Assistance — dig, disarm, lockpick        │
+  │  Cost:    44,000 gold (from bank)                        │
+  │  Bank:    52,000 gold available                          │
+  │                                                          │
+  │           [Confirm]          [Cancel]                    │
+  └──────────────────────────────────────────────────────────┘
+
+  If Banker.GetBalance(from) < cost → show "You need X gold in your bank
+  but only have Y." — no Confirm button; only Cancel.
+
+Step E — On Confirm:
+  - Banker.Withdraw(from, cost) — deduct bank gold
+  - NPC says "Excellent. Stand by..." then performs the service.
+
+═══════════════════════════════════════════════════════════════
+6. SERVICE 1 — PORTAL ONLY
+═══════════════════════════════════════════════════════════════
+
+After payment:
+
+  1. NPC emotes: *opens a shimmering portal*
+  2. Spawn a one-use custom gate (TreasurePortalGate) at the player's
+     current tile.
+     - Teleports to: new Point3D(map.ChestLocation.X, map.ChestLocation.Y,
+                                  map.Facet.GetAverageZ(map.ChestLocation))
+       on Map map.Facet.
+     - The gate is one-use (deletes on first use) and expires after
+       60 seconds if unused.
+     - Only the player who paid (by serial check) can use it. Anyone
+       else who steps on it gets: "This portal was opened for someone else."
+  3. NPC says: "The portal awaits. Good hunting!"
+  4. Map is NOT marked completed (the player still needs to dig/unlock).
+
+TreasurePortalGate:
+  - Subclass of Item (or Moongate — check if Moongate is simple to subclass)
+  - ItemID: 0xF6C (moongate graphic)
+  - Hue: 0x481 (gold-yellow)
+  - OnMoveOver() → teleport the qualifying player, then Delete()
+  - Constructor stores: Point3D destination, Map destMap, Serial ownerSerial
+  - Timer.DelayCall(60 seconds) → Delete()
+
+═══════════════════════════════════════════════════════════════
+7. SERVICE 2 — FULL ASSISTANCE
+═══════════════════════════════════════════════════════════════
+
+After payment, a multi-step sequence using Timer.DelayCall chains:
+
+  T+0.0s  NPC says: "Follow me through the portal!"
+          NPC emotes: *opens a shimmering portal*
+          Spawn a SHORT-LIVED gate at player's location (2-use: player + NPC).
+          Teleport both player and NPC to the chest location:
+            - Player: from.MoveToWorld(destPoint, map.Facet)
+            - NPC: this.MoveToWorld(destPoint, map.Facet)
+          (Use MoveToWorld directly — no gate needed for NPC, just teleport.)
+
+  T+1.0s  NPC says: "I'll dig this up for you."
+          NPC plays digging animation (Action.Dig or Action.Attack).
+          NPC emotes: *drives a shovel into the earth*
+
+  T+3.0s  Spawn the chest:
+            TreasureMapChest chest = new TreasureMapChest(null)
+            chest.MoveToWorld(destPoint, map.Facet)
+            tMap.AssignChestQuality(this, chest)  // uses NPC as digger
+            TreasureMapInfo.Fill(from, chest, tMap)
+            chest.Locked = false
+            chest.TrapType = TrapType.None   // disarm
+          NPC says: "Trap disarmed. Chest unlocked."
+
+  T+4.0s  Mark map completed:
+            tMap.Completed = true
+            tMap.CompletedBy = from
+
+  T+5.0s  NPC says: "My work here is done. Until next time."
+          NPC emotes: *opens a return portal*
+          Spawn a TreasurePortalGate at the chest location pointing back
+          to where the player originally was (store origin in state).
+          Gate: one-use, owner = from.Serial, 60-second expiry.
+          NPC teleports back to original location: this.MoveToWorld(origin, originMap)
+          (Or NPC just vanishes with a sparkle and reappears at spawn — simpler.)
+
+NPC state during Full Service:
+  - Store origin location, originMap, player serial, tMap reference
+    as private fields set at payment time. Clear them after T+5.
+  - If the NPC is deleted mid-sequence, the timer chain should null-check.
+
+═══════════════════════════════════════════════════════════════
+8. EDGE CASES AND VALIDATION
+═══════════════════════════════════════════════════════════════
+
+| Case | Handling |
+|------|---------|
+| Player moves map out of pack between confirm and execute | Check IsChildOf(from.Backpack) just before execution; if gone, refund |
+| Map already completed when NPC arrives at destination | Refund, NPC says "It seems someone already claimed this treasure. I'll return your gold." |
+| Chest location unreachable (water tile etc) | GetAverageZ may return -128 (sea floor); check and abort/refund |
+| Player disconnects during Full Service | NPC completes sequence, chest is placed; gold already spent |
+| Player tries to use portal twice | Gate deletes on first use; second attempt finds nothing |
+| Player is not the Decoder | No restriction — any player can hire the NPC for any decoded map in their backpack |
+| Map is Felucca facet | The destination is in Felucca; NPC proceeds normally. Player enters Felucca. |
+
+Refund pattern:
+  Banker.Deposit(from, refundAmount, true)
+  from.SendMessage(0x22, "Your gold has been refunded.")
+
+═══════════════════════════════════════════════════════════════
+9. KEY SERVUO APIS
+═══════════════════════════════════════════════════════════════
+
+TreasureMap:
+  Point2D map.ChestLocation        X/Y of the treasure
+  Map     map.Facet                which facet/map
+  int     map.Level                0-4 (new system)
+  bool    map.Completed            already dug
+  Mobile  map.Decoder              null = not decoded yet
+  void    map.AssignChestQuality(Mobile digger, TreasureMapChest chest)
+  bool    map.Completed { set; }   mark as done
+
+TreasureMapChest:
+  chest.Locked = false             unlock
+  chest.TrapType = TrapType.None   disarm
+
+TreasureMapInfo:
+  static void Fill(Mobile from, TreasureMapChest chest, TreasureMap tMap)
+  static int  GetGoldCount(TreasureLevel level)   (for reference only)
+
+Banker:
+  int  Banker.GetBalance(Mobile from)
+  bool Banker.Withdraw(Mobile from, int amount)    // false = insufficient
+  void Banker.Deposit(Mobile from, int amount, bool message)
+
+Z coordinate:
+  int z = map.Facet.GetAverageZ(map.ChestLocation.X, map.ChestLocation.Y)
+  if (z == -128 || z < -20) → sea floor or invalid; abort
+
+Gate item pattern — subclass Item:
+  public class TreasurePortalGate : Item
+  {
+      private Serial    _owner;
+      private Point3D   _dest;
+      private Map       _destMap;
+      private Timer     _expireTimer;
+
+      public TreasurePortalGate(Serial owner, Point3D dest, Map destMap)
+          : base(0xF6C)
+      {
+          Movable = false;
+          Hue     = 0x481;
+          _owner = owner; _dest = dest; _destMap = destMap;
+          _expireTimer = Timer.DelayCall(TimeSpan.FromSeconds(60), Delete);
+      }
+
+      public override bool OnMoveOver(Mobile from)
+      {
+          if (from.Serial != _owner)
+          {
+              from.SendMessage("This portal was opened for someone else.");
+              return true; // let them step off
+          }
+          from.MoveToWorld(_dest, _destMap);
+          Delete();
+          return false;
+      }
+
+      public TreasurePortalGate(Serial serial) : base(serial) { }
+      // + Serialize/Deserialize (version 0, save _owner/_dest/_destMap)
+  }
+
+═══════════════════════════════════════════════════════════════
+10. FILES TO CREATE
+═══════════════════════════════════════════════════════════════
+
+  Scripts/Custom/TreasureHunterNPC.cs   (CREATE)
+
+  Contains:
+    class TreasureHunterNPC    : BaseCreature
+    class TreasurePortalGate   : Item
+    class TreasureHunterGump   : Gump  (service picker)
+    class TreasureConfirmGump  : Gump  (confirm with price)
+
+  No new FBEventBus events needed.
+  No new ReputationSystem integration (standalone system).
+
+═══════════════════════════════════════════════════════════════
+11. DEFINITION OF DONE (for Claude 2)
+═══════════════════════════════════════════════════════════════
+
+  [ ] TreasureHunterNPC is [Constructable] and [add TreasureHunterNPC] works
+  [ ] NPC is invulnerable and stationary
+  [ ] Double-click opens service picker gump
+  [ ] Targeting cursor opens after service selection
+  [ ] Map validation: decoded, not completed, in backpack
+  [ ] ConfirmGump shows level name, service type, exact cost, bank balance
+  [ ] Insufficient funds: shows error, no deduction
+  [ ] Banker.Withdraw fires before any service action
+  [ ] Service 1: gate spawns at player's tile, teleports correct facet/location
+  [ ] Gate is one-use, owner-locked, auto-deletes after 60s
+  [ ] Service 2: NPC teleports to location, spawns chest via TreasureMapInfo.Fill
+  [ ] Service 2: chest.Locked = false, chest.TrapType = TrapType.None
+  [ ] Service 2: map.Completed = true after chest spawned
+  [ ] Service 2: return gate opens at treasure location (or NPC just returns)
+  [ ] Sea-floor Z check: abort + refund if z == -128 or z < -20
+  [ ] Refund on abort: Banker.Deposit with message
+  [ ] All classes serialized/deserialized correctly
+  [ ] Namespace: Server.Custom
+  [ ] AddImageTiledPart NOT used
