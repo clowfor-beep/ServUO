@@ -141,11 +141,11 @@ namespace Server.Custom
             // Weathered explorer / treasure hunter outfit
             int leather = Utility.RandomList(1109, 2117, 2213, 2306); // earthy leather browns
             int boot    = Utility.RandomList(1107, 2101, 2306);       // dark boot tones
-            AddItem(new StuddedChest(leather));
-            AddItem(new StuddedLegs(leather));
-            AddItem(new LeatherGloves(leather));
-            AddItem(new FeatheredHat(boot));
-            AddItem(new ThighBoots(boot));
+            AddItem(new StuddedChest  { Hue = leather });
+            AddItem(new StuddedLegs   { Hue = leather });
+            AddItem(new LeatherGloves { Hue = leather });
+            AddItem(new FeatheredHat  { Hue = boot    });
+            AddItem(new ThighBoots    { Hue = boot    });
         }
 
         public TreasureHunterNPC(Serial serial) : base(serial) { }
