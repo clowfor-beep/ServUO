@@ -34,7 +34,7 @@ namespace Server.Custom
         public static double CarpentryBardingBonus   = 0.10;
 
         // ============================================================
-        // BACKSTAB STATE — tracks who was hidden at swing start
+        // BACKSTAB STATE -- tracks who was hidden at swing start
         // ============================================================
 
         private static readonly HashSet<Mobile> PendingBackstab = new HashSet<Mobile>();
@@ -133,10 +133,10 @@ namespace Server.Custom
         }
 
         // ============================================================
-        // DEFENSIVE SYNERGIES — Step 9
+        // DEFENSIVE SYNERGIES -- Step 9
         // ============================================================
 
-        // ── Helpers ───────────────────────────────────────────────────────
+        // -- Helpers --------------------------------------------------
 
         /// <summary>Returns 0.0 at skill &lt;80, 1.0 at skill 100+, linear between.</summary>
         private static double SynergyScale(double skillValue)
@@ -153,7 +153,7 @@ namespace Server.Custom
             return bonusAt100 + (int)((skillValue - 100.0) / 20.0 * (bonusAt120 - bonusAt100));
         }
 
-        // ── Section A — Resist bonuses (% points) ─────────────────────────
+        // -- Section A -- Resist bonuses (% points) -------------------
 
         public static int GetPhysicalResistBonus(Mobile m)
         {
@@ -213,16 +213,16 @@ namespace Server.Custom
             return (int)sum;
         }
 
-        // ── Section B — Resist cap raises ─────────────────────────────────
+        // -- Section B -- Resist cap raises ---------------------------
 
         public static int GetPhysicalResistCap(Mobile m)
         {
             if (!(m is PlayerMobile)) return 0;
             int cap = 0;
-            cap += CapScale(m.Skills[SkillName.Blacksmith].Value,    5, 8); // primary
-            cap += CapScale(m.Skills[SkillName.Lumberjacking].Value, 2, 3); // secondary
-            cap += CapScale(m.Skills[SkillName.Carpentry].Value,     2, 3); // secondary
-            cap += CapScale(m.Skills[SkillName.Camping].Value,       2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.Blacksmith].Value,    5, 8);
+            cap += CapScale(m.Skills[SkillName.Lumberjacking].Value, 2, 3);
+            cap += CapScale(m.Skills[SkillName.Carpentry].Value,     2, 3);
+            cap += CapScale(m.Skills[SkillName.Camping].Value,       2, 3);
             return cap;
         }
 
@@ -230,10 +230,10 @@ namespace Server.Custom
         {
             if (!(m is PlayerMobile)) return 0;
             int cap = 0;
-            cap += CapScale(m.Skills[SkillName.Alchemy].Value,    5, 8); // primary
-            cap += CapScale(m.Skills[SkillName.Blacksmith].Value, 2, 3); // secondary
-            cap += CapScale(m.Skills[SkillName.Mining].Value,     2, 3); // secondary
-            cap += CapScale(m.Skills[SkillName.TasteID].Value,    2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.Alchemy].Value,    5, 8);
+            cap += CapScale(m.Skills[SkillName.Blacksmith].Value, 2, 3);
+            cap += CapScale(m.Skills[SkillName.Mining].Value,     2, 3);
+            cap += CapScale(m.Skills[SkillName.TasteID].Value,    2, 3);
             return cap;
         }
 
@@ -241,10 +241,10 @@ namespace Server.Custom
         {
             if (!(m is PlayerMobile)) return 0;
             int cap = 0;
-            cap += CapScale(m.Skills[SkillName.Camping].Value,       5, 8); // primary
-            cap += CapScale(m.Skills[SkillName.Lumberjacking].Value, 2, 3); // secondary
-            cap += CapScale(m.Skills[SkillName.Herding].Value,       2, 3); // secondary
-            cap += CapScale(m.Skills[SkillName.Inscribe].Value,      2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.Camping].Value,       5, 8);
+            cap += CapScale(m.Skills[SkillName.Lumberjacking].Value, 2, 3);
+            cap += CapScale(m.Skills[SkillName.Herding].Value,       2, 3);
+            cap += CapScale(m.Skills[SkillName.Inscribe].Value,      2, 3);
             return cap;
         }
 
@@ -252,10 +252,10 @@ namespace Server.Custom
         {
             if (!(m is PlayerMobile)) return 0;
             int cap = 0;
-            cap += CapScale(m.Skills[SkillName.TasteID].Value,      5, 8); // primary
-            cap += CapScale(m.Skills[SkillName.Alchemy].Value,      2, 3); // secondary
-            cap += CapScale(m.Skills[SkillName.Herding].Value,      2, 3); // secondary
-            cap += CapScale(m.Skills[SkillName.AnimalTaming].Value, 2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.TasteID].Value,      5, 8);
+            cap += CapScale(m.Skills[SkillName.Alchemy].Value,      2, 3);
+            cap += CapScale(m.Skills[SkillName.Herding].Value,      2, 3);
+            cap += CapScale(m.Skills[SkillName.AnimalTaming].Value, 2, 3);
             return cap;
         }
 
@@ -263,12 +263,12 @@ namespace Server.Custom
         {
             if (!(m is PlayerMobile)) return 0;
             int cap = 0;
-            cap += CapScale(m.Skills[SkillName.Inscribe].Value, 5, 8); // primary
-            cap += CapScale(m.Skills[SkillName.Fishing].Value,  2, 3); // secondary
+            cap += CapScale(m.Skills[SkillName.Inscribe].Value, 5, 8);
+            cap += CapScale(m.Skills[SkillName.Fishing].Value,  2, 3);
             return cap;
         }
 
-        // ── Section C — DCI bonus (fraction, e.g. 0.08 = +8%) ────────────
+        // -- Section C -- DCI bonus (fraction, e.g. 0.08 = +8%) ------
 
         public static double GetDCIBonus(Mobile m)
         {
@@ -279,7 +279,7 @@ namespace Server.Custom
             return bonus;
         }
 
-        // ── Section D — HP bonus ──────────────────────────────────────────
+        // -- Section D -- HP bonus ------------------------------------
 
         public static int GetBonusHP(Mobile m)
         {
@@ -291,7 +291,7 @@ namespace Server.Custom
             return (int)sum;
         }
 
-        // ── Section E — Bandage heal bonus (multiplier fraction) ──────────
+        // -- Section E -- Bandage heal bonus (multiplier fraction) ----
 
         public static double GetBandageHealBonus(Mobile m)
         {
@@ -302,7 +302,7 @@ namespace Server.Custom
             return bonus;
         }
 
-        // ── Section F — HP regen multiplier (1.0 = no change) ────────────
+        // -- Section F -- HP regen multiplier (1.0 = no change) ------
 
         /// <summary>
         /// Returns 1.0 at Camping &lt;80, 2.0 (double regen) at Camping 100+, linear between.
@@ -312,6 +312,59 @@ namespace Server.Custom
         {
             if (!(m is PlayerMobile)) return 1.0;
             return 1.0 + SynergyScale(m.Skills[SkillName.Camping].Value);
+        }
+
+        // ============================================================
+        // HERDING SYNERGIES -- follower damage and resistance bonuses
+        // ============================================================
+
+        // +22% damage per (Herding/100) while controller has a Shepherd's Crook
+        private const double HerdingDamageBonusPerPoint = 0.22;
+        // +11% resistance per (Herding/100)
+        private const double HerdingResistBonusPerPoint = 0.11;
+
+        /// <summary>
+        /// Call from BaseCreature.AlterMeleeDamageTo when the creature is a follower attacking.
+        /// Multiplies outgoing melee damage by the Herding bonus.
+        /// </summary>
+        public static void ApplyHerdingDamageBonus(Mobile master, ref int damage)
+        {
+            if (master == null || !master.Alive) return;
+
+            double herding = master.Skills[SkillName.Herding].Value;
+            if (herding < 30.0) return;
+            if (!HasShepherdsCrook(master)) return;
+
+            double bonus = HerdingDamageBonusPerPoint * (herding / 100.0);
+            damage = (int)(damage * (1.0 + bonus));
+
+            // Passive Herding skill gain: 5% chance per successful follower hit
+            if (Utility.RandomDouble() < 0.05)
+                master.CheckSkill(SkillName.Herding, 50.0, 120.0);
+        }
+
+        /// <summary>
+        /// Call from BaseCreature.AlterMeleeDamageFrom when the creature is a follower being hit.
+        /// Reduces incoming melee damage by the Herding resist bonus.
+        /// </summary>
+        public static void ApplyHerdingResistBonus(Mobile master, ref int damage)
+        {
+            if (master == null || !master.Alive) return;
+
+            double herding = master.Skills[SkillName.Herding].Value;
+            if (herding < 30.0) return;
+            if (!HasShepherdsCrook(master)) return;
+
+            double reduction = HerdingResistBonusPerPoint * (herding / 100.0);
+            damage = (int)(damage * (1.0 - reduction));
+        }
+
+        /// <summary>Returns true if the mobile has a Shepherd's Crook equipped or in backpack.</summary>
+        private static bool HasShepherdsCrook(Mobile m)
+        {
+            if (m.FindItemOnLayer(Layer.TwoHanded) is ShepherdsCrook) return true;
+            if (m.Backpack != null && m.Backpack.FindItemByType(typeof(ShepherdsCrook)) != null) return true;
+            return false;
         }
     }
 }

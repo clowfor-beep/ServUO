@@ -188,6 +188,7 @@ namespace Server.Spells.Necromancy
                             m_From.FixedParticles(0x3728, 1, 10, 9910, EffectLayer.Head);
                             bc.PlaySound(bc.GetIdleSound());
                             SummonFamiliarSpell.Table[m_From] = bc;
+                            Server.Custom.SummonerSynergySystem.ApplyBonuses(bc, m_From);
                         }
                     }
                     catch (Exception e)

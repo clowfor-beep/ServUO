@@ -1,0 +1,1 @@
+Done: SummonerSynergySystem. Files created: SummonerSynergySystem.cs. Files edited: SkillSynergies.cs, BaseCreature.cs, EarthElemental.cs, FireElemental.cs, AirElemental.cs, WaterElemental.cs, SummonDaemon.cs, BladeSpirits.cs, EnergyVortex.cs, AnimateDeadSpell.cs, SummonFamiliar.cs.

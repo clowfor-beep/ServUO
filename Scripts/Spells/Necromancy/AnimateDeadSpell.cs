@@ -331,6 +331,7 @@ namespace Server.Spells.Necromancy
             Effects.PlaySound(loc, map, bc.GetAngerSound());
 
             BaseCreature.Summon((BaseCreature)summoned, false, caster, loc, 0x28, TimeSpan.FromDays(1.0));
+            Server.Custom.SummonerSynergySystem.ApplyBonuses(summoned, caster);
 
             if (summoned is SkeletalDragon)
                 Scale((SkeletalDragon)summoned, 50); // lose 50% hp and strength

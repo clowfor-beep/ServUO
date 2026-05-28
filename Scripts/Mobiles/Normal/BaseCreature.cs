@@ -1871,12 +1871,26 @@ namespace Server.Mobiles
 
             if (m_TempDamageAbsorb > 0 && VialofArmorEssence.UnderInfluence(this))
                 damage -= damage / m_TempDamageAbsorb;
+
+            // Herding resist bonus -- applies when this creature is a player-controlled follower
+            if ((Controlled || Summoned) && damage > 0)
+            {
+                Mobile master = ControlMaster ?? SummonMaster;
+                Server.Custom.SkillSynergies.ApplyHerdingResistBonus(master, ref damage);
+            }
         }
 
         public virtual void AlterMeleeDamageTo(Mobile to, ref int damage)
         {
             if (m_TempDamageBonus > 0 && TastyTreat.UnderInfluence(this))
                 damage += damage / m_TempDamageBonus;
+
+            // Herding bonus -- applies when this creature is a player-controlled follower
+            if ((Controlled || Summoned) && damage > 0)
+            {
+                Mobile master = ControlMaster ?? SummonMaster;
+                Server.Custom.SkillSynergies.ApplyHerdingDamageBonus(master, ref damage);
+            }
         }
         #endregion
 

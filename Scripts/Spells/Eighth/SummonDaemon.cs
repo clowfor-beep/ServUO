@@ -42,6 +42,7 @@ namespace Server.Spells.Eighth
 
                 BaseCreature m_Daemon = new SummonedDaemon();
                 SpellHelper.Summon(m_Daemon, Caster, 0x216, duration, false, false);
+                Server.Custom.SummonerSynergySystem.ApplyBonuses(m_Daemon, Caster);
                 m_Daemon.FixedParticles(0x3728, 8, 20, 5042, EffectLayer.Head);
             }
 
