@@ -138,7 +138,14 @@ namespace Server.Custom
             SetStr(100); SetDex(100); SetInt(100);
             SetHits(200);
 
-            AddItem(new Robe(Utility.RandomNeutralHue()));
+            // Weathered explorer / treasure hunter outfit
+            int leather = Utility.RandomList(1109, 2117, 2213, 2306); // earthy leather browns
+            int boot    = Utility.RandomList(1107, 2101, 2306);       // dark boot tones
+            AddItem(new StuddedChest(leather));
+            AddItem(new StuddedLegs(leather));
+            AddItem(new LeatherGloves(leather));
+            AddItem(new FeatheredHat(boot));
+            AddItem(new ThighBoots(boot));
         }
 
         public TreasureHunterNPC(Serial serial) : base(serial) { }
@@ -442,23 +449,23 @@ namespace Server.Custom
 
             AddLabel(145, 16, 0x44, "Treasure Hunter Services");
 
-            AddLabel(20, 50, 0xFFFF, "I offer three services for treasure maps.");
-            AddLabel(20, 66, 0xFFFF, "Payment is taken from your bank account upfront.");
+            AddLabel(20, 50, 1153, "I offer three services for treasure maps.");
+            AddLabel(20, 66, 1153, "Payment is taken from your bank account upfront.");
 
             // Portal Only (requires decoded map)
             AddButton(20, 100, 0xFA5, 0xFA7, BTN_PORTAL, GumpButtonType.Reply, 0);
             AddLabel(55, 101, 0x44,   "Portal Only  (30% fee)");
-            AddLabel(55, 118, 0x3B2,  "I open a gate to the treasure. Map must be decoded.");
+            AddLabel(55, 118, 1153,  "I open a gate to the treasure. Map must be decoded.");
 
             // Full Assistance (requires decoded map)
             AddButton(20, 148, 0xFA5, 0xFA7, BTN_FULL, GumpButtonType.Reply, 0);
             AddLabel(55, 149, 0x44,   "Full Assistance  (80% fee)");
-            AddLabel(55, 166, 0x3B2,  "I travel with you, dig, disarm and unlock. Map must be decoded.");
+            AddLabel(55, 166, 1153,  "I travel with you, dig, disarm and unlock. Map must be decoded.");
 
             // Decode + Full Assistance (works on any undecoded map)
             AddButton(20, 196, 0xFA5, 0xFA7, BTN_DECODE_FULL, GumpButtonType.Reply, 0);
             AddLabel(55, 197, 0x44,   "Decode + Full Assistance  (90% fee)");
-            AddLabel(55, 214, 0x3B2,  "I decode the map, travel with you, dig, disarm and unlock.");
+            AddLabel(55, 214, 1153,  "I decode the map, travel with you, dig, disarm and unlock.");
 
             AddButton(400, 10, 0xFB1, 0xFB2, BTN_CLOSE, GumpButtonType.Reply, 0);
         }
@@ -532,8 +539,8 @@ namespace Server.Custom
 
             AddLabel(165, 16, 0x44, "Confirm Service");
 
-            AddLabel(20, 52, 0xFFFF, $"Map:     A {lvlName} treasure map");
-            AddLabel(20, 72, 0xFFFF, $"Service: {svcLabel}");
+            AddLabel(20, 52, 1153, $"Map:     A {lvlName} treasure map");
+            AddLabel(20, 72, 1153, $"Service: {svcLabel}");
             AddLabel(20, 92, 0x44,   $"Cost:    {fee:N0} gold (from bank)");
 
             if (canAfford)
@@ -548,7 +555,7 @@ namespace Server.Custom
             }
 
             AddButton(250, 178, 0xFA5, 0xFA7, BTN_CANCEL, GumpButtonType.Reply, 0);
-            AddLabel(285, 179, 0xFFFF, "Cancel");
+            AddLabel(285, 179, 1153, "Cancel");
 
             AddButton(400, 10, 0xFB1, 0xFB2, BTN_CLOSE, GumpButtonType.Reply, 0);
         }
