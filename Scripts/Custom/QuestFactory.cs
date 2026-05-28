@@ -191,22 +191,22 @@ namespace Server.Custom
         // -- Initialize -- wired automatically at startup ---------
         public static void Initialize()
         {
-            EventSink.Death += OnMobDeath;
+            EventSink.CreatureDeath += OnMobDeath;
         }
 
         // -- Event handlers ---------------------------------------
-        private static void OnMobDeath(DeathEventArgs e)
+        private static void OnMobDeath(CreatureDeathEventArgs e)
         {
-            if (e == null || e.Mobile == null) return;
+            if (e == null || e.Creature == null) return;
 
-            Mobile killer = e.Mobile.LastKiller;
+            Mobile killer = e.Killer;
             if (killer == null) return;
 
             // Credit tamer if killed by controlled pet
             if (killer is BaseCreature petBC && petBC.ControlMaster is PlayerMobile pm)
                 killer = pm;
 
-            CheckHuntProgress(killer, e.Mobile);
+            CheckHuntProgress(killer, e.Creature);
         }
 
         // -- Public API -------------------------------------------
