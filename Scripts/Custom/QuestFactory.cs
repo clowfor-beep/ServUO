@@ -488,6 +488,7 @@ namespace Server.Custom
             m.PlaySound(0x3D);
         }
 
+
         // -- Internal helpers -------------------------------------
 
         private static string BuildObjectiveLabel(FBQuest quest)
@@ -832,8 +833,35 @@ namespace Server.Custom
                     AddLabel(PadX + 6, y, 2119, $"{goal}  |  Reward: {reward}");
                     y += 14;
 
-                    AddButton(PadX + 6, y, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
-                    AddLabel(PadX + 42, y, 0x35, "Accept");
+                    // Gate quest by reputation tier
+                    bool   locked     = false;
+                    string lockReason = null;
+
+                    if (!string.IsNullOrEmpty(q.RepGuild))
+                    {
+                        if (q.Tier == QuestTier.Rare &&
+                            ReputationSystem.GetStanding(_from, q.RepGuild) < 100)
+                        {
+                            locked     = true;
+                            lockReason = "[Known required]";
+                        }
+                        else if (q.Tier == QuestTier.Legendary &&
+                                 ReputationSystem.GetStanding(_from, q.RepGuild) < 300)
+                        {
+                            locked     = true;
+                            lockReason = "[Trusted required]";
+                        }
+                    }
+
+                    if (locked)
+                    {
+                        AddLabel(PadX + 6, y, 33, lockReason);
+                    }
+                    else
+                    {
+                        AddButton(PadX + 6, y, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
+                        AddLabel(PadX + 42, y, 0x35, "Accept");
+                    }
                     y += 20;
                 }
             }
