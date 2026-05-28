@@ -379,6 +379,7 @@ namespace Server.Custom
             Serial capturedSerial = npc.Serial;
             string capturedName   = record.Name;
 
+            // 10-minute expiry — wanted NPCs are fast-moving targets outside dungeons
             Timer.DelayCall(TimeSpan.FromMinutes(10), () =>
             {
                 if (RemoveHuntRecord(_activeWanted, capturedSerial, out Mobile target))
@@ -856,8 +857,8 @@ namespace Server.Custom
     public class WantedSpawnTimer : Timer
     {
         public WantedSpawnTimer()
-            : base(TimeSpan.FromMinutes(Utility.RandomMinMax(20, 30)),
-                   TimeSpan.FromMinutes(Utility.RandomMinMax(20, 30)))
+            : base(TimeSpan.FromMinutes(Utility.RandomMinMax(10, 13)),
+                   TimeSpan.FromMinutes(Utility.RandomMinMax(10, 13)))
         {
             Priority = TimerPriority.OneMinute;
         }
@@ -865,7 +866,7 @@ namespace Server.Custom
         protected override void OnTick()
         {
             HunterSystem.SpawnWantedTarget();
-            Delay    = TimeSpan.FromMinutes(Utility.RandomMinMax(20, 30));
+            Delay    = TimeSpan.FromMinutes(Utility.RandomMinMax(10, 13));
             Interval = Delay;
         }
     }
