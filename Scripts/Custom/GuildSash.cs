@@ -1,5 +1,6 @@
 using System;
 using Server;
+using Server.Custom;
 using Server.Items;
 using Server.Mobiles;
 
@@ -115,7 +116,7 @@ namespace Server.Items
             {
                 sash.SkillBonuses.SetValues(0, SkillName.Swords,       bonus);
                 sash.SkillBonuses.SetValues(1, SkillName.Tactics,      bonus);
-                sash.SkillBonuses.SetValues(2, SkillName.Parrying,     bonus);
+                sash.SkillBonuses.SetValues(2, SkillName.Parry,     bonus);
             }
             else if (guild == FBGuilds.ArcaneBrotherhood)
             {
@@ -126,7 +127,7 @@ namespace Server.Items
             else if (guild == FBGuilds.SilverWolves)
             {
                 sash.SkillBonuses.SetValues(0, SkillName.Swords,       bonus);
-                sash.SkillBonuses.SetValues(1, SkillName.Parrying,     bonus);
+                sash.SkillBonuses.SetValues(1, SkillName.Parry,     bonus);
                 sash.SkillBonuses.SetValues(2, SkillName.Tracking,     bonus);
             }
             else if (guild == FBGuilds.PaladinOrder)

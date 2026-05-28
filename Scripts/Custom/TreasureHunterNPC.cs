@@ -122,13 +122,12 @@ namespace Server.Custom
 
         // ── Constructor ───────────────────────────────────────────
         [Constructable]
-        public TreasureHunterNPC() : base(AIType.AI_Animal, FightMode.None, 10, 1, 0.2, 0.4)
+        public TreasureHunterNPC() : base(AIType.AI_Vendor, FightMode.None, 10, 1, 0.2, 0.4)
         {
-            Name           = "Treasure Hunter";
-            Title          = "the Treasure Hunter";
-            Body           = 0x190;
-            Hue            = Utility.RandomSkinHue();
-            IsInvulnerable = true;
+            Name  = "Treasure Hunter";
+            Title = "the Treasure Hunter";
+            Body  = 0x190;
+            Hue   = Utility.RandomSkinHue();
 
             SetStr(100); SetDex(100); SetInt(100);
             SetHits(200);
@@ -305,6 +304,7 @@ namespace Server.Custom
             return new Point3D(x, y, z);
         }
 
+        public override bool IsInvulnerable   => true;
         public override bool AlwaysInnocent  => true;
         public override bool CanBeRenamedBy(Mobile from) => false;
         public override bool HandlesOnSpeech(Mobile from) => false;
