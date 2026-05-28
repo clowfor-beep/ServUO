@@ -112,6 +112,12 @@ namespace Server.Custom
             return (int)(s_RefGold[level] * 0.80);
         }
 
+        public static int GetDecodeFullFee(int level)
+        {
+            level = Math.Max(0, Math.Min(level, 4));
+            return (int)(s_RefGold[level] * 0.90);
+        }
+
         private static readonly string[] s_LevelNames = { "Stash", "Supply", "Cache", "Hoard", "Trove" };
 
         public static string GetLevelName(int level)
@@ -204,11 +210,16 @@ namespace Server.Custom
             Banker.Withdraw(from, fee);
             from.SendMessage(0x44, $"{fee:N0} gold withdrawn from your bank.");
 
+            Say("Follow me through the portal!");
+            RunFullServiceSequence(from, tMap, dest);
+        }
+
+        private void RunFullServiceSequence(Mobile from, TreasureMap tMap, Point3D dest)
+        {
             Point3D origin       = Location;
             Map     originMap    = Map;
             Serial  playerSerial = from.Serial;
 
-            Say("Follow me through the portal!");
             PlaySound(0x1FE);
 
             // T+0.5s: teleport both to treasure location
@@ -272,15 +283,46 @@ namespace Server.Custom
             });
         }
 
+        // ── Service 3: Decode + Full Assistance ──────────────────
+        public void BeginDecodeFullService(Mobile from, TreasureMap tMap)
+        {
+            if (!ValidateMap(from, tMap, requireDecoded: false)) return;
+
+            int fee = GetDecodeFullFee(tMap.Level);
+
+            if (Banker.GetBalance(from) < fee)
+            {
+                from.SendMessage(0x22, $"You need at least {fee:N0} gold in your bank for this service.");
+                return;
+            }
+
+            Point3D dest = GetDestination(tMap);
+            if (dest == Point3D.Zero)
+            {
+                from.SendMessage(0x22, "I cannot locate a safe landing point for that map. No gold was taken.");
+                return;
+            }
+
+            Banker.Withdraw(from, fee);
+            from.SendMessage(0x44, $"{fee:N0} gold withdrawn from your bank.");
+
+            // Decode the map now on the player's behalf
+            tMap.Decoder = from;
+            Say("I've decoded your map. Now follow me!");
+
+            // Reuse the full service sequence from here
+            RunFullServiceSequence(from, tMap, dest);
+        }
+
         // ── Shared helpers ────────────────────────────────────────
-        private bool ValidateMap(Mobile from, TreasureMap tMap)
+        private bool ValidateMap(Mobile from, TreasureMap tMap, bool requireDecoded = true)
         {
             if (!tMap.IsChildOf(from.Backpack))
             {
                 from.SendMessage(0x22, "The map must be in your pack.");
                 return false;
             }
-            if (tMap.Decoder == null)
+            if (requireDecoded && tMap.Decoder == null)
             {
                 from.SendMessage(0x22, "The map must be decoded before I can use it.");
                 return false;
@@ -325,7 +367,7 @@ namespace Server.Custom
     // ============================================================
     // ServiceType enum
     // ============================================================
-    public enum THServiceType { Portal, Full }
+    public enum THServiceType { Portal, Full, DecodeAndFull }
 
     // ============================================================
     // MapTarget — targeting cursor to pick a TreasureMap
@@ -356,9 +398,9 @@ namespace Server.Custom
                 from.SendMessage("The map must be in your pack.");
                 return;
             }
-            if (tMap.Decoder == null)
+            if (_service != THServiceType.DecodeAndFull && tMap.Decoder == null)
             {
-                from.SendMessage("The map must be decoded first.");
+                from.SendMessage("The map must be decoded first. Choose 'Decode + Full Assistance' if you need that done too.");
                 return;
             }
             if (tMap.Completed)
@@ -385,32 +427,38 @@ namespace Server.Custom
         private readonly Mobile            _from;
         private readonly TreasureHunterNPC _npc;
 
-        private const int BTN_CLOSE  = 0;
-        private const int BTN_PORTAL = 1;
-        private const int BTN_FULL   = 2;
+        private const int BTN_CLOSE       = 0;
+        private const int BTN_PORTAL      = 1;
+        private const int BTN_FULL        = 2;
+        private const int BTN_DECODE_FULL = 3;
 
         public TreasureHunterServiceGump(Mobile from, TreasureHunterNPC npc) : base(100, 100)
         {
             _from = from;
             _npc  = npc;
 
-            AddBackground(0, 0, 440, 230, 9200);
-            AddAlphaRegion(10, 10, 420, 210);
+            AddBackground(0, 0, 440, 290, 9200);
+            AddAlphaRegion(10, 10, 420, 270);
 
             AddLabel(145, 16, 0x44, "Treasure Hunter Services");
 
-            AddLabel(20, 50, 0xFFFF, "I offer two services for decoded treasure maps.");
+            AddLabel(20, 50, 0xFFFF, "I offer three services for treasure maps.");
             AddLabel(20, 66, 0xFFFF, "Payment is taken from your bank account upfront.");
 
-            // Portal Only
+            // Portal Only (requires decoded map)
             AddButton(20, 100, 0xFA5, 0xFA7, BTN_PORTAL, GumpButtonType.Reply, 0);
             AddLabel(55, 101, 0x44,   "Portal Only  (30% fee)");
-            AddLabel(55, 118, 0x3B2,  "I open a gate to the treasure location. You do the rest.");
+            AddLabel(55, 118, 0x3B2,  "I open a gate to the treasure. Map must be decoded.");
 
-            // Full Assistance
-            AddButton(20, 152, 0xFA5, 0xFA7, BTN_FULL, GumpButtonType.Reply, 0);
-            AddLabel(55, 153, 0x44,   "Full Assistance  (80% fee)");
-            AddLabel(55, 170, 0x3B2,  "I travel with you, dig the chest, disarm and unlock it.");
+            // Full Assistance (requires decoded map)
+            AddButton(20, 148, 0xFA5, 0xFA7, BTN_FULL, GumpButtonType.Reply, 0);
+            AddLabel(55, 149, 0x44,   "Full Assistance  (80% fee)");
+            AddLabel(55, 166, 0x3B2,  "I travel with you, dig, disarm and unlock. Map must be decoded.");
+
+            // Decode + Full Assistance (works on any undecoded map)
+            AddButton(20, 196, 0xFA5, 0xFA7, BTN_DECODE_FULL, GumpButtonType.Reply, 0);
+            AddLabel(55, 197, 0x44,   "Decode + Full Assistance  (90% fee)");
+            AddLabel(55, 214, 0x3B2,  "I decode the map, travel with you, dig, disarm and unlock.");
 
             AddButton(400, 10, 0xFB1, 0xFB2, BTN_CLOSE, GumpButtonType.Reply, 0);
         }
@@ -428,6 +476,11 @@ namespace Server.Custom
             {
                 _from.SendMessage("Which decoded map should I use?");
                 _from.Target = new TreasureMapTarget(_npc, THServiceType.Full);
+            }
+            else if (info.ButtonID == BTN_DECODE_FULL)
+            {
+                _from.SendMessage("Which map should I decode and assist with?");
+                _from.Target = new TreasureMapTarget(_npc, THServiceType.DecodeAndFull);
             }
         }
     }
@@ -454,12 +507,23 @@ namespace Server.Custom
 
             int    level    = map.Level;
             string lvlName  = TreasureHunterNPC.GetLevelName(level);
-            int    fee      = service == THServiceType.Portal
-                              ? TreasureHunterNPC.GetPortalFee(level)
-                              : TreasureHunterNPC.GetFullFee(level);
-            string svcLabel = service == THServiceType.Portal
-                              ? "Portal Only — I open a gate to the treasure"
-                              : "Full Assistance — I dig, disarm and unlock";
+            int fee;
+            string svcLabel;
+            switch (service)
+            {
+                case THServiceType.Portal:
+                    fee      = TreasureHunterNPC.GetPortalFee(level);
+                    svcLabel = "Portal Only — I open a gate to the treasure";
+                    break;
+                case THServiceType.DecodeAndFull:
+                    fee      = TreasureHunterNPC.GetDecodeFullFee(level);
+                    svcLabel = "Decode + Full Assistance — I do everything";
+                    break;
+                default: // Full
+                    fee      = TreasureHunterNPC.GetFullFee(level);
+                    svcLabel = "Full Assistance — I dig, disarm and unlock";
+                    break;
+            }
             int  balance    = Banker.GetBalance(from);
             bool canAfford  = balance >= fee;
 
@@ -496,10 +560,12 @@ namespace Server.Custom
 
             if (info.ButtonID == BTN_CONFIRM)
             {
-                if (_service == THServiceType.Portal)
-                    _npc.BeginPortalService(from, _map);
-                else
-                    _npc.BeginFullService(from, _map);
+                switch (_service)
+                {
+                    case THServiceType.Portal:        _npc.BeginPortalService(from, _map);      break;
+                    case THServiceType.Full:          _npc.BeginFullService(from, _map);         break;
+                    case THServiceType.DecodeAndFull: _npc.BeginDecodeFullService(from, _map);   break;
+                }
             }
             // Cancel / Close: do nothing
         }
