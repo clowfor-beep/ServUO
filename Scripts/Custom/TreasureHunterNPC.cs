@@ -130,7 +130,12 @@ namespace Server.Custom
         [Constructable]
         public TreasureHunterNPC() : base(AIType.AI_Vendor, FightMode.None, 10, 1, 0.2, 0.4)
         {
-            Name  = "Treasure Hunter";
+            Name  = Utility.RandomList(
+                "Aldric", "Brennan", "Corvin", "Davan", "Emric",
+                "Farrow", "Gareth", "Hadwin", "Ivor", "Jasper",
+                "Keld", "Lorcan", "Maren", "Nolan", "Oryn",
+                "Petra", "Rowena", "Sable", "Tova", "Wren"
+            );
             Title = "the Treasure Hunter";
             Body  = 0x190;
             Hue   = Utility.RandomSkinHue();
