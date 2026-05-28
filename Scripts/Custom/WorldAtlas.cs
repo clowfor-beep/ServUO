@@ -129,7 +129,7 @@ namespace Server.Items
         // DUNGEONS — all entrance coordinates from Regions.xml
         // Organised by facet: Felucca → Malas → Ilshenar → Tokuno → TerMur
         // -------------------------------------------------------
-        private static readonly List<AtlasLocation> Dungeons = new List<AtlasLocation>
+        public static readonly List<AtlasLocation> Dungeons = new List<AtlasLocation>
         {
             // ---- Felucca (classic + T2A + ML) ----
             new AtlasLocation("Deceit",           4111,  432,  5, Map.Felucca),

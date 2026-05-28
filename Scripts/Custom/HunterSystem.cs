@@ -64,7 +64,18 @@ namespace Server.Custom
         private static readonly List<HuntRecord> _activeHunts  = new List<HuntRecord>();
         private static readonly List<HuntRecord> _activeWanted = new List<HuntRecord>();
 
-        private const int MaxConcurrentHunts = 3;
+        private const int MaxConcurrentHunts  = 5;  // hunt monster targets
+        private const int MaxConcurrentWanted = 5;  // wanted PK NPCs
+
+        // Dungeons that are guarded or peaceful — wanted NPCs would be killed
+        // by guards the moment they spawn there.
+        private static readonly System.Collections.Generic.HashSet<string> _guardedDungeons =
+            new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "Prism of Light",  // guarded zone
+                "Wind",            // mage city — guarded
+                "Sanctuary",       // peaceful haven — no aggression
+            };
 
         private static void PruneHunts()  =>
             _activeHunts .RemoveAll(r => { Mobile m = World.FindMobile(r.Serial); return m == null || m.Deleted; });
@@ -93,8 +104,8 @@ namespace Server.Custom
             new WantedSpawnTimer().Start();
 
             // Fill all slots immediately on server start
-            for (int i = 0; i < MaxConcurrentHunts; i++) SpawnHunterTarget();
-            for (int i = 0; i < MaxConcurrentHunts; i++) SpawnWantedTarget();
+            for (int i = 0; i < MaxConcurrentHunts;  i++) SpawnHunterTarget();
+            for (int i = 0; i < MaxConcurrentWanted; i++) SpawnWantedTarget();
         }
 
         // --------------------------------------------------------
@@ -285,7 +296,7 @@ namespace Server.Custom
         public static void SpawnHunterTarget()
         {
             PruneHunts();
-            if (_activeHunts.Count >= MaxConcurrentHunts) return;
+            if (_activeHunts.Count >= MaxConcurrentHunts)  return;
 
             int tier = PickTier();
             HunterSpawnEntry entry   = PickSpawnEntry(tier);
@@ -328,26 +339,45 @@ namespace Server.Custom
         public static void SpawnWantedTarget()
         {
             PruneWanted();
-            if (_activeWanted.Count >= MaxConcurrentHunts) return;
+            if (_activeWanted.Count >= MaxConcurrentWanted) return;
 
             int wantedTier = PickWantedTier();
-            HunterSpawnEntry entry = PickWantedEntry(wantedTier);
-            BaseWantedNPC npc      = CreateWantedNPC(wantedTier);
+            BaseWantedNPC npc = CreateWantedNPC(wantedTier);
             if (npc == null) return;
 
-            Point3D loc = FBZones.GetRandomSpawnPoint(entry.Zone);
-            Map     map = FBZones.GetMap(entry.Zone);
-            if (loc == Point3D.Zero) { npc.Delete(); return; }
-            npc.MoveToWorld(loc, map);
+            // Pick a random dungeon — skip guarded / peaceful zones where guards
+            // would kill the wanted NPC immediately on spawn.
+            var dungeons = Server.Items.AtlasGump.Dungeons;
+            AtlasLocation dungeon;
+            int pickAttempts = 0;
+            do { dungeon = dungeons[Utility.Random(dungeons.Count)]; }
+            while (_guardedDungeons.Contains(dungeon.Name) && ++pickAttempts < 50);
+
+            // Find a valid tile near the dungeon entrance with a small random jitter
+            Point3D loc = Point3D.Zero;
+            for (int attempt = 0; attempt < 10; attempt++)
+            {
+                int x = dungeon.X + Utility.RandomMinMax(-6, 6);
+                int y = dungeon.Y + Utility.RandomMinMax(-6, 6);
+                int z = dungeon.Map.GetAverageZ(x, y);
+                if (dungeon.Map.CanSpawnMobile(x, y, z))
+                {
+                    loc = new Point3D(x, y, z);
+                    break;
+                }
+            }
+            if (loc == Point3D.Zero) loc = new Point3D(dungeon.X, dungeon.Y, dungeon.Z);
+
+            npc.MoveToWorld(loc, dungeon.Map);
 
             var record = new HuntRecord(npc.Serial,
-                npc.Name.Replace("[Wanted] ", ""), entry.DungeonName);
+                npc.Name.Replace("[Wanted] ", ""), dungeon.Name);
             _activeWanted.Add(record);
 
-            BroadcastWantedSpawn(record.Name, entry.DungeonName);
+            BroadcastWantedSpawn(record.Name, dungeon.Name);
 
-            Serial capturedSerial   = npc.Serial;
-            string capturedName     = record.Name;
+            Serial capturedSerial = npc.Serial;
+            string capturedName   = record.Name;
 
             Timer.DelayCall(TimeSpan.FromMinutes(10), () =>
             {
