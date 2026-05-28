@@ -32,11 +32,13 @@ namespace Server.Custom
     // ============================================================
 
     public enum QuestType { Hunt, Gather }
+    public enum QuestTier { Common = 0, Uncommon = 1, Rare = 2, Legendary = 3 }
 
     public class FBQuest
     {
         public string    Id;
         public QuestType Type;
+        public QuestTier Tier;
         public string    Title;
         public string    GiverGuild;
         public string    Description;
@@ -45,7 +47,8 @@ namespace Server.Custom
         public int       RepAmount;
 
         // Hunt quest fields
-        public string    TargetMobileType; // GetType().Name to match, e.g. "BloodPactSimPlayer"
+        public string    TargetMobileType; // exact GetType().Name match, e.g. "BloodPactSimPlayer"
+        public string    TargetCategory;   // category match: "undead","orc","daemon","dragon","elemental","ratman","troll","terathan"
         public int       KillsRequired;
 
         // Gather quest fields
@@ -84,107 +87,201 @@ namespace Server.Custom
         private static readonly Dictionary<Mobile, PlayerQuestState> _activeQuests =
             new Dictionary<Mobile, PlayerQuestState>();
 
+        // ---- Live board — quests currently posted ---------------
+        // Refreshes every 30 minutes; claimed quests are removed immediately.
+        private static readonly List<FBQuest> _boardQuests = new List<FBQuest>();
+
+        // Slots per tier on each refresh: Common=3, Uncommon=2, Rare=1, Legendary=0-1
+        private static readonly int[] _tierSlots = { 3, 2, 1, 1 };
+
+        public static List<FBQuest> BoardQuests => new List<FBQuest>(_boardQuests);
+
+        public static void RefreshBoard(bool broadcast = false)
+        {
+            _boardQuests.Clear();
+
+            for (int tier = 0; tier <= 3; tier++)
+            {
+                // Legendary has a 50% chance of appearing each cycle
+                if (tier == (int)QuestTier.Legendary && Utility.RandomBool())
+                    continue;
+
+                int slots = _tierSlots[tier];
+                var pool  = AllQuests.FindAll(q => (int)q.Tier == tier);
+
+                for (int i = 0; i < slots && pool.Count > 0; i++)
+                {
+                    int idx = Utility.Random(pool.Count);
+                    _boardQuests.Add(pool[idx]);
+                    pool.RemoveAt(idx);
+                }
+            }
+
+            if (broadcast)
+                World.Broadcast(0x44, false,
+                    "[Bounty Board] New contracts have been posted at the bounty boards across the realm!");
+        }
+
         // -- Quest table ------------------------------------------
+        // Full quest pool — quests are drawn from here onto the live board each refresh.
         public static readonly List<FBQuest> AllQuests = new List<FBQuest>
         {
-            // ---- HUNT quests ------------------------------------
-            new FBQuest {
-                Id               = "hunt_bloodpact_001",
-                Type             = QuestType.Hunt,
-                Title            = "Blood Pact Extermination",
-                GiverGuild       = FBGuilds.SilverWolves,
-                Description      = "Eliminate 3 Blood Pact members threatening the roads.",
-                RewardGold       = "500-1000",
-                RepGuild         = FBGuilds.SilverWolves,
-                RepAmount        = 50,
-                TargetMobileType = "BloodPactSimPlayer",
-                KillsRequired    = 3,
-            },
-            new FBQuest {
-                Id               = "hunt_void_001",
-                Type             = QuestType.Hunt,
-                Title            = "Void Incursion",
-                GiverGuild       = FBGuilds.ArcaneBrotherhood,
-                Description      = "Destroy 2 Void agents before they corrupt the ley lines.",
-                RewardGold       = "400-800",
-                RepGuild         = FBGuilds.ArcaneBrotherhood,
-                RepAmount        = 40,
-                TargetMobileType = "TheVoidSimPlayer",
-                KillsRequired    = 2,
-            },
+            // ---- COMMON: SimPlayer / light hunt quests ----------
             new FBQuest {
                 Id               = "hunt_shadowhand_001",
-                Type             = QuestType.Hunt,
+                Type             = QuestType.Hunt,  Tier = QuestTier.Common,
                 Title            = "Shadow Hand Arrest",
                 GiverGuild       = FBGuilds.SilverWolves,
                 Description      = "Bring down 2 Shadow Hand operatives near the bank.",
-                RewardGold       = "200-400",
-                RepGuild         = FBGuilds.SilverWolves,
-                RepAmount        = 20,
-                TargetMobileType = "ShadowHandSimPlayer",
-                KillsRequired    = 2,
+                RewardGold       = "750-1500",
+                RepGuild         = FBGuilds.SilverWolves,  RepAmount = 20,
+                TargetMobileType = "ShadowHandSimPlayer",   KillsRequired = 2,
             },
             new FBQuest {
-                Id               = "hunt_shadowblade_001",
-                Type             = QuestType.Hunt,
-                Title            = "Shadowblade Contract",
-                GiverGuild       = FBGuilds.DreadHunters,
-                Description      = "Track and eliminate a Shadowblade assassin active in the region.",
-                RewardGold       = "600-1200",
-                RepGuild         = FBGuilds.DreadHunters,
-                RepAmount        = 35,
-                TargetMobileType = "ShadowbladeSimPlayer",
-                KillsRequired    = 1,
+                Id             = "hunt_orc_001",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Common,
+                Title          = "Reclaim the Roads",
+                GiverGuild     = FBGuilds.SilverWolves,
+                Description    = "Orc raiding parties are cutting off supply routes. Eliminate 8 of them.",
+                RewardGold     = "1000-2000",
+                RepGuild       = FBGuilds.SilverWolves,  RepAmount = 50,
+                TargetCategory = "orc",                   KillsRequired = 8,
             },
             new FBQuest {
-                Id               = "hunt_deadwatchers_001",
-                Type             = QuestType.Hunt,
-                Title            = "Silence the Dead Watchers",
-                GiverGuild       = FBGuilds.PaladinOrder,
-                Description      = "Drive back 2 Dead Watchers before they claim more souls.",
-                RewardGold       = "450-900",
-                RepGuild         = FBGuilds.PaladinOrder,
-                RepAmount        = 30,
-                TargetMobileType = "DeadWatchersSimPlayer",
-                KillsRequired    = 2,
+                Id             = "hunt_ratman_001",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Common,
+                Title          = "Ratman Infestation",
+                GiverGuild     = FBGuilds.Wanderers,
+                Description    = "Ratman warrens are spreading near the roads. Thin their numbers — kill 8.",
+                RewardGold     = "750-1500",
+                RepGuild       = FBGuilds.Wanderers,  RepAmount = 45,
+                TargetCategory = "ratman",             KillsRequired = 8,
             },
-
-            // ---- GATHER quests ----------------------------------
             new FBQuest {
                 Id         = "gather_iron_001",
-                Type       = QuestType.Gather,
+                Type       = QuestType.Gather,  Tier = QuestTier.Common,
                 Title      = "Iron Stockpile",
                 GiverGuild = FBGuilds.CraftsmenLeague,
                 Description= "The forge is running low. Deliver 30 iron ingots to this board.",
-                RewardGold = "150-300",
-                RepGuild   = FBGuilds.CraftsmenLeague,
-                RepAmount  = 25,
-                ItemType   = "IronIngot",
-                ItemAmount = 30,
-            },
-            new FBQuest {
-                Id         = "gather_boards_001",
-                Type       = QuestType.Gather,
-                Title      = "Craftsmen's Ironwood",
-                GiverGuild = FBGuilds.CraftsmenLeague,
-                Description= "We need lumber for repairs. Deliver 50 boards to this board.",
-                RewardGold = "150-300",
-                RepGuild   = FBGuilds.CraftsmenLeague,
-                RepAmount  = 30,
-                ItemType   = "Board",
-                ItemAmount = 50,
+                RewardGold = "300-600",
+                RepGuild   = FBGuilds.CraftsmenLeague,  RepAmount = 25,
+                ItemType   = "IronIngot",               ItemAmount = 30,
             },
             new FBQuest {
                 Id         = "gather_bandage_001",
-                Type       = QuestType.Gather,
+                Type       = QuestType.Gather,  Tier = QuestTier.Common,
                 Title      = "Field Medicine",
                 GiverGuild = FBGuilds.Wanderers,
                 Description= "Travellers are wounded on the road. Deliver 20 bandages here.",
-                RewardGold = "100-200",
-                RepGuild   = FBGuilds.Wanderers,
-                RepAmount  = 15,
-                ItemType   = "Bandage",
-                ItemAmount = 20,
+                RewardGold = "300-600",
+                RepGuild   = FBGuilds.Wanderers,  RepAmount = 15,
+                ItemType   = "Bandage",            ItemAmount = 20,
+            },
+
+            // ---- UNCOMMON: Multi-kill / medium threat -----------
+            new FBQuest {
+                Id               = "hunt_bloodpact_001",
+                Type             = QuestType.Hunt,  Tier = QuestTier.Uncommon,
+                Title            = "Blood Pact Extermination",
+                GiverGuild       = FBGuilds.SilverWolves,
+                Description      = "Eliminate 3 Blood Pact members threatening the roads.",
+                RewardGold       = "1000-2000",
+                RepGuild         = FBGuilds.SilverWolves,  RepAmount = 50,
+                TargetMobileType = "BloodPactSimPlayer",    KillsRequired = 3,
+            },
+            new FBQuest {
+                Id               = "hunt_deadwatchers_001",
+                Type             = QuestType.Hunt,  Tier = QuestTier.Uncommon,
+                Title            = "Silence the Dead Watchers",
+                GiverGuild       = FBGuilds.PaladinOrder,
+                Description      = "Drive back 2 Dead Watchers before they claim more souls.",
+                RewardGold       = "1000-2000",
+                RepGuild         = FBGuilds.PaladinOrder,    RepAmount = 30,
+                TargetMobileType = "DeadWatchersSimPlayer",  KillsRequired = 2,
+            },
+            new FBQuest {
+                Id               = "hunt_void_001",
+                Type             = QuestType.Hunt,  Tier = QuestTier.Uncommon,
+                Title            = "Void Incursion",
+                GiverGuild       = FBGuilds.ArcaneBrotherhood,
+                Description      = "Destroy 2 Void agents before they corrupt the ley lines.",
+                RewardGold       = "1000-2000",
+                RepGuild         = FBGuilds.ArcaneBrotherhood,  RepAmount = 40,
+                TargetMobileType = "TheVoidSimPlayer",           KillsRequired = 2,
+            },
+            new FBQuest {
+                Id             = "hunt_undead_001",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Uncommon,
+                Title          = "Purge the Crypts",
+                GiverGuild     = FBGuilds.PaladinOrder,
+                Description    = "The undead stir in the crypts and dungeons. Slay 10 in the name of virtue.",
+                RewardGold     = "1500-3000",
+                RepGuild       = FBGuilds.PaladinOrder,  RepAmount = 60,
+                TargetCategory = "undead",                KillsRequired = 10,
+            },
+            new FBQuest {
+                Id             = "hunt_troll_001",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Uncommon,
+                Title          = "Troll Bridge",
+                GiverGuild     = FBGuilds.SilverWolves,
+                Description    = "Trolls and ettins have seized the crossroads. Drive back 5 of them.",
+                RewardGold     = "1000-2000",
+                RepGuild       = FBGuilds.SilverWolves,  RepAmount = 50,
+                TargetCategory = "troll",                 KillsRequired = 5,
+            },
+            new FBQuest {
+                Id             = "hunt_elemental_001",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Uncommon,
+                Title          = "Elemental Rift",
+                GiverGuild     = FBGuilds.ArcaneBrotherhood,
+                Description    = "Unstable elemental rifts are forming across the realm. Banish 6 elementals.",
+                RewardGold     = "1250-2500",
+                RepGuild       = FBGuilds.ArcaneBrotherhood,  RepAmount = 55,
+                TargetCategory = "elemental",                  KillsRequired = 6,
+            },
+            new FBQuest {
+                Id         = "gather_boards_001",
+                Type       = QuestType.Gather,  Tier = QuestTier.Uncommon,
+                Title      = "Craftsmen's Ironwood",
+                GiverGuild = FBGuilds.CraftsmenLeague,
+                Description= "We need lumber for repairs. Deliver 50 boards to this board.",
+                RewardGold = "375-750",
+                RepGuild   = FBGuilds.CraftsmenLeague,  RepAmount = 30,
+                ItemType   = "Board",                    ItemAmount = 50,
+            },
+
+            // ---- RARE: Elite targets / high-end category kills --
+            new FBQuest {
+                Id               = "hunt_shadowblade_001",
+                Type             = QuestType.Hunt,  Tier = QuestTier.Rare,
+                Title            = "Shadowblade Contract",
+                GiverGuild       = FBGuilds.DreadHunters,
+                Description      = "Track and eliminate a Shadowblade assassin active in the region.",
+                RewardGold       = "1500-3000",
+                RepGuild         = FBGuilds.DreadHunters,  RepAmount = 35,
+                TargetMobileType = "ShadowbladeSimPlayer",  KillsRequired = 1,
+            },
+            new FBQuest {
+                Id             = "hunt_daemon_001",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Rare,
+                Title          = "Daemon Purge",
+                GiverGuild     = FBGuilds.ArcaneBrotherhood,
+                Description    = "Daemonic rifts have opened across the land. Close them by destroying 5 daemons.",
+                RewardGold     = "2000-4000",
+                RepGuild       = FBGuilds.ArcaneBrotherhood,  RepAmount = 70,
+                TargetCategory = "daemon",                     KillsRequired = 5,
+            },
+
+            // ---- LEGENDARY: Endgame challenge -------------------
+            new FBQuest {
+                Id             = "hunt_dragon_001",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Legendary,
+                Title          = "Dragon Bounty",
+                GiverGuild     = FBGuilds.DreadHunters,
+                Description    = "Two dragons have been terrorising the eastern reaches. Bring them down.",
+                RewardGold     = "3000-6000",
+                RepGuild       = FBGuilds.DreadHunters,  RepAmount = 80,
+                TargetCategory = "dragon",                KillsRequired = 2,
             },
         };
 
@@ -192,6 +289,13 @@ namespace Server.Custom
         public static void Initialize()
         {
             EventSink.CreatureDeath += OnMobDeath;
+
+            // Populate board after world finishes loading, then start the refresh timer
+            Timer.DelayCall(TimeSpan.FromSeconds(10), () =>
+            {
+                RefreshBoard(broadcast: false);
+                new BoardRefreshTimer().Start();
+            });
         }
 
         // -- Event handlers ---------------------------------------
@@ -232,12 +336,16 @@ namespace Server.Custom
                 return false;
             }
 
-            FBQuest quest = AllQuests.Find(q => q.Id == questId);
+            // Quest must still be on the live board — first come first served
+            FBQuest quest = _boardQuests.Find(q => q.Id == questId);
             if (quest == null)
             {
-                m.SendMessage(0x22, "That quest is no longer available.");
+                m.SendMessage(0x22, "That contract has already been claimed. Check the board for others.");
                 return false;
             }
+
+            // Remove from board — this player has claimed it
+            _boardQuests.Remove(quest);
 
             _activeQuests[m] = new PlayerQuestState(quest);
 
@@ -277,7 +385,12 @@ namespace Server.Custom
 
             FBQuest quest = state.Quest;
             if (quest.Type != QuestType.Hunt) return;
-            if (victim.GetType().Name != quest.TargetMobileType) return;
+
+            // Category match takes priority; fall back to exact type name
+            bool matched = !string.IsNullOrEmpty(quest.TargetCategory)
+                ? MatchesCategory(victim, quest.TargetCategory)
+                : victim.GetType().Name == quest.TargetMobileType;
+            if (!matched) return;
 
             state.Progress++;
 
@@ -350,9 +463,14 @@ namespace Server.Custom
         {
             if (quest.Type == QuestType.Hunt)
             {
+                if (!string.IsNullOrEmpty(quest.TargetCategory))
+                {
+                    // Capitalise category name for display: "undead" -> "Undead"
+                    string cat = char.ToUpper(quest.TargetCategory[0]) + quest.TargetCategory.Substring(1);
+                    return $"Kill {cat}";
+                }
                 // Strip "SimPlayer" suffix for display, e.g. "BloodPactSimPlayer" -> "Blood Pact"
                 string raw = quest.TargetMobileType.Replace("SimPlayer", "").Trim();
-                // Insert spaces before caps, e.g. "BloodPact" -> "Blood Pact"
                 System.Text.StringBuilder sb = new System.Text.StringBuilder();
                 foreach (char c in raw)
                 {
@@ -365,6 +483,48 @@ namespace Server.Custom
             {
                 return $"Gather {quest.ItemType}";
             }
+        }
+
+        /// <summary>
+        /// Returns true if the victim belongs to the named creature category.
+        /// Uses type-name pattern matching — no engine dependency.
+        /// </summary>
+        private static bool MatchesCategory(Mobile victim, string category)
+        {
+            if (!(victim is BaseCreature)) return false;
+            string t = victim.GetType().Name;
+
+            switch (category.ToLower())
+            {
+                case "undead":
+                    return ContainsAny(t, "Lich", "Zombie", "Skeleton", "Wraith", "Shade",
+                        "Spectre", "Specter", "Revenant", "Mummy", "BoneKnight", "BoneMagi",
+                        "Vampire", "Banshee", "Wight", "Undead", "Ghost", "Ghoul", "Rot");
+                case "orc":
+                    return ContainsAny(t, "Orc");
+                case "daemon":
+                    return ContainsAny(t, "Daemon", "Balron", "Demon", "Succubus", "Incubus", "Devil");
+                case "dragon":
+                    return ContainsAny(t, "Dragon", "Wyrm", "Drake", "Wyvern");
+                case "elemental":
+                    return ContainsAny(t, "Elemental");
+                case "ratman":
+                    return ContainsAny(t, "Ratman");
+                case "troll":
+                    return ContainsAny(t, "Troll", "Ettin", "Ogre");
+                case "terathan":
+                    return ContainsAny(t, "Terathan", "Ophidian");
+                default:
+                    return false;
+            }
+        }
+
+        private static bool ContainsAny(string typeName, params string[] tokens)
+        {
+            foreach (string token in tokens)
+                if (typeName.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            return false;
         }
 
         private static int CountItemsByTypeName(Container pack, string typeName)
@@ -398,6 +558,24 @@ namespace Server.Custom
                     remaining   = 0;
                 }
             }
+        }
+    }
+
+    // ============================================================
+    // Board refresh timer — fires every 30 minutes
+    // ============================================================
+
+    public class BoardRefreshTimer : Timer
+    {
+        public BoardRefreshTimer()
+            : base(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(30))
+        {
+            Priority = TimerPriority.OneMinute;
+        }
+
+        protected override void OnTick()
+        {
+            QuestFactory.RefreshBoard(broadcast: true);
         }
     }
 
@@ -470,7 +648,7 @@ namespace Server.Custom
             _board = board;
 
             PlayerQuestState active = QuestFactory.GetActiveQuestState(from);
-            List<FBQuest>    quests = QuestFactory.AllQuests;
+            List<FBQuest>    quests = QuestFactory.BoardQuests; // snapshot of live board
 
             // Calculate gump height
             int activeRows  = active != null ? (active.Quest.Type == QuestType.Gather ? 4 : 3) : 0;
@@ -522,29 +700,50 @@ namespace Server.Custom
                 y += 8;
                 AddLabel(PadX, y, 2119, "Complete your current quest before accepting another.");
             }
+            else if (quests.Count == 0)
+            {
+                AddLabel(PadX, y, 2119, "The board is empty. Check back soon — contracts refresh every 30 minutes.");
+            }
             else
             {
-                // Quest list
+                // Quest list — grouped with tier badges
                 for (int i = 0; i < quests.Count; i++)
                 {
-                    FBQuest q    = quests[i];
-                    int     hue  = q.Type == QuestType.Hunt ? 0x4AA : 0x35;
-                    string  tag  = q.Type == QuestType.Hunt ? "[Hunt]" : "[Gather]";
-                    string  goal = q.Type == QuestType.Hunt
+                    FBQuest q = quests[i];
+
+                    // Tier badge colour and label
+                    string tierLabel;
+                    int    tierHue;
+                    switch (q.Tier)
+                    {
+                        case QuestTier.Uncommon:  tierLabel = "[Uncommon]";  tierHue = 0x44;  break; // green
+                        case QuestTier.Rare:      tierLabel = "[Rare]";      tierHue = 0x4AA; break; // blue
+                        case QuestTier.Legendary: tierLabel = "[Legendary]"; tierHue = 0x22;  break; // orange
+                        default:                  tierLabel = "[Common]";    tierHue = 0x9C2; break; // grey
+                    }
+
+                    int    typeHue = q.Type == QuestType.Hunt ? 0x4AA : 0x35;
+                    string typeTag = q.Type == QuestType.Hunt ? "[Hunt]" : "[Gather]";
+                    string goal    = q.Type == QuestType.Hunt
                         ? $"Kill {q.KillsRequired}"
                         : $"Deliver {q.ItemAmount} {q.ItemType}";
-                    string  desc = q.Description.Length > 52
+                    string desc    = q.Description.Length > 52
                         ? q.Description.Substring(0, 52) + "..."
                         : q.Description;
-                    string  reward = $"{q.RewardGold}gp, +{q.RepAmount} {q.RepGuild} rep";
+                    string reward  = $"{q.RewardGold}gp  +{q.RepAmount} {q.RepGuild} rep";
 
-                    AddLabel(PadX, y, hue, $"{tag} {q.Title}");
+                    // Tier + type + title on one line
+                    AddLabel(PadX,      y, tierHue, tierLabel);
+                    AddLabel(PadX + 80, y, typeHue, typeTag);
+                    AddLabel(PadX + 130, y, 1153,  q.Title);
                     y += 16;
-                    AddLabel(PadX + 6, y, 1153, desc);
+
+                    AddLabel(PadX + 6, y, 2119, desc);
                     y += 14;
                     AddLabel(PadX + 6, y, 2119, $"{goal}  |  Reward: {reward}");
                     y += 14;
 
+                    // Accept button — stores index into the snapshot; AcceptQuest validates by Id
                     AddButton(PadX + 6, y, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
                     AddLabel(PadX + 42, y, 0x35, "Accept");
                     y += 20;
@@ -575,11 +774,12 @@ namespace Server.Custom
                 return;
             }
 
-            // Accept quest by index (buttons 1..N)
+            // Accept quest by index into the board snapshot (buttons 1..N)
             int idx = btn - 1;
-            if (idx >= 0 && idx < QuestFactory.AllQuests.Count)
+            var board = QuestFactory.BoardQuests; // fresh snapshot for Id lookup
+            if (idx >= 0 && idx < board.Count)
             {
-                QuestFactory.AcceptQuest(_from, QuestFactory.AllQuests[idx].Id);
+                QuestFactory.AcceptQuest(_from, board[idx].Id);
                 _from.SendGump(new BountyBoardGump(_from, _board));
             }
         }
