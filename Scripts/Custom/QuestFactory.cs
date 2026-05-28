@@ -449,6 +449,37 @@ namespace Server.Custom
             // Reputation reward
             ReputationSystem.AddStanding(m, quest.RepGuild, quest.RepAmount);
 
+            // Guild Sash drops — tier and probability by quest rarity:
+            //   Rare quest     : Standard (+5)  at 30 %
+            //   Legendary quest: Refined  (+10) at 40 %, Exalted (+15) at 20 %
+            if (m.Backpack != null && !string.IsNullOrEmpty(quest.RepGuild))
+            {
+                SashTier? sashTier = null;
+                double    roll     = Utility.RandomDouble();
+
+                if (quest.Tier == QuestTier.Legendary)
+                {
+                    if      (roll < 0.20) sashTier = SashTier.Exalted;
+                    else if (roll < 0.60) sashTier = SashTier.Refined;
+                    // 40 % no sash on Legendary
+                }
+                else if (quest.Tier == QuestTier.Rare)
+                {
+                    if (roll < 0.30) sashTier = SashTier.Standard;
+                    // 70 % no sash on Rare
+                }
+
+                if (sashTier.HasValue)
+                {
+                    GuildSash sash = GuildSash.For(quest.RepGuild, sashTier.Value);
+                    if (sash != null)
+                    {
+                        m.Backpack.DropItem(sash);
+                        m.SendMessage(0x53, $"You have been awarded a {sash.Name}!");
+                    }
+                }
+            }
+
             // Clear HUD
             QuestTrackerHUD.ClearQuest(m);
 
