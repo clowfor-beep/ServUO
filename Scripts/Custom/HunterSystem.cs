@@ -336,7 +336,7 @@ namespace Server.Custom
             if (npc == null) return;
 
             // Pick a random dungeon from the full Atlas list (all facets)
-            var dungeons = Server.Items.WorldAtlas.Dungeons;
+            var dungeons = Server.Items.AtlasGump.Dungeons;
             AtlasLocation dungeon = dungeons[Utility.Random(dungeons.Count)];
 
             // Find a valid tile near the dungeon entrance with a small random jitter
