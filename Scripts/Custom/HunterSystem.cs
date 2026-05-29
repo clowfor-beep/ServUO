@@ -77,10 +77,29 @@ namespace Server.Custom
                 "Sanctuary",       // peaceful haven — no aggression
             };
 
+        private static readonly TimeSpan WantedTTL = TimeSpan.FromMinutes(10);
+
         private static void PruneHunts()  =>
-            _activeHunts .RemoveAll(r => { Mobile m = World.FindMobile(r.Serial); return m == null || m.Deleted; });
-        private static void PruneWanted() =>
-            _activeWanted.RemoveAll(r => { Mobile m = World.FindMobile(r.Serial); return m == null || m.Deleted; });
+            _activeHunts.RemoveAll(r => { Mobile m = World.FindMobile(r.Serial); return m == null || m.Deleted; });
+
+        private static void PruneWanted()
+        {
+            _activeWanted.RemoveAll(r =>
+            {
+                Mobile m = World.FindMobile(r.Serial);
+                if (m == null || m.Deleted)
+                    return true; // already dead / gone
+
+                // Expire stale wanted NPCs that haven't been killed within the TTL
+                if (DateTime.UtcNow - r.SpawnTime >= WantedTTL)
+                {
+                    m.Delete(); // despawn the old one
+                    return true;
+                }
+
+                return false;
+            });
+        }
 
         // --------------------------------------------------------
         // STARTUP
