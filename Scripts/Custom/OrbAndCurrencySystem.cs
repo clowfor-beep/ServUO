@@ -686,6 +686,180 @@ namespace Server.Custom
     }
 
     // ----------------------------------------------------------
+    // ORB OF INSIGHT — triples gain FREQUENCY for all skills
+    //   Tier 1 (uncommon):  15 minutes
+    //   Tier 2 (rare):      30 minutes
+    //   Tier 3 (very rare): 60 minutes
+    //
+    // Implementation: hooks EventSink.SkillCheck (fires on every
+    // skill use) and makes 2 extra independent gain attempts using
+    // the same gc formula as the engine. This triples the number
+    // of gain opportunities per skill use, without changing the
+    // gain amount per tick. Especially effective post-80 where
+    // gains are already rare.
+    // ----------------------------------------------------------
+
+    public class OrbOfInsight : Item
+    {
+        private int _tier;
+
+        [CommandProperty(AccessLevel.GameMaster)]
+        public int Tier
+        {
+            get => _tier;
+            set { _tier = Math.Max(1, Math.Min(3, value)); InvalidateProperties(); }
+        }
+
+        public TimeSpan Duration => TimeSpan.FromMinutes(_tier == 1 ? 15 : _tier == 2 ? 30 : 60);
+
+        // mobile → buff expiry time
+        private static readonly Dictionary<Mobile, DateTime> _activeBuffs = new Dictionary<Mobile, DateTime>();
+
+        public static bool IsActive(Mobile m) =>
+            _activeBuffs.TryGetValue(m, out DateTime end) && DateTime.UtcNow < end;
+
+        public static void Initialize()
+        {
+            EventSink.SkillCheck += OnSkillCheck;
+            Server.Commands.CommandSystem.Register("removeinsight", Server.AccessLevel.GameMaster, OnRemoveInsight);
+        }
+
+        private static void OnRemoveInsight(Server.Commands.CommandEventArgs e)
+        {
+            e.Mobile.SendMessage("Target the player to remove their insight buff.");
+            e.Mobile.Target = new InsightTarget();
+        }
+
+        private class InsightTarget : Server.Targeting.Target
+        {
+            public InsightTarget() : base(12, false, Server.Targeting.TargetFlags.None) { }
+
+            protected override void OnTarget(Mobile from, object targeted)
+            {
+                Mobile m = targeted as Mobile;
+                if (m == null) { from.SendMessage("That is not a mobile."); return; }
+
+                if (IsActive(m))
+                {
+                    RemoveBuff(m);
+                    from.SendMessage(0x35, $"Insight buff removed from {m.Name}.");
+                    m.SendMessage(0x22, "Your insight buff has been removed by a staff member.");
+                }
+                else
+                {
+                    from.SendMessage(0x22, $"{m.Name} does not have an insight buff active.");
+                }
+            }
+        }
+
+        private static void OnSkillCheck(SkillCheckEventArgs e)
+        {
+            if (!(e.From is PlayerMobile pm)) return;
+            if (!IsActive(pm))                return;
+            if (pm.Deleted || !pm.Alive)      return;
+
+            Skill skill = e.Skill;
+            if (skill == null)                return;
+            if (skill.Lock != SkillLock.Up)   return;
+            if (skill.Base >= skill.Cap)      return;
+
+            // Estimate gain chance using the same formula as SkillCheck.GetGainChance,
+            // without the difficulty component (we don't have it here).
+            double gc = (double)(pm.Skills.Cap - pm.Skills.Total) / pm.Skills.Cap;
+            gc += (skill.Cap - skill.Base) / skill.Cap;
+            gc /= 2.0;
+            gc *= skill.Info.GainFactor;
+            if (gc < 0.01) gc = 0.01;
+            if (gc > 1.00) gc = 1.00;
+
+            // Two extra independent gain attempts — combined with the normal attempt
+            // this gives roughly 3x the gain frequency.
+            for (int i = 0; i < 2; i++)
+            {
+                if (skill.Base >= skill.Cap) break; // stop if we hit cap mid-loop
+                if (Utility.RandomDouble() <= gc)
+                    Server.Misc.SkillCheck.Gain(pm, skill);
+            }
+        }
+
+        public static void RemoveBuff(Mobile m)
+        {
+            _activeBuffs.Remove(m);
+            BuffInfo.RemoveBuff(m, BuffIcon.ActiveMeditation);
+        }
+
+        [Constructable]
+        public OrbOfInsight() : this(1) { }
+
+        [Constructable]
+        public OrbOfInsight(int tier) : base(0x0E2D)
+        {
+            _tier  = Math.Max(1, Math.Min(3, tier));
+            Hue    = 1173; // cyan — distinct from OrbOfAlacrity's gold
+            Weight = 1.0;
+            Name   = $"an orb of insight ({TierLabel()})";
+        }
+
+        public OrbOfInsight(Serial serial) : base(serial) { }
+
+        private string TierLabel() => _tier == 1 ? "uncommon" : _tier == 2 ? "rare" : "very rare";
+
+        public override void GetProperties(ObjectPropertyList list)
+        {
+            base.GetProperties(list);
+            list.Add($"Triples skill gain frequency for {(int)Duration.TotalMinutes} minutes");
+        }
+
+        public override void OnDoubleClick(Mobile from)
+        {
+            if (!IsChildOf(from.Backpack))
+            {
+                from.SendLocalizedMessage(1042001);
+                return;
+            }
+
+            if (IsActive(from))
+            {
+                from.SendMessage(0x22, "You already have an insight buff active.");
+                return;
+            }
+
+            _activeBuffs[from] = DateTime.UtcNow + Duration;
+            from.SendMessage(0x59, $"Your mind sharpens with insight! Skill gain frequency tripled for {(int)Duration.TotalMinutes} minutes.");
+            from.PlaySound(0x1F7);
+            from.FixedParticles(0x375A, 9, 20, 5016, Hue, 0, EffectLayer.Head);
+            BuffInfo.AddBuff(from, new BuffInfo(BuffIcon.ActiveMeditation, 1075841, 1114057, Duration, from,
+                $"Orb of Insight - Skill gain frequency tripled for {(int)Duration.TotalMinutes} minutes"));
+
+            Timer.DelayCall(Duration, () =>
+            {
+                if (_activeBuffs.TryGetValue(from, out DateTime end) && DateTime.UtcNow >= end)
+                {
+                    RemoveBuff(from);
+                    if (from?.NetState != null)
+                        from.SendMessage(0x22, "Your insight fades.");
+                }
+            });
+
+            Delete();
+        }
+
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.Write(0);
+            writer.Write(_tier);
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            reader.ReadInt();
+            _tier = reader.ReadInt();
+        }
+    }
+
+    // ----------------------------------------------------------
     // ORB OF BALANCE — redistribute skill or stat points
     //   Tier 1: transfer up to 10 skill points
     //   Tier 2: transfer up to 50 skill points
