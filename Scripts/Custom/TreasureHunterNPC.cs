@@ -103,19 +103,19 @@ namespace Server.Custom
         public static int GetPortalFee(int level)
         {
             level = Math.Max(0, Math.Min(level, 4));
-            return (int)(s_RefGold[level] * 0.30);
+            return (int)(s_RefGold[level] * 0.30); // Portal: 30%
         }
 
         public static int GetFullFee(int level)
         {
             level = Math.Max(0, Math.Min(level, 4));
-            return (int)(s_RefGold[level] * 0.80);
+            return (int)(s_RefGold[level] * 0.50); // Full: 50%
         }
 
         public static int GetDecodeFullFee(int level)
         {
             level = Math.Max(0, Math.Min(level, 4));
-            return (int)(s_RefGold[level] * 0.90);
+            return (int)(s_RefGold[level] * 0.80); // Decode+Full: 80%
         }
 
         private static readonly string[] s_LevelNames = { "Stash", "Supply", "Cache", "Hoard", "Trove" };
