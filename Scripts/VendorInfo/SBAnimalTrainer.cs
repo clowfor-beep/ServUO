@@ -1,3 +1,4 @@
+using Server.Items;
 using System.Collections.Generic;
 
 namespace Server.Mobiles
@@ -20,6 +21,7 @@ namespace Server.Mobiles
                 Add(new AnimalBuyInfo(1, typeof(PackHorse), 631, 10, 291, 0));
                 Add(new AnimalBuyInfo(1, typeof(PackLlama), 565, 10, 292, 0));
                 Add(new AnimalBuyInfo(1, typeof(Rabbit), 106, 10, 205, 0));
+                Add(new GenericBuyInfo(typeof(PetBondingPotion), 50000, 5, 0x0F04, 2629));
             }
         }
 
