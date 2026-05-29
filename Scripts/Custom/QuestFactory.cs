@@ -90,10 +90,8 @@ namespace Server.Custom
 
         // ---- Live board — quests currently posted ---------------
         // Refreshes every 30 minutes; claimed quests are removed immediately.
+        // On each refresh: 5-6 quests are posted per guild from that guild's pool.
         private static readonly List<FBQuest> _boardQuests = new List<FBQuest>();
-
-        // Slots per tier on each refresh: Common=3, Uncommon=2, Rare=1, Legendary=0-1
-        private static readonly int[] _tierSlots = { 3, 2, 1, 1 };
 
         public static List<FBQuest> BoardQuests => new List<FBQuest>(_boardQuests);
 
@@ -101,14 +99,16 @@ namespace Server.Custom
         {
             _boardQuests.Clear();
 
-            for (int tier = 0; tier <= 3; tier++)
-            {
-                // Legendary has a 50% chance of appearing each cycle
-                if (tier == (int)QuestTier.Legendary && Utility.RandomBool())
-                    continue;
+            // Get all guilds that have quests in the pool (preserve declaration order)
+            var guilds = new List<string>();
+            foreach (FBQuest q in AllQuests)
+                if (!string.IsNullOrEmpty(q.GiverGuild) && !guilds.Contains(q.GiverGuild))
+                    guilds.Add(q.GiverGuild);
 
-                int slots = _tierSlots[tier];
-                var pool  = AllQuests.FindAll(q => (int)q.Tier == tier);
+            foreach (string guild in guilds)
+            {
+                var pool  = AllQuests.FindAll(q => q.GiverGuild == guild);
+                int slots = Math.Min(pool.Count, Utility.RandomMinMax(5, 6));
 
                 for (int i = 0; i < slots && pool.Count > 0; i++)
                 {
@@ -249,6 +249,170 @@ namespace Server.Custom
                 RewardGold = "375-750",
                 RepGuild   = FBGuilds.CraftsmenLeague,  RepAmount = 30,
                 ItemType   = "Board",                    ItemAmount = 50,
+            },
+
+            // ---- COMMON / UNCOMMON additions to reach 5 per guild --
+
+            // Silver Wolves +1 (total 5)
+            new FBQuest {
+                Id             = "hunt_brigand_001",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Common,
+                Title          = "Highway Bandits",
+                GiverGuild     = FBGuilds.SilverWolves,
+                Description    = "Brigands are preying on travellers along the road. Drive them off — kill 6.",
+                RewardGold     = "750-1500",
+                RepGuild       = FBGuilds.SilverWolves,  RepAmount = 30,
+                TargetCategory = "brigand",               KillsRequired = 6,
+            },
+
+            // Wanderers +3 (total 5)
+            new FBQuest {
+                Id         = "gather_cloth_wan_001",
+                Type       = QuestType.Gather,  Tier = QuestTier.Common,
+                Title      = "Caravan Fabrics",
+                GiverGuild = FBGuilds.Wanderers,
+                Description= "Caravans need cloth for tents and clothing repairs. Deliver 50 pieces.",
+                RewardGold = "250-500",
+                RepGuild   = FBGuilds.Wanderers,  RepAmount = 20,
+                ItemType   = "Cloth",              ItemAmount = 50,
+            },
+            new FBQuest {
+                Id         = "gather_arrow_wan_001",
+                Type       = QuestType.Gather,  Tier = QuestTier.Common,
+                Title      = "Hunter's Supply",
+                GiverGuild = FBGuilds.Wanderers,
+                Description= "Road hunters protecting the caravans are out of ammunition. Deliver 100 arrows.",
+                RewardGold = "200-400",
+                RepGuild   = FBGuilds.Wanderers,  RepAmount = 15,
+                ItemType   = "Arrow",              ItemAmount = 100,
+            },
+            new FBQuest {
+                Id             = "hunt_spider_001",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Uncommon,
+                Title          = "Mountain Pass Spiders",
+                GiverGuild     = FBGuilds.Wanderers,
+                Description    = "Giant spiders have webbed off the mountain passes. Clear them out — kill 8.",
+                RewardGold     = "1000-2000",
+                RepGuild       = FBGuilds.Wanderers,  RepAmount = 40,
+                TargetCategory = "spider",             KillsRequired = 8,
+            },
+
+            // Craftsmen League +3 (total 5)
+            new FBQuest {
+                Id         = "gather_leather_001",
+                Type       = QuestType.Gather,  Tier = QuestTier.Common,
+                Title      = "Tannery Backlog",
+                GiverGuild = FBGuilds.CraftsmenLeague,
+                Description= "The tannery is behind on armour orders. Deliver 40 pieces of leather.",
+                RewardGold = "300-600",
+                RepGuild   = FBGuilds.CraftsmenLeague,  RepAmount = 25,
+                ItemType   = "Leather",                  ItemAmount = 40,
+            },
+            new FBQuest {
+                Id         = "gather_cloth_cra_001",
+                Type       = QuestType.Gather,  Tier = QuestTier.Common,
+                Title      = "Weaving Workshop",
+                GiverGuild = FBGuilds.CraftsmenLeague,
+                Description= "The seamstresses have run out of material. Deliver 40 pieces of cloth.",
+                RewardGold = "250-500",
+                RepGuild   = FBGuilds.CraftsmenLeague,  RepAmount = 20,
+                ItemType   = "Cloth",                    ItemAmount = 40,
+            },
+            new FBQuest {
+                Id         = "gather_dullcopper_001",
+                Type       = QuestType.Gather,  Tier = QuestTier.Uncommon,
+                Title      = "Rare Metal Commission",
+                GiverGuild = FBGuilds.CraftsmenLeague,
+                Description= "A noble has placed a commission for specialised alloy work. Deliver 20 dull copper ingots.",
+                RewardGold = "500-1000",
+                RepGuild   = FBGuilds.CraftsmenLeague,  RepAmount = 35,
+                ItemType   = "DullCopperIngot",           ItemAmount = 20,
+            },
+
+            // Paladin Order +3 (total 5)
+            new FBQuest {
+                Id             = "hunt_undead_002",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Common,
+                Title          = "March of the Dead",
+                GiverGuild     = FBGuilds.PaladinOrder,
+                Description    = "The local cemetery has been disturbed. Banish 5 undead in the name of virtue.",
+                RewardGold     = "750-1500",
+                RepGuild       = FBGuilds.PaladinOrder,  RepAmount = 35,
+                TargetCategory = "undead",                KillsRequired = 5,
+            },
+            new FBQuest {
+                Id         = "gather_garlic_001",
+                Type       = QuestType.Gather,  Tier = QuestTier.Common,
+                Title      = "Holy Wards",
+                GiverGuild = FBGuilds.PaladinOrder,
+                Description= "Garlic wards keep the undead at bay. Donate 25 heads of garlic to the order.",
+                RewardGold = "200-400",
+                RepGuild   = FBGuilds.PaladinOrder,  RepAmount = 15,
+                ItemType   = "Garlic",                ItemAmount = 25,
+            },
+            new FBQuest {
+                Id             = "hunt_daemon_002",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Uncommon,
+                Title          = "Virtue's Challenge",
+                GiverGuild     = FBGuilds.PaladinOrder,
+                Description    = "Even the most pious must face the worst of evil. Slay 3 daemons.",
+                RewardGold     = "1500-3000",
+                RepGuild       = FBGuilds.PaladinOrder,  RepAmount = 60,
+                TargetCategory = "daemon",                KillsRequired = 3,
+            },
+
+            // Arcane Brotherhood +2 (total 5)
+            new FBQuest {
+                Id         = "gather_blackpearl_001",
+                Type       = QuestType.Gather,  Tier = QuestTier.Common,
+                Title      = "Alchemical Reserve",
+                GiverGuild = FBGuilds.ArcaneBrotherhood,
+                Description= "The laboratory is running low on reagents. Donate 25 black pearls to the Brotherhood.",
+                RewardGold = "350-700",
+                RepGuild   = FBGuilds.ArcaneBrotherhood,  RepAmount = 20,
+                ItemType   = "BlackPearl",                 ItemAmount = 25,
+            },
+            new FBQuest {
+                Id             = "hunt_gargoyle_001",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Uncommon,
+                Title          = "Ley Line Corruption",
+                GiverGuild     = FBGuilds.ArcaneBrotherhood,
+                Description    = "Stone gargoyles are nesting on the ley line anchors and disrupting the weave. Slay 5.",
+                RewardGold     = "1250-2500",
+                RepGuild       = FBGuilds.ArcaneBrotherhood,  RepAmount = 50,
+                TargetCategory = "gargoyle",                   KillsRequired = 5,
+            },
+
+            // Dread Hunters +3 (total 5)
+            new FBQuest {
+                Id             = "hunt_terathan_001",
+                Type           = QuestType.Hunt,  Tier = QuestTier.Uncommon,
+                Title          = "Terathan Nest",
+                GiverGuild     = FBGuilds.DreadHunters,
+                Description    = "A terathan nest has been located near the dungeon entrance. Wipe out 6 of them.",
+                RewardGold     = "1500-3000",
+                RepGuild       = FBGuilds.DreadHunters,  RepAmount = 55,
+                TargetCategory = "terathan",               KillsRequired = 6,
+            },
+            new FBQuest {
+                Id               = "hunt_wyrm_001",
+                Type             = QuestType.Hunt,  Tier = QuestTier.Rare,
+                Title            = "Ancient Wyrm Hunt",
+                GiverGuild       = FBGuilds.DreadHunters,
+                Description      = "An ancient wyrm has been sighted. Only the most experienced hunters need apply.",
+                RewardGold       = "3000-5000",
+                RepGuild         = FBGuilds.DreadHunters,  RepAmount = 75,
+                TargetMobileType = "AncientWyrm",           KillsRequired = 1,
+            },
+            new FBQuest {
+                Id               = "hunt_balron_001",
+                Type             = QuestType.Hunt,  Tier = QuestTier.Legendary,
+                Title            = "The Balron Mark",
+                GiverGuild       = FBGuilds.DreadHunters,
+                Description      = "A Balron stirs in the deepest reaches. Face it. Few who try this contract return.",
+                RewardGold       = "5000-10000",
+                RepGuild         = FBGuilds.DreadHunters,  RepAmount = 100,
+                TargetMobileType = "Balron",                KillsRequired = 1,
             },
 
             // ---- RARE: Elite targets / high-end category kills --
@@ -571,6 +735,12 @@ namespace Server.Custom
                     return ContainsAny(t, "Troll", "Ettin", "Ogre");
                 case "terathan":
                     return ContainsAny(t, "Terathan", "Ophidian");
+                case "brigand":
+                    return ContainsAny(t, "Brigand", "Bandit", "Cutpurse", "Highwayman", "Mercenary", "Pirate");
+                case "spider":
+                    return ContainsAny(t, "Spider", "Arachne");
+                case "gargoyle":
+                    return ContainsAny(t, "Gargoyle", "Garg");
                 default:
                     return false;
             }
@@ -722,6 +892,10 @@ namespace Server.Custom
                 if (!string.IsNullOrEmpty(q.GiverGuild) && !_tabGuilds.Contains(q.GiverGuild))
                     _tabGuilds.Add(q.GiverGuild);
 
+            // Default to first guild if none selected (no All tab — per-guild view only)
+            if (_selectedGuild == null && _tabGuilds.Count > 0)
+                _selectedGuild = _tabGuilds[0];
+
             // Filtered list for the quest panel
             List<FBQuest> displayQuests = _selectedGuild == null
                 ? allBoard
@@ -738,8 +912,7 @@ namespace Server.Custom
             int simTabX = PadX;
             int simTabY = 34; // tabs start here (below header divider at y=30)
 
-            string allLbl0 = $"All ({allBoard.Count})";
-            simTabX += glyphW + allLbl0.Length * charPx + tabInnerP + tabGapX + 6;
+            // No "All" tab — tabs begin with the first guild
 
             foreach (string g in _tabGuilds)
             {
@@ -777,7 +950,9 @@ namespace Server.Custom
             AddLabel(PadX, 12, 0x4AA, "Bounty Board");
             string subtitle = active != null
                 ? "— quest in progress"
-                : $"— {allBoard.Count} contract{(allBoard.Count != 1 ? "s" : "")} posted";
+                : _selectedGuild != null
+                    ? $"— {AbbrevGuild(_selectedGuild)}  ·  {displayQuests.Count} contract{(displayQuests.Count != 1 ? "s" : "")}"
+                    : "— board empty";
             AddLabel(PadX + 128, 14, 2119, subtitle);
             AddImageTiled(PadX, 30, W - PadX * 2, 1, 9264);
 
@@ -785,17 +960,6 @@ namespace Server.Custom
             int tabX = PadX;
             int tabY = 34;
 
-            // "All" tab
-            {
-                bool   isActive = _selectedGuild == null;
-                string lbl      = $"All ({allBoard.Count})";
-                int    tabW     = glyphW + lbl.Length * charPx + tabInnerP + 6;
-                if (isActive)
-                    AddBackground(tabX - 2, tabY - 2, tabW + 4, tabRowH, 9350);
-                AddButton(tabX + 2, tabY + 3, 4005, 4007, BTN_TAB_ALL, GumpButtonType.Reply, 0);
-                AddLabel(tabX + glyphW, tabY + 5, isActive ? 0x35 : 2119, lbl);
-                tabX += tabW + tabGapX;
-            }
 
             for (int t = 0; t < _tabGuilds.Count; t++)
             {
@@ -865,9 +1029,7 @@ namespace Server.Custom
             // ── Quest list ────────────────────────────────────────────────────────
             else if (displayQuests.Count == 0)
             {
-                string emptyMsg = _selectedGuild == null
-                    ? "The board is empty — contracts refresh every 30 minutes."
-                    : $"No contracts from {_selectedGuild} right now.";
+                string emptyMsg = $"No contracts from {_selectedGuild ?? "this guild"} right now.";
                 AddLabel(PadX, y + 8, 2119, emptyMsg);
             }
             else
@@ -989,13 +1151,6 @@ namespace Server.Custom
                 else
                     QuestFactory.CheckGatherProgress(_from);
                 _from.SendGump(new BountyBoardGump(_from, _board, _selectedGuild));
-                return;
-            }
-
-            // ── Tab: All ─────────────────────────────────────────────────────────
-            if (btn == BTN_TAB_ALL)
-            {
-                _from.SendGump(new BountyBoardGump(_from, _board, null));
                 return;
             }
 
