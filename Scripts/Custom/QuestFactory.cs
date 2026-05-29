@@ -854,7 +854,7 @@ namespace Server.Custom
                         case QuestTier.Uncommon:  tierTag = "Uncommon";  tierHue = 0x44;  break;
                         case QuestTier.Rare:      tierTag = "Rare";      tierHue = 0x480; break;
                         case QuestTier.Legendary: tierTag = "Legendary"; tierHue = 0x22;  break;
-                        default:                  tierTag = "Common";    tierHue = 2119;  break;
+                        default:                  tierTag = "Common";    tierHue = 0x1;   break;
                     }
 
                     int    typeHue  = q.Type == QuestType.Hunt ? 0x4AA : 0x35;
@@ -901,7 +901,7 @@ namespace Server.Custom
 
                     // ── Row 2: Description (html, wraps naturally) ────────────────────
                     AddHtml(ix, iy, cW - 20, 22,
-                        $"<BASEFONT COLOR=#9B9B9B>{HtmlEncode(q.Description)}</BASEFONT>",
+                        $"<BASEFONT COLOR=#222222>{HtmlEncode(q.Description)}</BASEFONT>",
                         false, false);
                     iy += 26;
 
@@ -910,7 +910,7 @@ namespace Server.Custom
                     string leftText  = guildStr + goalText;
                     string rewardStr = $"{q.RewardGold:N0} gp  +{q.RepAmount} rep";
                     int    rewardX   = cX + cW - 10 - rewardStr.Length * charPx;
-                    AddLabel(ix, iy, 2119, leftText);
+                    AddLabel(ix, iy, 0x1, leftText);
                     AddLabel(Math.Max(rewardX, ix + leftText.Length * charPx + 10), iy, 1153, rewardStr);
 
                     y += CardH + CardGap;
