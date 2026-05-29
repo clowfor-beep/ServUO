@@ -668,8 +668,10 @@ namespace Server.Custom
         private readonly string       _selectedGuild; // null = All
         private readonly List<string> _tabGuilds;     // guilds with quests, in board order
 
-        private const int W    = 500;
-        private const int PadX = 18;
+        private const int W      = 580;
+        private const int PadX   = 14;
+        private const int CardH  = 74;  // height of each quest card
+        private const int CardGap = 5;  // gap between cards
 
         // Button ID ranges — no overlaps
         private const int BTN_CLOSE    = 0;
@@ -700,93 +702,132 @@ namespace Server.Custom
                 ? allBoard
                 : allBoard.FindAll(q => q.GiverGuild == _selectedGuild);
 
-            // ── Height ────────────────────────────────────────────────────────────
-            // Tab row: up to 2 rows of tabs (each 20px) + 6px gap below
-            int tabAreaH    = 48;
-            int activeH     = active != null
-                ? (active.Quest.Type == QuestType.Gather ? 4 : 3) * 24 + 14
-                : 0;
-            int questH      = active == null
-                ? Math.Max(displayQuests.Count * 58, 26)
-                : 0;
-            int h = 50 + tabAreaH + activeH + questH + 20;
+            // ── Tab layout simulation (needed to compute total height) ──────────────
+            // Each tab = arrow glyph (22px) + label + 4px inner pad + 6px gap between tabs
+            const int charPx    = 6;
+            const int glyphW    = 22;
+            const int tabInnerP = 4;
+            const int tabGapX   = 4;
+            const int tabRowH   = 26; // visible height of one tab row
+
+            int simTabX = PadX;
+            int simTabY = 34; // tabs start here (below header divider at y=30)
+
+            string allLbl0 = $"All ({allBoard.Count})";
+            simTabX += glyphW + allLbl0.Length * charPx + tabInnerP + tabGapX + 6;
+
+            foreach (string g in _tabGuilds)
+            {
+                string ab  = AbbrevGuild(g);
+                int    cnt = allBoard.Count(q => q.GiverGuild == g);
+                string lb  = $"{ab} ({cnt})";
+                int    tw  = glyphW + lb.Length * charPx + tabInnerP + tabGapX + 6;
+                if (simTabX + tw > W - PadX) { simTabX = PadX; simTabY += tabRowH; }
+                simTabX += tw;
+            }
+
+            int contentY = simTabY + tabRowH + 8; // quest content starts here (after divider gap)
+
+            // ── Height pre-calculation ──────────────────────────────────────────────
+            int activeH = 0;
+            if (active != null)
+                activeH = active.Quest.Type == QuestType.Gather ? 128 : 106;
+
+            int questAreaH = 0;
+            if (active == null)
+                questAreaH = displayQuests.Count == 0
+                    ? 32
+                    : displayQuests.Count * (CardH + CardGap) + CardGap;
+
+            int h = contentY + activeH + questAreaH + 16;
 
             AddBackground(0, 0, W, h, 9270);
             AddAlphaRegion(2, 2, W - 4, h - 4);
 
             // ── Header ────────────────────────────────────────────────────────────
             AddLabel(PadX, 12, 0x4AA, "Bounty Board");
+            string subtitle = active != null
+                ? "— quest in progress"
+                : $"— {allBoard.Count} contract{(allBoard.Count != 1 ? "s" : "")} posted";
+            AddLabel(PadX + 128, 14, 2119, subtitle);
             AddImageTiled(PadX, 30, W - PadX * 2, 1, 9264);
 
             // ── Tab row ───────────────────────────────────────────────────────────
-            // Tabs wrap automatically.  We use 6 px/char as the UO font width estimate
-            // (proportional, mixed case).  Button graphic = 4005/4007 (18px wide arrow)
-            // placed to the left; label sits 35px to the right.
-            const int charPx  = 6;
-            const int btnW    = 35; // width occupied by the button glyph
-            const int tabGap  = 6;  // gap between tabs
-            const int tabRowH = 20;
-            int maxTabX = W - PadX;
-
-            int tabX = PadX, tabY = 36;
+            int tabX = PadX;
+            int tabY = 34;
 
             // "All" tab
-            bool   allActive  = (_selectedGuild == null);
-            string allLabel   = $"All ({allBoard.Count})";
-            int    allLabelW  = allLabel.Length * charPx;
-            AddButton(tabX, tabY, 4005, 4007, BTN_TAB_ALL, GumpButtonType.Reply, 0);
-            AddLabel(tabX + btnW, tabY, allActive ? 0x35 : 2119, allLabel);
-            tabX += btnW + allLabelW + tabGap;
+            {
+                bool   isActive = _selectedGuild == null;
+                string lbl      = $"All ({allBoard.Count})";
+                int    tabW     = glyphW + lbl.Length * charPx + tabInnerP + 6;
+                if (isActive)
+                    AddBackground(tabX - 2, tabY - 2, tabW + 4, tabRowH, 9350);
+                AddButton(tabX + 2, tabY + 3, 4005, 4007, BTN_TAB_ALL, GumpButtonType.Reply, 0);
+                AddLabel(tabX + glyphW, tabY + 5, isActive ? 0x35 : 2119, lbl);
+                tabX += tabW + tabGapX;
+            }
 
-            // Per-guild tabs
             for (int t = 0; t < _tabGuilds.Count; t++)
             {
                 string guild    = _tabGuilds[t];
                 string abbrev   = AbbrevGuild(guild);
                 int    cnt      = allBoard.Count(q => q.GiverGuild == guild);
                 string lbl      = $"{abbrev} ({cnt})";
-                int    lblW     = lbl.Length * charPx;
-                int    tabTotal = btnW + lblW + tabGap;
+                int    tabW     = glyphW + lbl.Length * charPx + tabInnerP + 6;
+                bool   isActive = guild == _selectedGuild;
 
-                // Wrap to next row if this tab would overflow
-                if (tabX + tabTotal > maxTabX)
+                if (tabX + tabW > W - PadX)
                 {
                     tabX  = PadX;
                     tabY += tabRowH;
                 }
 
-                bool isActive = guild == _selectedGuild;
-                AddButton(tabX, tabY, 4005, 4007, BTN_TAB_BASE + t, GumpButtonType.Reply, 0);
-                AddLabel(tabX + btnW, tabY, isActive ? 0x35 : 2119, lbl);
-                tabX += tabTotal;
+                if (isActive)
+                    AddBackground(tabX - 2, tabY - 2, tabW + 4, tabRowH, 9350);
+                AddButton(tabX + 2, tabY + 3, 4005, 4007, BTN_TAB_BASE + t, GumpButtonType.Reply, 0);
+                AddLabel(tabX + glyphW, tabY + 5, isActive ? 0x35 : 2119, lbl);
+                tabX += tabW + tabGapX;
             }
 
-            // Divider below tab area
-            int y = 36 + tabAreaH - 2;
-            AddImageTiled(PadX, y, W - PadX * 2, 1, 9264);
-            y += 8;
+            // Divider below tabs, then content starts
+            AddImageTiled(PadX, contentY - 4, W - PadX * 2, 1, 9264);
+            int y = contentY;
 
             // ── Active quest section ──────────────────────────────────────────────
             if (active != null)
             {
-                FBQuest q = active.Quest;
-                AddLabel(PadX, y, 0x35, $"Active: {q.Title}");
-                y += 22;
+                FBQuest q  = active.Quest;
+                int     cW = W - PadX * 2;
+                int     cH = q.Type == QuestType.Gather ? 124 : 102;
+
+                AddBackground(PadX, y, cW, cH, 9350);
+
+                int ix = PadX + 10;
+                int iy = y + 8;
+
+                AddLabel(ix, iy, 0x35, "Active:");
+                AddLabel(ix + 54, iy, 0x4AA, q.Title);
+                iy += 22;
 
                 string progressText = q.Type == QuestType.Hunt
-                    ? $"Kills: {active.Progress} / {q.KillsRequired}"
-                    : $"Items: {active.Progress} / {q.ItemAmount} {q.ItemType}";
-                AddLabel(PadX + 6, y, 1153, progressText);
-                y += 22;
+                    ? $"Progress:  {active.Progress} / {q.KillsRequired} kills"
+                    : $"Progress:  {active.Progress} / {q.ItemAmount} {q.ItemType} collected";
+                AddLabel(ix, iy, 1153, progressText);
+                iy += 20;
 
-                AddButton(PadX, y, 4005, 4007, BTN_ABANDON, GumpButtonType.Reply, 0);
-                AddLabel(PadX + 35, y, 0x22, "Abandon Quest");
-                y += 22;
+                string rewardLine = $"Reward:  {q.RewardGold:N0} gp   +{q.RepAmount} {AbbrevGuild(q.RepGuild)} reputation";
+                AddLabel(ix, iy, 2119, rewardLine);
+                iy += 20;
+
+                AddButton(ix, iy, 4005, 4007, BTN_ABANDON, GumpButtonType.Reply, 0);
+                AddLabel(ix + 22, iy + 1, 0x22, "Abandon Quest");
 
                 if (q.Type == QuestType.Gather)
                 {
-                    AddButton(PadX, y, 4005, 4007, BTN_TURNIN, GumpButtonType.Reply, 0);
-                    AddLabel(PadX + 35, y, 0x35, $"Turn In ({q.ItemType} x{q.ItemAmount})");
+                    iy += 22;
+                    AddButton(ix, iy, 4005, 4007, BTN_TURNIN, GumpButtonType.Reply, 0);
+                    AddLabel(ix + 22, iy + 1, 0x35, $"Turn In  ({q.ItemType} x{q.ItemAmount})");
                 }
             }
             // ── Quest list ────────────────────────────────────────────────────────
@@ -795,69 +836,100 @@ namespace Server.Custom
                 string emptyMsg = _selectedGuild == null
                     ? "The board is empty — contracts refresh every 30 minutes."
                     : $"No contracts from {_selectedGuild} right now.";
-                AddLabel(PadX, y, 2119, emptyMsg);
+                AddLabel(PadX, y + 8, 2119, emptyMsg);
             }
             else
             {
+                int cX = PadX;
+                int cW = W - PadX * 2;
+
                 for (int i = 0; i < displayQuests.Count; i++)
                 {
                     FBQuest q = displayQuests[i];
 
-                    string tierLabel; int tierHue;
+                    // Tier colour and label
+                    string tierTag; int tierHue;
                     switch (q.Tier)
                     {
-                        case QuestTier.Uncommon:  tierLabel = "[Uncommon]";  tierHue = 0x44;  break;
-                        case QuestTier.Rare:      tierLabel = "[Rare]";      tierHue = 0x4AA; break;
-                        case QuestTier.Legendary: tierLabel = "[Legendary]"; tierHue = 0x22;  break;
-                        default:                  tierLabel = "[Common]";    tierHue = 0x9C2; break;
+                        case QuestTier.Uncommon:  tierTag = "Uncommon";  tierHue = 0x44;  break;
+                        case QuestTier.Rare:      tierTag = "Rare";      tierHue = 0x480; break;
+                        case QuestTier.Legendary: tierTag = "Legendary"; tierHue = 0x22;  break;
+                        default:                  tierTag = "Common";    tierHue = 2119;  break;
                     }
 
-                    int    typeHue = q.Type == QuestType.Hunt ? 0x4AA : 0x35;
-                    string typeTag = q.Type == QuestType.Hunt ? "[Hunt]" : "[Gather]";
-                    string goal    = q.Type == QuestType.Hunt
+                    int    typeHue  = q.Type == QuestType.Hunt ? 0x4AA : 0x35;
+                    string typeTag  = q.Type == QuestType.Hunt ? "Hunt" : "Gather";
+                    string goalText = q.Type == QuestType.Hunt
                         ? $"Kill {q.KillsRequired}"
-                        : $"Deliver {q.ItemAmount} {q.ItemType}";
-                    int    descMax = 64;
-                    string desc    = q.Description.Length > descMax
-                        ? q.Description.Substring(0, descMax) + "..."
-                        : q.Description;
-                    string reward  = $"{q.RewardGold}gp  +{q.RepAmount} {AbbrevGuild(q.RepGuild)} rep";
+                        : $"Deliver {q.ItemAmount}x {q.ItemType}";
 
-                    AddLabel(PadX,       y, tierHue, tierLabel);
-                    AddLabel(PadX + 90,  y, typeHue, typeTag);
-                    AddLabel(PadX + 145, y, 1153,    q.Title);
-                    y += 16;
-
-                    AddLabel(PadX + 6, y, 2119, desc);
-                    y += 14;
-                    AddLabel(PadX + 6, y, 2119, $"{goal}  |  Reward: {reward}");
-                    y += 14;
-
+                    // Lock check
                     bool   locked     = false;
                     string lockReason = null;
-                    if (q.Tier == QuestTier.Rare &&
-                        ReputationSystem.GetStanding(_from, q.RepGuild) < 100)
-                    {
-                        locked = true; lockReason = "[Known required]";
-                    }
-                    else if (q.Tier == QuestTier.Legendary &&
-                             ReputationSystem.GetStanding(_from, q.RepGuild) < 300)
-                    {
-                        locked = true; lockReason = "[Trusted required]";
-                    }
+                    if (q.Tier == QuestTier.Rare && ReputationSystem.GetStanding(_from, q.RepGuild) < 100)
+                    { locked = true; lockReason = "[Known standing required]"; }
+                    else if (q.Tier == QuestTier.Legendary && ReputationSystem.GetStanding(_from, q.RepGuild) < 300)
+                    { locked = true; lockReason = "[Trusted standing required]"; }
 
-                    if (locked)
+                    // Card background
+                    AddBackground(cX, y, cW, CardH, 9350);
+
+                    int ix = cX + 10;
+                    int iy = y + 7;
+
+                    // ── Row 1: [Tier] [Type]  Title  ···  Accept / Locked ─────────────
+                    int tierTagW = (tierTag.Length + 2) * charPx + 4;
+                    int typeTagW = (typeTag.Length + 2) * charPx + 4;
+
+                    AddLabel(ix,            iy, tierHue, $"[{tierTag}]");
+                    AddLabel(ix + tierTagW, iy, typeHue, $"[{typeTag}]");
+
+                    int titleX    = ix + tierTagW + typeTagW + 4;
+                    int titleMaxW = cW - (titleX - cX) - 82; // 82px reserved for accept area
+                    AddLabel(titleX, iy, 0x4AA, TruncLabel(q.Title, titleMaxW));
+
+                    if (!locked)
                     {
-                        AddLabel(PadX + 6, y, 33, lockReason);
+                        AddButton(cX + cW - 72, iy - 1, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
+                        AddLabel(cX + cW - 50, iy, 0x35, "Accept");
                     }
                     else
                     {
-                        AddButton(PadX + 6, y, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
-                        AddLabel(PadX + 42, y, 0x35, "Accept");
+                        AddLabel(cX + cW - lockReason.Length * charPx - 8, iy, 0x22, lockReason);
                     }
-                    y += 20;
+                    iy += 19;
+
+                    // ── Row 2: Description (html, wraps naturally) ────────────────────
+                    AddHtml(ix, iy, cW - 20, 22,
+                        $"<BASEFONT COLOR=#9B9B9B>{HtmlEncode(q.Description)}</BASEFONT>",
+                        false, false);
+                    iy += 26;
+
+                    // ── Row 3: Guild · Goal (left)   Reward (right) ───────────────────
+                    string guildStr  = string.IsNullOrEmpty(q.GiverGuild) ? "" : $"{AbbrevGuild(q.GiverGuild)}  ·  ";
+                    string leftText  = guildStr + goalText;
+                    string rewardStr = $"{q.RewardGold:N0} gp  +{q.RepAmount} rep";
+                    int    rewardX   = cX + cW - 10 - rewardStr.Length * charPx;
+                    AddLabel(ix, iy, 2119, leftText);
+                    AddLabel(Math.Max(rewardX, ix + leftText.Length * charPx + 10), iy, 1153, rewardStr);
+
+                    y += CardH + CardGap;
                 }
             }
+        }
+
+        // ── Helpers ───────────────────────────────────────────────────────────────
+
+        private static string TruncLabel(string s, int maxPx, int charPx = 6)
+        {
+            int max = maxPx / charPx;
+            if (max <= 3 || s.Length <= max) return s;
+            return s.Substring(0, max - 3) + "...";
+        }
+
+        private static string HtmlEncode(string s)
+        {
+            return (s ?? string.Empty).Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
         }
 
         public override void OnResponse(NetState sender, RelayInfo info)
@@ -935,8 +1007,8 @@ namespace Server.Custom
             if (guild == FBGuilds.ArcaneBrotherhood)        return "Arcane Bro.";
             if (guild == FBGuilds.SilverWolves)             return "Silver Wolves";
             if (guild == FBGuilds.PaladinOrder)             return "Paladins";
-            if (guild == FBGuilds.DeadWatchers)             return "Dead Watch.";
-            if (guild == FBGuilds.DreadHunters)             return "Dread Hunt.";
+            if (guild == FBGuilds.DeadWatchers)             return "Dead Watchers";
+            if (guild == FBGuilds.DreadHunters)             return "Dread Hunters";
             if (guild == FBGuilds.BloodPact)                return "Blood Pact";
             if (guild == FBGuilds.TheVoid)                  return "The Void";
             if (guild == FBGuilds.Shadowblade)              return "Shadowblade";
