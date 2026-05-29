@@ -387,6 +387,9 @@ namespace Server.Custom
             FBQuest quest = state.Quest;
             if (quest.Type != QuestType.Hunt) return;
 
+            // Don't over-count if already at goal
+            if (state.Progress >= quest.KillsRequired) return;
+
             // Category match takes priority; fall back to exact type name
             bool matched = !string.IsNullOrEmpty(quest.TargetCategory)
                 ? MatchesCategory(victim, quest.TargetCategory)
@@ -398,10 +401,32 @@ namespace Server.Custom
             string objLabel = BuildObjectiveLabel(quest);
             QuestTrackerHUD.UpdateObjective(killer, objLabel, state.Progress, quest.KillsRequired);
 
-            killer.SendMessage(0x35, $"Quest progress: {state.Progress}/{quest.KillsRequired}");
-
             if (state.Progress >= quest.KillsRequired)
-                CompleteQuest(killer);
+            {
+                killer.SendMessage(0x35, $"Objective complete! Return to the Bounty Board to collect your reward.");
+                killer.PlaySound(0x1F7); // chime — distinct from completion sound
+            }
+            else
+            {
+                killer.SendMessage(0x35, $"Quest progress: {state.Progress}/{quest.KillsRequired}");
+            }
+        }
+
+        /// <summary>Called from BountyBoardGump Collect Reward button for completed hunt quests.</summary>
+        public static void CollectHuntReward(Mobile m)
+        {
+            if (!_activeQuests.TryGetValue(m, out var state)) return;
+
+            FBQuest quest = state.Quest;
+            if (quest.Type != QuestType.Hunt) return;
+
+            if (state.Progress < quest.KillsRequired)
+            {
+                m.SendMessage(0x22, $"You still need {quest.KillsRequired - state.Progress} more kills.");
+                return;
+            }
+
+            CompleteQuest(m);
         }
 
         /// <summary>Called from BountyBoardGump Turn In button for gather quests.</summary>
@@ -731,7 +756,11 @@ namespace Server.Custom
             // ── Height pre-calculation ──────────────────────────────────────────────
             int activeH = 0;
             if (active != null)
-                activeH = active.Quest.Type == QuestType.Gather ? 128 : 106;
+            {
+                // Both types show two buttons once the objective is met
+                bool huntDone = active.Quest.Type == QuestType.Hunt && active.Progress >= active.Quest.KillsRequired;
+                activeH = (active.Quest.Type == QuestType.Gather || huntDone) ? 128 : 106;
+            }
 
             int questAreaH = 0;
             if (active == null)
@@ -823,11 +852,14 @@ namespace Server.Custom
                 AddButton(ix, iy, 4005, 4007, BTN_ABANDON, GumpButtonType.Reply, 0);
                 AddLabel(ix + 22, iy + 1, 0x22, "Abandon Quest");
 
-                if (q.Type == QuestType.Gather)
+                if (q.Type == QuestType.Gather || (q.Type == QuestType.Hunt && active.Progress >= q.KillsRequired))
                 {
                     iy += 22;
                     AddButton(ix, iy, 4005, 4007, BTN_TURNIN, GumpButtonType.Reply, 0);
-                    AddLabel(ix + 22, iy + 1, 0x35, $"Turn In  ({q.ItemType} x{q.ItemAmount})");
+                    string turnInLabel = q.Type == QuestType.Gather
+                        ? $"Turn In  ({q.ItemType} x{q.ItemAmount})"
+                        : "Collect Reward";
+                    AddLabel(ix + 22, iy + 1, 0x35, turnInLabel);
                 }
             }
             // ── Quest list ────────────────────────────────────────────────────────
@@ -948,10 +980,14 @@ namespace Server.Custom
                 return;
             }
 
-            // ── Turn in ──────────────────────────────────────────────────────────
+            // ── Turn in / Collect reward ──────────────────────────────────────────
             if (btn == BTN_TURNIN)
             {
-                QuestFactory.CheckGatherProgress(_from);
+                var st = QuestFactory.GetActiveQuestState(_from);
+                if (st != null && st.Quest.Type == QuestType.Hunt)
+                    QuestFactory.CollectHuntReward(_from);
+                else
+                    QuestFactory.CheckGatherProgress(_from);
                 _from.SendGump(new BountyBoardGump(_from, _board, _selectedGuild));
                 return;
             }
