@@ -293,6 +293,50 @@ namespace Server.Custom
         public static bool HasActiveHunt   { get { PruneHunts();  return _activeHunts .Count > 0; } }
         public static bool HasActiveWanted { get { PruneWanted(); return _activeWanted.Count > 0; } }
 
+        /// <summary>
+        /// Returns the top maxCount players by hunter points, sorted descending.
+        /// Skips serials that no longer resolve to a mobile.
+        /// </summary>
+        public static List<(string name, int points, string rank)> GetLeaderboard(int maxCount = 10)
+        {
+            var result = new List<(string, int, string)>();
+
+            foreach (var kvp in _points)
+            {
+                if (kvp.Value <= 0) continue;
+                Mobile m    = World.FindMobile(kvp.Key);
+                string name = m != null ? m.Name : $"<Unknown #{(int)kvp.Key}>";
+                result.Add((name, kvp.Value, GetRankTitle(kvp.Value)));
+            }
+
+            result.Sort((a, b) => b.Item2.CompareTo(a.Item2));
+
+            if (result.Count > maxCount)
+                result.RemoveRange(maxCount, result.Count - maxCount);
+
+            return result;
+        }
+
+        /// <summary>Returns a snapshot of active hunter creature targets.</summary>
+        public static List<(string name, string location)> GetActiveHunts()
+        {
+            PruneHunts();
+            var list = new List<(string, string)>();
+            foreach (HuntRecord r in _activeHunts)
+                list.Add((r.Name, r.Location));
+            return list;
+        }
+
+        /// <summary>Returns a snapshot of active wanted NPC targets.</summary>
+        public static List<(string name, string location)> GetActiveWanted()
+        {
+            PruneWanted();
+            var list = new List<(string, string)>();
+            foreach (HuntRecord r in _activeWanted)
+                list.Add((r.Name, r.Location));
+            return list;
+        }
+
         public static void SpawnHunterTarget()
         {
             PruneHunts();
@@ -313,6 +357,7 @@ namespace Server.Custom
             _activeHunts.Add(record);
 
             BroadcastHuntSpawn(record.Name, entry.DungeonName);
+            FBEventBus.Fire_HunterTargetSpawned(record.Name, entry.DungeonName);
 
             // Capture locals for timer closures
             Serial capturedSerial   = creature.Serial;
@@ -375,6 +420,7 @@ namespace Server.Custom
             _activeWanted.Add(record);
 
             BroadcastWantedSpawn(record.Name, dungeon.Name);
+            FBEventBus.Fire_WantedNPCSpawned(record.Name, dungeon.Name);
 
             Serial capturedSerial = npc.Serial;
             string capturedName   = record.Name;

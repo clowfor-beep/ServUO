@@ -82,6 +82,16 @@ namespace Server.Custom
         /// <param name="killer">The mobile that landed the killing blow (may be null).</param>
         public static event Action<Mobile, Mobile> WantedNPCKilled;
 
+        /// <summary>Fired when a Hunter System creature target spawns in the world.</summary>
+        /// <param name="creatureName">Display name of the target (without [Hunted] prefix).</param>
+        /// <param name="location">Human-readable dungeon/area name.</param>
+        public static event Action<string, string> HunterTargetSpawned;
+
+        /// <summary>Fired when a Wanted NPC bounty target spawns in the world.</summary>
+        /// <param name="npcName">Display name of the wanted NPC.</param>
+        /// <param name="location">Human-readable location string.</param>
+        public static event Action<string, string> WantedNPCSpawned;
+
         /// <summary>Fired when FBPKSpawner places a new PoolPK in the world.</summary>
         /// <param name="pk">The PoolPK mobile that was spawned.</param>
         /// <param name="zone">The zone it was spawned into.</param>
@@ -128,6 +138,12 @@ namespace Server.Custom
 
         public static void Fire_WantedNPCKilled(Mobile npc, Mobile killer)
             => WantedNPCKilled?.Invoke(npc, killer);
+
+        public static void Fire_HunterTargetSpawned(string creatureName, string location)
+            => HunterTargetSpawned?.Invoke(creatureName, location);
+
+        public static void Fire_WantedNPCSpawned(string npcName, string location)
+            => WantedNPCSpawned?.Invoke(npcName, location);
 
         public static void Fire_PoolPKSpawned(Mobile pk, SpawnZone zone)
             => PoolPKSpawned?.Invoke(pk, zone);
