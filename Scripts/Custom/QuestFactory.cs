@@ -836,7 +836,7 @@ namespace Server.Custom
                 int iy = y + 8;
 
                 AddLabel(ix, iy, 0x35, "Active:");
-                AddLabel(ix + 54, iy, 0x4AA, q.Title);
+                AddLabel(ix + 54, iy, 0, q.Title);
                 iy += 22;
 
                 string progressText = q.Type == QuestType.Hunt
@@ -849,17 +849,17 @@ namespace Server.Custom
                 AddLabel(ix, iy, 2119, rewardLine);
                 iy += 20;
 
-                AddButton(ix, iy, 4005, 4007, BTN_ABANDON, GumpButtonType.Reply, 0);
-                AddLabel(ix + 22, iy + 1, 0x22, "Abandon Quest");
+                AddButton(ix, iy, 4020, 4022, BTN_ABANDON, GumpButtonType.Reply, 0);
+                AddLabel(ix + 26, iy + 1, 0x22, "Abandon Quest");
 
                 if (q.Type == QuestType.Gather || (q.Type == QuestType.Hunt && active.Progress >= q.KillsRequired))
                 {
                     iy += 22;
-                    AddButton(ix, iy, 4005, 4007, BTN_TURNIN, GumpButtonType.Reply, 0);
+                    AddButton(ix, iy, 4023, 4025, BTN_TURNIN, GumpButtonType.Reply, 0);
                     string turnInLabel = q.Type == QuestType.Gather
                         ? $"Turn In  ({q.ItemType} x{q.ItemAmount})"
                         : "Collect Reward";
-                    AddLabel(ix + 22, iy + 1, 0x35, turnInLabel);
+                    AddLabel(ix + 26, iy + 1, 0x35, turnInLabel);
                 }
             }
             // ── Quest list ────────────────────────────────────────────────────────
@@ -889,7 +889,7 @@ namespace Server.Custom
                         default:                  tierTag = "Common";    tierHue = 0x1;   break;
                     }
 
-                    int    typeHue  = q.Type == QuestType.Hunt ? 0x4AA : 0x35;
+                    int    typeHue  = q.Type == QuestType.Hunt ? 0x26 : 0x35;
                     string typeTag  = q.Type == QuestType.Hunt ? "Hunt" : "Gather";
                     string goalText = q.Type == QuestType.Hunt
                         ? $"Kill {q.KillsRequired}"
@@ -918,7 +918,7 @@ namespace Server.Custom
 
                     int titleX    = ix + tierTagW + typeTagW + 4;
                     int titleMaxW = cW - (titleX - cX) - 82; // 82px reserved for accept area
-                    AddLabel(titleX, iy, 0x4AA, TruncLabel(q.Title, titleMaxW));
+                    AddLabel(titleX, iy, 0, TruncLabel(q.Title, titleMaxW));
 
                     if (!locked)
                     {
