@@ -170,15 +170,15 @@ namespace Server.Custom
             SetSkill(SkillName.Hiding,       57.0,  62.0);
             SetSkill(SkillName.MagicResist,  75.0,  80.0);
 
-            SetResistance(ResistanceType.Physical, 55, 65);
-            SetResistance(ResistanceType.Fire,     40, 50);
-            SetResistance(ResistanceType.Cold,     40, 50);
-            SetResistance(ResistanceType.Poison,   40, 50);
-            SetResistance(ResistanceType.Energy,   40, 50);
+            SetResistance(ResistanceType.Physical, 28, 33);
+            SetResistance(ResistanceType.Fire,     20, 25);
+            SetResistance(ResistanceType.Cold,     20, 25);
+            SetResistance(ResistanceType.Poison,   20, 25);
+            SetResistance(ResistanceType.Energy,   20, 25);
 
             Fame        = 5000;
             Karma       = -5000;
-            VirtualArmor = 42;
+            VirtualArmor = 21;
 
             string charName = Names[Utility.Random(Names.Length)];
             InitWantedName(charName);
@@ -284,15 +284,15 @@ namespace Server.Custom
             SetSkill(SkillName.EvalInt,     107.0, 112.0);
             SetSkill(SkillName.MagicResist,  97.0, 100.0);
 
-            SetResistance(ResistanceType.Physical, 65, 75);
-            SetResistance(ResistanceType.Fire,     50, 60);
-            SetResistance(ResistanceType.Cold,     50, 60);
-            SetResistance(ResistanceType.Poison,   50, 60);
-            SetResistance(ResistanceType.Energy,   50, 60);
+            SetResistance(ResistanceType.Physical, 33, 38);
+            SetResistance(ResistanceType.Fire,     25, 30);
+            SetResistance(ResistanceType.Cold,     25, 30);
+            SetResistance(ResistanceType.Poison,   25, 30);
+            SetResistance(ResistanceType.Energy,   25, 30);
 
             Fame        = 12000;
             Karma       = -12000;
-            VirtualArmor = 55;
+            VirtualArmor = 28;
 
             string charName = Names[Utility.Random(Names.Length)];
             InitWantedName(charName);
@@ -396,15 +396,15 @@ namespace Server.Custom
             SetSkill(SkillName.Tactics,       107.0, 112.0);
             SetSkill(SkillName.DetectHidden,   97.0, 100.0);
 
-            SetResistance(ResistanceType.Physical, 60, 70);
-            SetResistance(ResistanceType.Fire,     50, 60);
-            SetResistance(ResistanceType.Cold,     65, 75);
-            SetResistance(ResistanceType.Poison,   70, 80);
-            SetResistance(ResistanceType.Energy,   55, 65);
+            SetResistance(ResistanceType.Physical, 30, 35);
+            SetResistance(ResistanceType.Fire,     25, 30);
+            SetResistance(ResistanceType.Cold,     33, 38);
+            SetResistance(ResistanceType.Poison,   35, 40);
+            SetResistance(ResistanceType.Energy,   28, 33);
 
             Fame        = 22000;
             Karma       = -22000;
-            VirtualArmor = 65;
+            VirtualArmor = 33;
 
             string charName = Names[Utility.Random(Names.Length)];
             InitWantedName(charName);
