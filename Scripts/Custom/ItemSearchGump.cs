@@ -302,7 +302,8 @@ namespace Server.Gumps
             {
                 if (item == null || item.Deleted) continue;
 
-                string label      = GetLabel(item);
+                string label = GetLabel(item);
+                // searchable = display name + type name (always) + property text
                 string searchable = (label + " " + GetItemProperties(item)).ToLowerInvariant();
 
                 if (searchable.Contains(query))
@@ -322,11 +323,16 @@ namespace Server.Gumps
 
         /// <summary>
         /// Returns a space-separated lower-case string of searchable property text:
-        /// spell name + reagents for scrolls, magic attributes for equipment.
+        /// type name, spell name + reagents for scrolls, slayer names, material,
+        /// quality, and magic attributes for equipment.
         /// </summary>
         private static string GetItemProperties(Item item)
         {
             var sb = new System.Text.StringBuilder();
+
+            // Always include the type name so e.g. "backpack" finds a Backpack
+            // even when it has a custom Name set
+            sb.Append(CamelToWords(item.GetType().Name)).Append(' ');
 
             // Spell scrolls — spell name + reagent names
             if (item is SpellScroll scroll)
@@ -356,6 +362,17 @@ namespace Server.Gumps
                 weaponAttrs = bw.WeaponAttributes;
                 sb.Append(CamelToWords(bw.Skill.ToString())).Append(' ');
                 sb.Append($"damage {bw.MinDamage}-{bw.MaxDamage} ");
+
+                // Slayer properties — this makes "slayer", "undead", "animal" etc. searchable
+                if (bw.Slayer  != SlayerName.None) sb.Append(CamelToWords(bw.Slayer.ToString())).Append(" slayer ");
+                if (bw.Slayer2 != SlayerName.None) sb.Append(CamelToWords(bw.Slayer2.ToString())).Append(" slayer ");
+
+                // Resource/material — "verite", "valorite", "shadow", "copper", etc.
+                if (bw.Resource != CraftResource.None && bw.Resource != CraftResource.Iron)
+                    sb.Append(CamelToWords(bw.Resource.ToString())).Append(' ');
+
+                // Quality
+                if (bw.Quality == ItemQuality.Exceptional) sb.Append("exceptional ");
             }
             else if (item is BaseArmor ba)
             {
@@ -363,13 +380,46 @@ namespace Server.Gumps
                 armorAttrs = ba.ArmorAttributes;
                 sb.Append($"physical {ba.BasePhysicalResistance} fire {ba.BaseFireResistance} ");
                 sb.Append($"cold {ba.BaseColdResistance} poison {ba.BasePoisonResistance} energy {ba.BaseEnergyResistance} ");
+
+                // Resource/material
+                if (ba.Resource != CraftResource.None && ba.Resource != CraftResource.Iron
+                    && ba.Resource != CraftResource.RegularLeather)
+                    sb.Append(CamelToWords(ba.Resource.ToString())).Append(' ');
+
+                // Quality
+                if (ba.Quality == ItemQuality.Exceptional) sb.Append("exceptional ");
             }
             else if (item is BaseJewel bj)  attrs = bj.Attributes;
-            else if (item is BaseClothing bc) attrs = bc.Attributes;
+            else if (item is BaseClothing bc)
+            {
+                attrs = bc.Attributes;
+                // Resource/material on clothing
+                if (bc.Resource != CraftResource.None && bc.Resource != CraftResource.RegularLeather)
+                    sb.Append(CamelToWords(bc.Resource.ToString())).Append(' ');
+            }
 
             if (attrs       != null) AppendAosAttributes(sb, attrs);
             if (armorAttrs  != null) AppendArmorAttributes(sb, armorAttrs);
             if (weaponAttrs != null) AppendWeaponAttributes(sb, weaponAttrs);
+
+            // Skill bonuses — covers rings/bracelets/armor/clothing/weapons with skill bonuses
+            // e.g. "veterinary", "animal taming", "magery", "swordsmanship"
+            AosSkillBonuses skillBonuses = null;
+            if      (item is BaseWeapon  sbw) skillBonuses = sbw.SkillBonuses;
+            else if (item is BaseArmor   sba) skillBonuses = sba.SkillBonuses;
+            else if (item is BaseJewel   sbj) skillBonuses = sbj.SkillBonuses;
+            else if (item is BaseClothing sbc) skillBonuses = sbc.SkillBonuses;
+
+            if (skillBonuses != null)
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    SkillName sk;
+                    double    val;
+                    if (skillBonuses.GetValues(i, out sk, out val) && val != 0)
+                        sb.Append(CamelToWords(sk.ToString())).Append(' ');
+                }
+            }
 
             return sb.ToString();
         }
