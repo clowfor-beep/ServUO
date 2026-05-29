@@ -75,6 +75,7 @@ namespace Server.Custom
                 "Prism of Light",  // guarded zone
                 "Wind",            // mage city — guarded
                 "Sanctuary",       // peaceful haven — no aggression
+                "Bedlam",          // removed by request
             };
 
         private static readonly TimeSpan WantedTTL = TimeSpan.FromMinutes(10);
