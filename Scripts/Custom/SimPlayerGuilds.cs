@@ -624,12 +624,15 @@ namespace Server.Custom
 
             int level = _targetSpawn.Level;
 
-            // Announce each tier advance
+            // Announce each tier advance — Sergeant Vale also fires a Battlecry buff
             if (level > _lastKnownLevel && level >= 1)
             {
                 int idx = Math.Min(level - 1, TierSpeech.Length - 1);
                 Say(TierSpeech[idx]);
                 _lastKnownLevel = level;
+
+                if (MemberName == "Sergeant Vale")
+                    BattlecrySystem.ApplyBattlecry(this);
             }
 
             // Detect and directly engage champion when it spawns
