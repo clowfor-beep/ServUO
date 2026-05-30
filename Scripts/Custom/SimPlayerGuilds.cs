@@ -1066,26 +1066,26 @@ namespace Server.Custom
         /// </summary>
         private ChampionSpawn FindBestFeluccaSpawn()
         {
-            ChampionSpawn best      = null;
-            double        bestScore = double.MaxValue;
+            // Build weighted candidate list — all valid Felucca spawns are eligible.
+            // Active spawns get 3 tickets (more likely to be joined), inactive get 1.
+            // This ensures every spawn including distant ones (Abyss etc.) can be chosen.
+            var candidates = new List<ChampionSpawn>();
 
             foreach (ChampionSpawn cs in ChampionSystem.AllSpawns)
             {
-                if (cs == null || cs.Deleted)      continue;
-                if (cs.Map != Map.Felucca)          continue;
-                if (cs.Location.Z < -5)             continue; // skip underground altars
+                if (cs == null || cs.Deleted)   continue;
+                if (cs.Map != Map.Felucca)       continue;
+                if (cs.Location.Z < -5)          continue; // skip underground altars
 
-                double dist  = DistanceTo(_homeLocation, cs.Location);
-                double score = cs.Active ? dist * 0.5 : dist;
-
-                if (score < bestScore)
-                {
-                    bestScore = score;
-                    best      = cs;
-                }
+                int tickets = cs.Active ? 3 : 1;
+                for (int i = 0; i < tickets; i++)
+                    candidates.Add(cs);
             }
 
-            return best;
+            if (candidates.Count == 0)
+                return null;
+
+            return candidates[Utility.Random(candidates.Count)];
         }
 
         private static double DistanceTo(Point3D a, Point3D b)
