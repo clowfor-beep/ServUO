@@ -209,8 +209,19 @@ namespace Server.Custom
 
             if (_champPhase == ChampPhase.AtSpawn && from != null && from.Alive && from != this)
             {
+                // Register the attacker for retaliation.
+                // If the attacker is a controlled pet, register both the pet and its owner
+                // so the TickAtSpawn check allows fighting back against either.
                 _retaliateSerial  = from.Serial;
                 _retaliateExpires = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+
+                if (from is BaseCreature aggPet && aggPet.Controlled
+                    && aggPet.ControlMaster is PlayerMobile aggOwner)
+                {
+                    // Owner set their pet on us — owner is also fair game for retaliation
+                    // (we fight the pet directly since that's what hit us)
+                    _retaliateSerial = aggPet.Serial;
+                }
             }
         }
 
@@ -285,6 +296,9 @@ namespace Server.Custom
 
             _champPhase = ChampPhase.GatherAtBank;
             FightMode   = FightMode.None;
+
+            // Pull every other Iron Company member to the same spawn
+            PlayerSimulatorManager.BroadcastChampRun(_targetSpawn, this);
 
             // Walk to nearest city bank — a short, reliable trip
             StartTravelTo(_bankLocation, TimeSpan.FromMinutes(5));
@@ -450,6 +464,11 @@ namespace Server.Custom
             // Never auto-attack innocent (blue) real players.
             // Only engage them if they damaged us first (retaliation window = 30s).
             if (Combatant is PlayerMobile bluePm && bluePm.Kills < 5 && !IsRetaliationTarget(bluePm))
+                Combatant = null;
+
+            // Never attack player pets unless they (or their owner) attacked us first.
+            if (Combatant is BaseCreature pet && pet.Controlled && pet.ControlMaster is PlayerMobile petOwner
+                && petOwner.Kills < 5 && !IsRetaliationTarget(pet) && !IsRetaliationTarget(petOwner))
                 Combatant = null;
 
             // Track how long we've had this specific combatant
