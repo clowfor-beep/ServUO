@@ -131,6 +131,36 @@ namespace Server.Custom
             new Point3D(533,  1566, 0),   // Shame entrance (Felucca)
         };
 
+        // -- Downed / resurrection state -----------------------------------
+        // When an Iron Company member would die, OnBeforeDeath intercepts it.
+        // They are left downed (alive at 1 HP, invulnerable, immobile) until a
+        // fellow guild member comes within 10 tiles and resurrects them.
+        private bool     _isDowned        = false;
+        private DateTime _nextRezCheckAt  = DateTime.MinValue;
+        private DateTime _nextGuildHealAt = DateTime.MinValue;
+
+        private static readonly string[] DownedLines =
+        {
+            "*collapses with a grunt*",
+            "*falls to the ground*",
+            "I need... help...",
+            "*staggers and falls*",
+        };
+        private static readonly string[] RezLines =
+        {
+            "Stay with me!",
+            "On your feet, soldier!",
+            "I've got you — hold on!",
+            "Don't you die on me!",
+        };
+        private static readonly string[] BackUpLines =
+        {
+            "*rises shakily* Back in the fight!",
+            "Thank you, brother.",
+            "*gasps* That was close...",
+            "I owe you one.",
+        };
+
         // -- Speech pools ----------------------------------------------
         private static readonly string[] DepartureSpeech = {
             "Iron Company, move out.",
@@ -178,6 +208,29 @@ namespace Server.Custom
 
         // -- Overrides -------------------------------------------------
 
+        // While downed we are invulnerable — prevents the killing blow repeating
+        public override bool IsInvulnerable => _isDowned;
+
+        /// <summary>
+        /// Intercept death: instead of dying, go downed. A guild member will
+        /// resurrect us when they come within range.
+        /// </summary>
+        public override bool OnBeforeDeath()
+        {
+            if (_isDowned) return false; // already downed, ignore
+
+            _isDowned  = true;
+            Hits       = 1;
+            Combatant  = null;
+            FightMode  = FightMode.None;
+            _stuckPhase = StuckPhase.None;
+
+            Animate(22, 5, 1, true, false, 0); // fall animation
+            Say(DownedLines[Utility.Random(DownedLines.Length)]);
+
+            return false; // returning false prevents actual death
+        }
+
         /// <summary>Pause SimState movement ticks while fighting, rallying at bank, or fighting at spawn.</summary>
         protected override bool SkipStateTick => Combatant != null
             || _champPhase == ChampPhase.WaitingAtBank
@@ -188,6 +241,18 @@ namespace Server.Custom
 
         public override void OnThink()
         {
+            // While downed: check if a guild member is nearby to rez us,
+            // then do nothing else (no movement, no combat, no state ticks).
+            if (_isDowned)
+            {
+                // nothing — rez is driven by living members scanning outward
+                return;
+            }
+
+            // Living member: scan for downed or injured colleagues within 10 tiles
+            CheckRezNearby();
+            CheckHealNearby();
+
             // Champ state machine always runs — even during combat / SkipStateTick
             ManageChampPhase();
 
@@ -196,6 +261,53 @@ namespace Server.Custom
                 TrySelfHeal();
 
             base.OnThink();
+        }
+
+        /// <summary>
+        /// Scan nearby mobiles for downed Iron Company members and help them up.
+        /// Throttled to once every 3 seconds.
+        /// </summary>
+        private void CheckRezNearby()
+        {
+            if (DateTime.UtcNow < _nextRezCheckAt) return;
+            _nextRezCheckAt = DateTime.UtcNow + TimeSpan.FromSeconds(3);
+
+            foreach (Mobile m in GetMobilesInRange(10))
+            {
+                if (m == this || m.Deleted) continue;
+                if (!(m is IronCompanySimPlayer ic)) continue;
+                if (!ic._isDowned) continue;
+
+                PerformRez(ic);
+                break; // one at a time
+            }
+        }
+
+        private void PerformRez(IronCompanySimPlayer target)
+        {
+            Combatant = null; // pause our own combat briefly
+            Say(RezLines[Utility.Random(RezLines.Length)]);
+            Animate(11, 5, 1, true, false, 0); // cast/heal animation
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            {
+                if (Deleted || target.Deleted || !target._isDowned) return;
+
+                target._isDowned = false;
+                target.Hits      = target.HitsMax / 2;
+                target.Stam      = target.StamMax;
+                target.Mana      = target.ManaMax / 2;
+
+                // Restore fight mode if still at spawn
+                if (target._champPhase == ChampPhase.AtSpawn)
+                    target.FightMode = FightMode.Closest;
+
+                Effects.SendLocationParticles(
+                    EffectItem.Create(target.Location, target.Map, EffectItem.DefaultDuration),
+                    0x376A, 9, 32, 5023);
+                target.PlaySound(0x1F2);
+                target.Say(BackUpLines[Utility.Random(BackUpLines.Length)]);
+            });
         }
 
         /// <summary>
@@ -223,6 +335,51 @@ namespace Server.Custom
                     _retaliateSerial = aggPet.Serial;
                 }
             }
+        }
+
+        /// <summary>
+        /// Scan nearby Iron Company members below 50% HP and heal the most
+        /// injured one. Throttled to once every 8 seconds.
+        /// Priority: downed rez > guild heal > self-heal.
+        /// </summary>
+        private void CheckHealNearby()
+        {
+            if (DateTime.UtcNow < _nextGuildHealAt) return;
+
+            IronCompanySimPlayer needsHeal = null;
+            int lowestHitsPct = 50; // only heal if below 50%
+
+            foreach (Mobile m in GetMobilesInRange(10))
+            {
+                if (m == this || m.Deleted) continue;
+                if (!(m is IronCompanySimPlayer ic)) continue;
+                if (ic._isDowned) continue;  // handled by rez system
+                if (ic.HitsMax <= 0) continue;
+
+                int pct = (ic.Hits * 100) / ic.HitsMax;
+                if (pct < lowestHitsPct)
+                {
+                    lowestHitsPct = pct;
+                    needsHeal     = ic;
+                }
+            }
+
+            if (needsHeal == null) return;
+
+            _nextGuildHealAt = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(7, 10));
+
+            // Heal animation + sound on the healer
+            Animate(11, 5, 1, true, false, 0);
+            PlaySound(0x57);
+
+            // Compute heal amount using our own Healing + Anatomy
+            double healSkill = Skills[SkillName.Healing].Value;
+            double anatSkill = Skills[SkillName.Anatomy].Value;
+            int amount = (int)((healSkill + anatSkill) * 0.3 + Utility.RandomMinMax(10, 25));
+
+            needsHeal.Hits = Math.Min(needsHeal.HitsMax, needsHeal.Hits + amount);
+            needsHeal.FixedEffect(0x375A, 10, 15);
+            needsHeal.PlaySound(0x1F2);
         }
 
         /// <summary>
@@ -725,6 +882,8 @@ namespace Server.Custom
             FightMode     = FightMode.None;
             Combatant     = null;
             _blockedTargets.Clear(); // reset for next run
+            _isDowned   = false;    // ensure clean state
+            FightMode   = FightMode.None; // in case we were downed mid-fight
             _nextChampRun = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
 
             if (!victory)
