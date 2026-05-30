@@ -71,7 +71,8 @@ namespace Server.Mobiles
         }
 
         // Called by the gump when the player confirms a destination
-        public void TeleportPlayer(PlayerMobile pm, Point3D destination, Map map, int cost)
+        public void TeleportPlayer(PlayerMobile pm, Point3D destination, Map map, int cost,
+                                   PortalType portalType = PortalType.OneWay)
         {
             if (!pm.InRange(Location, 10))
             {
@@ -89,7 +90,6 @@ namespace Server.Mobiles
             Animate(203, 7, 1, true, false, 0);
             Say("*weaves a rift in the fabric of space*");
 
-            // Create the portal pair after a short cast delay
             PlayerMobile capturedPm   = pm;
             Point3D      capturedDest = destination;
             Map          capturedMap  = map;
@@ -97,7 +97,28 @@ namespace Server.Mobiles
             Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
             {
                 if (capturedPm == null || capturedPm.Deleted) return;
-                ArchWizardPortal.CreatePair(capturedPm, capturedDest, capturedMap);
+
+                switch (portalType)
+                {
+                    case PortalType.TwoWayShort:
+                        ArchWizardPortal.CreatePair(capturedPm, capturedDest, capturedMap,
+                            TimeSpan.FromSeconds(30));
+                        break;
+
+                    case PortalType.TwoWayLong:
+                        ArchWizardPortal.CreatePair(capturedPm, capturedDest, capturedMap,
+                            TimeSpan.FromMinutes(10));
+                        break;
+
+                    default: // OneWay — instant teleport, no portal object
+                        capturedPm.MoveToWorld(capturedDest, capturedMap);
+                        capturedPm.SendMessage(0x35, "The Arch Wizard whisks you to your destination...");
+                        Effects.SendLocationParticles(
+                            EffectItem.Create(capturedPm.Location, capturedMap, EffectItem.DefaultDuration),
+                            0x3728, 10, 10, 5023);
+                        capturedPm.PlaySound(0x1FE);
+                        break;
+                }
             });
         }
 
@@ -176,19 +197,17 @@ namespace Server.Mobiles
     // ================================================================
     public class ArchWizardPortal : Item
     {
-        private static readonly TimeSpan PortalLifetime = TimeSpan.FromMinutes(30);
-
-        private PlayerMobile  _target;
-        private Point3D       _destination;
-        private Map           _destMap;
+        private PlayerMobile     _target;
+        private Point3D          _destination;
+        private Map              _destMap;
         private ArchWizardPortal _partner;   // the portal at the other end
 
         /// <summary>
         /// Creates a linked portal pair: one at <paramref name="pm"/>'s current
         /// location, one at <paramref name="destination"/>. Both share the same
-        /// 30-minute lifetime.
+        /// lifetime specified by <paramref name="duration"/>.
         /// </summary>
-        public static void CreatePair(PlayerMobile pm, Point3D destination, Map destMap)
+        public static void CreatePair(PlayerMobile pm, Point3D destination, Map destMap, TimeSpan duration)
         {
             // Portal A — at the player's current location, leads to destination
             var portalA = new ArchWizardPortal(pm, destination,    destMap);
@@ -203,15 +222,20 @@ namespace Server.Mobiles
             portalB._partner = portalA;
 
             // Single shared expiry timer — closes both ends
-            Timer.DelayCall(PortalLifetime, () =>
+            Timer.DelayCall(duration, () =>
             {
                 portalA.ClosePortal();
                 portalB.ClosePortal();
             });
 
+            int seconds = (int)duration.TotalSeconds;
+            string timeLabel = seconds >= 60
+                ? (seconds / 60) + " minute" + (seconds / 60 != 1 ? "s" : "")
+                : seconds + " second" + (seconds != 1 ? "s" : "");
+
             pm.SendMessage(0x35,
                 "Two shimmering portals open — one here, one at your destination. " +
-                "They will remain open for 30 minutes.");
+                "They will remain open for " + timeLabel + ".");
         }
 
         // Private — use CreatePair
