@@ -491,6 +491,18 @@ namespace Server.Custom
             // Pull every other Iron Company member to the same spawn
             PlayerSimulatorManager.BroadcastChampRun(_targetSpawn, this);
 
+            // Sergeant Vale announces the destination to the world
+            if (MemberName == "Sergeant Vale" && _targetSpawn != null)
+            {
+                string dest = string.IsNullOrEmpty(_targetSpawn.SpawnName)
+                    ? $"({_targetSpawn.X}, {_targetSpawn.Y})"
+                    : _targetSpawn.SpawnName;
+
+                World.Broadcast(0x4AA, true,
+                    $"[Iron Company] Sergeant Vale: \"Iron Company, move out! " +
+                    $"We march on {dest}. All members rally at once!\"");
+            }
+
             // Walk to nearest city bank — a short, reliable trip
             StartTravelTo(_bankLocation, TimeSpan.FromMinutes(5));
             Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
