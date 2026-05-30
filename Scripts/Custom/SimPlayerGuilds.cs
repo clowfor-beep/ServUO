@@ -815,10 +815,11 @@ namespace Server.Custom
             SetSkill(SkillName.MagicResist, 100.0, 100.0);
             SetSkill(SkillName.Chivalry,    100.0, 100.0);
             SetSkill(SkillName.Archery,     100.0, 100.0);
-            VirtualArmor = 65;
-            Fame  = 2000;
-            Karma = 2000;
-            Kills = 0;
+            VirtualArmor  = 65;
+            Fame          = 2000;
+            Karma         = 2000;
+            Kills         = 0;
+            ActiveSpeed   = 0.13; // ~50% faster than default 0.2
 
             // Full plate
             AddItem(new PlateChest());
@@ -832,9 +833,10 @@ namespace Server.Custom
 
             // Longsword with 25% hit fire area — bypasses physical resists on champion spawn creatures
             var sword = new Longsword();
-            sword.WeaponAttributes.HitFireArea = 25;
-            sword.Attributes.WeaponDamage      = 50; // +50% damage bonus
-            sword.Attributes.AttackChance      = 15; // +15 HCI
+            sword.WeaponAttributes.HitFireArea  = 25;
+            sword.WeaponAttributes.HitLeechHits = 40; // 40% life leech
+            sword.Attributes.WeaponDamage       = 50;
+            sword.Attributes.AttackChance       = 15;
             AddItem(sword);
 
             PackItem(new BookOfChivalry()); // always PackItem
