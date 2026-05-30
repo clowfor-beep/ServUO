@@ -338,9 +338,11 @@ namespace Server.Custom
 
         // ── Diminishing returns ───────────────────────────────────────────────
 
+        // Diminishing returns: -5% per item, floor at 1% (reached at the 20th item onward).
+        // Index 0 = 100%, index 1 = 95%, index 2 = 90%, ... index 19+ = 1%
         public static double GetMultiplier(int index)
         {
-            return Math.Max(0.30, 1.0 - (index * 0.15));
+            return Math.Max(0.01, 1.0 - (index * 0.05));
         }
 
         // ── Serialization ─────────────────────────────────────────────────────
