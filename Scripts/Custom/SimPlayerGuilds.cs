@@ -441,7 +441,7 @@ namespace Server.Custom
                 AcquireSpawnTarget();
 
                 if (Combatant == null && _spawnEntryPoint != Point3D.Zero
-                    && GetDistanceToSqrt(_spawnEntryPoint) > 8
+                    && GetDistanceToSqrt(_spawnEntryPoint) > 20
                     && DateTime.UtcNow >= _nextReturnAt)
                 {
                     TeleportToEntryPoint();
@@ -456,7 +456,7 @@ namespace Server.Custom
                 double distToTarget = GetDistanceToSqrt(Combatant);
 
                 // Chased too far outside spawn — abort and return
-                if (distFromEntry > 20 && DateTime.UtcNow >= _nextReturnAt)
+                if (distFromEntry > 80 && DateTime.UtcNow >= _nextReturnAt)
                 {
                     if (_stuckPhase == StuckPhase.CrossbowOut) EquipMelee();
                     _stuckPhase = StuckPhase.None;
@@ -512,29 +512,39 @@ namespace Server.Custom
             }
         }
 
+        // Scan cooldown — don't scan every single tick when idle at spawn
+        private DateTime _nextScanAt = DateTime.MinValue;
+
         /// <summary>
-        /// Scans nearby mobiles and sets Combatant to kick off fighting.
-        /// Prefers the champion if it exists, otherwise the nearest creature.
+        /// Actively hunts for targets within the 80-tile spawn area.
+        /// Prefers the champion, then the nearest creature.
+        /// If the target is far away (>15 tiles), teleports toward it immediately
+        /// rather than waiting for the AI to path there.
         /// </summary>
         private void AcquireSpawnTarget()
         {
-            // Champion first
+            if (DateTime.UtcNow < _nextScanAt) return;
+            _nextScanAt = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+
+            // Champion is always top priority
             if (_targetSpawn != null && !_targetSpawn.Deleted
                 && _targetSpawn.Champion != null && !_targetSpawn.Champion.Deleted
                 && _targetSpawn.Champion.Alive)
             {
-                Combatant = _targetSpawn.Champion;
+                Mobile champ = _targetSpawn.Champion;
+                Combatant = champ;
+                if (GetDistanceToSqrt(champ) > 15)
+                    TeleportToCombatant(champ);
                 return;
             }
 
-            // Nearest hostile creature within 15 tiles — never target other SimPlayers
+            // Scan up to 80 tiles — full spawn hunt radius
             Mobile nearest     = null;
             double nearestDist = double.MaxValue;
 
-            foreach (Mobile m in GetMobilesInRange(15))
+            foreach (Mobile m in GetMobilesInRange(80))
             {
                 if (m == this || m.Deleted || !m.Alive) continue;
-                // Skip friendly SimPlayers; hostile ones (red/grey) are valid targets
                 if (m is SimPlayer sp2 && !sp2.AlwaysAttackable && !sp2.AlwaysMurderer) continue;
                 if (!(m is BaseCreature bc) || bc.Controlled) continue;
                 if (!CanBeHarmful(m, false)) continue;
@@ -543,8 +553,13 @@ namespace Server.Custom
                 if (dist < nearestDist) { nearestDist = dist; nearest = m; }
             }
 
-            if (nearest != null)
-                Combatant = nearest;
+            if (nearest == null) return;
+
+            Combatant = nearest;
+
+            // Target is beyond normal AI range — teleport toward it to start the engagement
+            if (nearestDist > 15)
+                TeleportToCombatant(nearest);
         }
 
         /// <summary>
