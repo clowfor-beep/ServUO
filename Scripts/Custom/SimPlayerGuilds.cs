@@ -156,12 +156,14 @@ namespace Server.Custom
         {
             if (Map == Map.Internal) return;
 
-            // One-time init: stagger first run 30-90 min after activation
+            // One-time init: stagger first run 2-8 min after activation so they
+            // don't all depart at once, but don't sit idle for an hour on a fresh
+            // reset.  Subsequent runs are scheduled 60-120 min apart (in BeginWithdraw).
             if (!_champScheduleSet)
             {
                 _champScheduleSet = true;
                 _nextChampRun = DateTime.UtcNow
-                    + TimeSpan.FromMinutes(Utility.RandomMinMax(30, 90));
+                    + TimeSpan.FromMinutes(Utility.RandomMinMax(2, 8));
             }
 
             switch (_champPhase)
