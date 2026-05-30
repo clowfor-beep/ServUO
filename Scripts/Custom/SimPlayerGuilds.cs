@@ -451,7 +451,7 @@ namespace Server.Custom
                     && DateTime.UtcNow >= _combatantSince + TimeSpan.FromSeconds(6)
                     && DateTime.UtcNow >= _nextTeleportAt)
                 {
-                    TeleportToCombatant(Combatant);
+                    TeleportToCombatant(Combatant as Mobile);
                 }
             }
         }
