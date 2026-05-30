@@ -201,7 +201,7 @@ namespace Server.Custom
                 propCount   += CountAosAttributes(ba.Attributes, out int ai);       intensitySum += ai;
                 propCount   += CountArmorAttributes(ba.ArmorAttributes, out int ri); intensitySum += ri;
                 propCount   += CountSkillBonuses(ba.SkillBonuses, out int si);     intensitySum += si;
-                propCount   += CountResistances(ba.Resistances, out int resi);     intensitySum += resi;
+                propCount   += CountResistances(ba.PhysicalBonus, ba.FireBonus, ba.ColdBonus, ba.PoisonBonus, ba.EnergyBonus, out int resi); intensitySum += resi;
             }
             else if (item is BaseJewel bj)
             {
@@ -214,7 +214,7 @@ namespace Server.Custom
                 propCount   += CountSkillBonuses(bc.SkillBonuses, out int si);     intensitySum += si;
             }
 
-            return (propCount * 15) + (int)(intensitySum * 0.4) + (item.ArtifactRarity * 60);
+            return (propCount * 15) + (int)(intensitySum * 0.4) + (GetArtifactRarity(item) * 60);
         }
 
         private static int CountAosAttributes(AosAttributes attrs, out int intensity)
@@ -299,15 +299,23 @@ namespace Server.Custom
             return count;
         }
 
-        private static int CountResistances(AosElementAttributes resistances, out int intensity)
+        private static int GetArtifactRarity(Item item)
+        {
+            if (item is BaseWeapon bw) return bw.ArtifactRarity;
+            if (item is BaseArmor  ba) return ba.ArtifactRarity;
+            if (item is BaseJewel  bj) return bj.ArtifactRarity;
+            return 0;
+        }
+
+        private static int CountResistances(int phys, int fire, int cold, int pois, int nrgy, out int intensity)
         {
             intensity = 0; int count = 0;
 
-            if (resistances.Physical > 0) { count++; intensity += resistances.Physical; }
-            if (resistances.Fire > 0)     { count++; intensity += resistances.Fire; }
-            if (resistances.Cold > 0)     { count++; intensity += resistances.Cold; }
-            if (resistances.Poison > 0)   { count++; intensity += resistances.Poison; }
-            if (resistances.Energy > 0)   { count++; intensity += resistances.Energy; }
+            if (phys > 0) { count++; intensity += phys; }
+            if (fire > 0) { count++; intensity += fire; }
+            if (cold > 0) { count++; intensity += cold; }
+            if (pois > 0) { count++; intensity += pois; }
+            if (nrgy > 0) { count++; intensity += nrgy; }
 
             return count;
         }
@@ -384,7 +392,7 @@ namespace Server.Custom
                     double mult = GetMultiplier(i);
 
                     // Checkbox (checked by default)
-                    AddCheckBox(38, y + 2, 0xD2, 0xD3, true, i);
+                    AddCheck(38, y + 2, 0xD2, 0xD3, true, i);
 
                     // Name
                     string name = !string.IsNullOrEmpty(si.Item.Name)

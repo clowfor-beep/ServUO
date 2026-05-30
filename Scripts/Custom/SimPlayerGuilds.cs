@@ -246,7 +246,8 @@ namespace Server.Custom
 
         private void SacredJourneyToSpawn()
         {
-            _champPhase = ChampPhase.AtSpawn; // prevent re-entry on next tick
+            _champPhase     = ChampPhase.AtSpawn; // prevent re-entry on next tick
+            _champAnnounced = false;              // reset so champKilled can't false-trigger before arrival
 
             if (_targetSpawn == null || _targetSpawn.Deleted)
             {

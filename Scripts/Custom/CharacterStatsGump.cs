@@ -196,7 +196,7 @@ namespace Server.Gumps
 
             foreach (string guild in FBGuilds.All)
             {
-                StandingTier tier  = ReputationSystem.GetStanding(pm.Serial, guild);
+                StandingTier tier  = ReputationSystem.GetTier(pm, guild);
                 int          tHue  = TierHue(tier);
                 int          gHue  = RepGuildHue(guild);
 
@@ -595,7 +595,7 @@ namespace Server.Gumps
 
                 List<Skill> sorted = GetSortedSkills();
                 if (idx >= 0 && idx < sorted.Count)
-                    sorted[idx].Lock = newLock;
+                    sorted[idx].SetLockNoRelay(newLock);
 
                 OpenFor(_from, 2);
             }
