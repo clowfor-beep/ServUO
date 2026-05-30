@@ -261,7 +261,15 @@ namespace Server.Custom.ArchWizard
             {
                 var cs = item as ChampionSpawn;
                 if (cs == null || !cs.Active || cs.Deleted) continue;
-                string name = GetChampionName(cs) + " (" + cs.Map.Name + ")";
+
+                // Use region name for location context (e.g. "Destard") instead of map name
+                Region region = Region.Find(cs.Location, cs.Map);
+                string locationHint = (region != null && !string.IsNullOrEmpty(region.Name)
+                    && region.Name != "Default Region")
+                    ? region.Name
+                    : cs.Map.Name;
+
+                string name = GetChampionName(cs) + " (" + locationHint + ")";
                 list.Add(new ChampionDestination(name, cs.Location, cs.Map, cs));
             }
             list.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
