@@ -4,7 +4,7 @@ using Server;
 using Server.Gumps;
 using Server.Mobiles;
 using Server.Network;
-using Server.Engines.Champions;
+using Server.Engines.CannedEvil;
 
 namespace Server.Custom.ArchWizard
 {
