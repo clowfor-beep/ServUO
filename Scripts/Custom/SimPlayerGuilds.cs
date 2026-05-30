@@ -117,6 +117,11 @@ namespace Server.Custom
         private StuckPhase _stuckPhase   = StuckPhase.None;
         private DateTime   _stuckPhaseAt = DateTime.MinValue;
 
+        // -- Victory gold collection dedup --------------------------------
+        // Tracks which champion spawn serials have already had gold collected
+        // this run, so only the first member to call BeginWithdraw(true) fires it.
+        private static readonly HashSet<Serial> _goldCollectedForSpawn = new HashSet<Serial>();
+
         // -- Unreachable target blacklist ----------------------------------
         // Targets we gave up on are skipped for 3 minutes so we don't
         // immediately re-acquire an unreachable ledge monster.
@@ -875,6 +880,46 @@ namespace Server.Custom
         }
 
 
+        /// <summary>
+        /// Called on victory. Scans the ground within 30 tiles for Gold items
+        /// and removes 66% of the total — Iron Company takes their cut.
+        /// Only one member should call this per victory (handled by the coordinator).
+        /// </summary>
+        private void CollectGroundGold(Point3D center, Map map)
+        {
+            if (Deleted || map == null || map == Map.Internal) return;
+
+            var goldPiles = new List<Gold>();
+
+            IPooledEnumerable<Item> eable = map.GetItemsInRange(center, 30);
+            foreach (Item item in eable)
+            {
+                if (item is Gold g && !g.Deleted && g.Parent == null)
+                    goldPiles.Add(g);
+            }
+            eable.Free();
+
+            if (goldPiles.Count == 0) return;
+
+            int totalGold = 0;
+            foreach (Gold g in goldPiles)
+                totalGold += g.Amount;
+
+            int toTake    = (int)(totalGold * 0.66);
+            int remaining = toTake;
+
+            foreach (Gold g in goldPiles)
+            {
+                if (remaining <= 0) break;
+                int take  = Math.Min(g.Amount, remaining);
+                g.Amount -= take;
+                if (g.Amount <= 0) g.Delete();
+                remaining -= take;
+            }
+
+            Say($"Iron Company claims their due — {toTake:N0} gold.");
+        }
+
         private void BeginWithdraw(bool victory)
         {
             // Clean up phase immediately so no other code re-enters
@@ -888,8 +933,31 @@ namespace Server.Custom
             FightMode   = FightMode.None; // in case we were downed mid-fight
             _nextChampRun = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
 
-            if (!victory)
+            if (victory)
+            {
+                Say(WithdrawSpeech[0]); // "Champion down! Iron Company stands!"
+
+                // Only the first member to trigger victory collects gold —
+                // guard with the spawn serial so the other 17 skip it.
+                if (_targetSpawn != null && _goldCollectedForSpawn.Add(_targetSpawn.Serial))
+                {
+                    Serial  capturedSerial = _targetSpawn.Serial;
+                    Point3D capturedLoc    = Location;
+                    Map     capturedMap    = Map;
+
+                    Timer.DelayCall(TimeSpan.FromSeconds(4.0), () =>
+                    {
+                        CollectGroundGold(capturedLoc, capturedMap);
+                        // Remove after 10 min so the set doesn't grow forever
+                        Timer.DelayCall(TimeSpan.FromMinutes(10), () =>
+                            _goldCollectedForSpawn.Remove(capturedSerial));
+                    });
+                }
+            }
+            else
+            {
                 Say(WithdrawSpeech[Utility.Random(1, WithdrawSpeech.Length - 1)]);
+            }
 
             // Sacred Journey back home after a short pause
             Timer.DelayCall(TimeSpan.FromSeconds(3.0), () =>
