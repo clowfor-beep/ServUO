@@ -79,9 +79,9 @@ namespace Server.Mobiles
                 return;
             }
 
-            if (!DeductBankGold(pm, cost))
+            if (!DeductGold(pm, cost))
             {
-                pm.SendMessage("You do not have enough gold in your bank. ({0} gold required.)", cost);
+                pm.SendMessage("You do not have enough gold. ({0} gold required — pack and bank are both accepted.)", cost);
                 return;
             }
 
@@ -91,24 +91,54 @@ namespace Server.Mobiles
             pm.PlaySound(0x1FE);
         }
 
-        // ── Bank gold helper ──────────────────────────────────────
+        // ── Gold helpers — check/deduct from pack first, then bank ────────
 
-        public static bool HasBankGold(PlayerMobile pm, int amount)
+        /// <summary>Returns true if the player can cover <paramref name="amount"/> gold
+        /// between their backpack and bank combined.</summary>
+        public static bool HasGold(PlayerMobile pm, int amount)
         {
+            int packGold = pm.Backpack != null ? pm.Backpack.GetAmount(typeof(Gold)) : 0;
+            if (packGold >= amount) return true;
+
             BankBox bank = pm.FindBankNoCreate();
-            if (bank == null) return false;
-            return bank.GetAmount(typeof(Gold)) >= amount;
+            int bankGold = bank != null ? bank.GetAmount(typeof(Gold)) : 0;
+            return packGold + bankGold >= amount;
         }
 
-        public static bool DeductBankGold(PlayerMobile pm, int amount)
+        /// <summary>Deducts <paramref name="amount"/> gold from the player, drawing
+        /// from the backpack first and the bank for any remainder.
+        /// Returns false (and takes nothing) if total funds are insufficient.</summary>
+        public static bool DeductGold(PlayerMobile pm, int amount)
         {
+            int packGold = pm.Backpack != null ? pm.Backpack.GetAmount(typeof(Gold)) : 0;
             BankBox bank = pm.FindBankNoCreate();
-            if (bank == null) return false;
-            if (bank.GetAmount(typeof(Gold)) < amount) return false;
-            bank.ConsumeTotal(typeof(Gold), amount);
-            pm.SendMessage("Your bank balance has been reduced by {0} gold.", amount);
+            int bankGold = bank != null ? bank.GetAmount(typeof(Gold)) : 0;
+
+            if (packGold + bankGold < amount)
+                return false;
+
+            // Drain pack first
+            int fromPack = Math.Min(packGold, amount);
+            if (fromPack > 0)
+            {
+                pm.Backpack.ConsumeTotal(typeof(Gold), fromPack);
+                pm.SendMessage("You pay {0} gold from your pack.", fromPack);
+            }
+
+            // Draw the rest from bank
+            int fromBank = amount - fromPack;
+            if (fromBank > 0)
+            {
+                bank.ConsumeTotal(typeof(Gold), fromBank);
+                pm.SendMessage("Your bank balance has been reduced by {0} gold.", fromBank);
+            }
+
             return true;
         }
+
+        // Legacy wrapper — kept so any other callers still compile
+        public static bool HasBankGold(PlayerMobile pm, int amount)  => HasGold(pm, amount);
+        public static bool DeductBankGold(PlayerMobile pm, int amount) => DeductGold(pm, amount);
 
         public override void Serialize(GenericWriter writer)
         {
