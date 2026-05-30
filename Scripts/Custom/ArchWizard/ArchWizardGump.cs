@@ -192,8 +192,9 @@ namespace Server.Custom.ArchWizard
             foreach (Item item in World.Items.Values)
             {
                 var cs = item as ChampionSpawn;
-                if (cs == null || !cs.Active || cs.Map != Map.Felucca || cs.Deleted) continue;
-                list.Add(new ChampionDestination(GetChampionName(cs), cs.Location, cs.Map, cs));
+                if (cs == null || !cs.Active || cs.Deleted) continue;
+                string name = GetChampionName(cs) + " (" + cs.Map.Name + ")";
+                list.Add(new ChampionDestination(name, cs.Location, cs.Map, cs));
             }
             list.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
             return list;
@@ -244,16 +245,16 @@ namespace Server.Custom.ArchWizard
             int y = RowStart - 20;
 
             AddLabel(ColLeft, y,      1153, "Dungeon Levels");
-            AddLabel(ColLeft, y + 15, 0,    "From " + ArchWizardNPC.CostDungeon + "gp");
+            AddLabel(ColLeft, y + 15, 1152, "From " + ArchWizardNPC.CostDungeon + "gp");
             AddButton(ColLeft, y + 35, 4005, 4007, BtnDungeons, GumpButtonType.Reply, 0);
             AddLabel(ColLeft + 35, y + 37, 1152, "Felucca Dungeons");
 
             y += 90;
 
             AddLabel(ColLeft, y,      1153, "Champion Spawns");
-            AddLabel(ColLeft, y + 15, 0,    "From " + ArchWizardNPC.CostChampion + "gp");
+            AddLabel(ColLeft, y + 15, 1152, "From " + ArchWizardNPC.CostChampion + "gp");
             AddButton(ColLeft, y + 35, 4005, 4007, BtnChampions, GumpButtonType.Reply, 0);
-            AddLabel(ColLeft + 35, y + 37, 1152, "Active Felucca Spawns");
+            AddLabel(ColLeft + 35, y + 37, 1152, "Active Champion Spawns");
 
             AddButton(GumpW / 2 - 40, GumpH - 50, 4017, 4019, BtnClose, GumpButtonType.Reply, 0);
             AddLabel(GumpW / 2 - 15, GumpH - 48, 33, "Close");
@@ -268,7 +269,7 @@ namespace Server.Custom.ArchWizard
             int endIdx     = Math.Min(startIdx + ItemsPerPage, totalItems);
 
             AddLabel(ColLeft, 60, 1152, "Felucca Dungeons — choose a destination");
-            AddLabel(ColLeft, 75, 0,    "You will select a ticket type on the next screen.");
+            AddLabel(ColLeft, 75, 1152, "You will select a ticket type on the next screen.");
 
             int btnId = BtnDestBase;
             int y     = RowStart - 20;
@@ -290,12 +291,12 @@ namespace Server.Custom.ArchWizard
         private void BuildChampionPage()
         {
             AddLabel(ColLeft, 60, 1152, "Active Champion Spawns — choose a destination");
-            AddLabel(ColLeft, 75, 0,    "You will select a ticket type on the next screen.");
+            AddLabel(ColLeft, 75, 1152, "You will select a ticket type on the next screen.");
 
             if (_champions.Count == 0)
             {
                 AddLabel(ColLeft, RowStart, 33,
-                    "No champion spawns are currently active in Felucca.");
+                    "No champion spawns are currently active.");
                 AddLabel(ColLeft, RowStart + 20, 0, "Check back when a spawn has been activated.");
             }
             else
@@ -338,7 +339,7 @@ namespace Server.Custom.ArchWizard
             // Destination name
             string destName = GetSelectedDestName();
             AddLabel(ColLeft, 60, 1153, destName);
-            AddLabel(ColLeft, 78, 0, "Choose your travel option:");
+            AddLabel(ColLeft, 78, 1152, "Choose your travel option:");
 
             int y = RowStart;
 
@@ -346,21 +347,21 @@ namespace Server.Custom.ArchWizard
             bool canOneWay = ArchWizardNPC.HasGold(_player, priceOneWay);
             AddButton(ColLeft, y, 4005, 4007, BtnOneWay, GumpButtonType.Reply, 0);
             AddLabel(ColLeft + 35, y + 2,  canOneWay ? 1152 : 33, "One-Way Ticket");
-            AddLabel(ColLeft + 35, y + 18, canOneWay ? 0    : 33, priceOneWay + " gold — teleports you instantly, no return.");
+            AddLabel(ColLeft + 35, y + 18, canOneWay ? 1152 : 33, priceOneWay + " gold — teleports you instantly, no return.");
             y += 55;
 
             // Option 2 — Two-way portal, 30 seconds
             bool canShort = ArchWizardNPC.HasGold(_player, priceTwoWayShort);
             AddButton(ColLeft, y, 4005, 4007, BtnTwoWayShort, GumpButtonType.Reply, 0);
             AddLabel(ColLeft + 35, y + 2,  canShort ? 1152 : 33, "Express Portal  (30 seconds)");
-            AddLabel(ColLeft + 35, y + 18, canShort ? 0    : 33, priceTwoWayShort + " gold — two-way portal, open for 30 seconds.");
+            AddLabel(ColLeft + 35, y + 18, canShort ? 1152 : 33, priceTwoWayShort + " gold — two-way portal, open for 30 seconds.");
             y += 55;
 
             // Option 3 — Two-way portal, 10 minutes
             bool canLong = ArchWizardNPC.HasGold(_player, priceTwoWayLong);
             AddButton(ColLeft, y, 4005, 4007, BtnTwoWayLong, GumpButtonType.Reply, 0);
             AddLabel(ColLeft + 35, y + 2,  canLong ? 1152 : 33, "Sustained Portal  (10 minutes)");
-            AddLabel(ColLeft + 35, y + 18, canLong ? 0    : 33, priceTwoWayLong + " gold — two-way portal, open for 10 minutes.");
+            AddLabel(ColLeft + 35, y + 18, canLong ? 1152 : 33, priceTwoWayLong + " gold — two-way portal, open for 10 minutes.");
 
             AddBackButton();
         }
