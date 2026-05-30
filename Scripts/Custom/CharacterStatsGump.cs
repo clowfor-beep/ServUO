@@ -12,15 +12,15 @@ namespace Server.Gumps
     public class CharacterStatsGump : Gump
     {
         // ── Layout ───────────────────────────────────────────────────────
-        private const int GW     = 560;
+        private const int GW     = 590;
         private const int GH     = 700;
         private const int TitleH = 28;
         private const int TabH   = 28;
         private const int RH     = 18;
         private const int SH     = 20;
         private const int CL     = 10;
-        private const int CR     = 290;
-        private const int CW     = 255;
+        private const int CR     = 305;
+        private const int CW     = 270;
         private const int FW     = GW - 20;
         private const int LW     = 140;
 
@@ -354,16 +354,18 @@ namespace Server.Gumps
         }
 
         // Per-column offsets for the skills tab (relative to column x)
-        private const int SkillNameW  = 130; // name label width
-        private const int SkillValX   = 133; // value label offset
-        private const int SkillBtn1X  = 178; // Up button offset
-        private const int SkillBtn2X  = 208; // Down button offset  (+30)
-        private const int SkillBtn3X  = 238; // Locked button offset (+30)
+        private const int SkillNameX  = 0;   // skill name
+        private const int SkillBaseX  = 110; // trained (base) value
+        private const int SkillEffX   = 150; // effective value (with item/stat bonuses)
+        private const int SkillBtn1X  = 196; // Up button
+        private const int SkillBtn2X  = 224; // Down button  (+28)
+        private const int SkillBtn3X  = 252; // Locked button (+28)
 
         private void DrawSkillColHeader(int x, int y)
         {
-            AddLabel(x,                  y, HHead, "Skill");
-            AddLabel(x + SkillValX,      y, HHead, "Value");
+            AddLabel(x + SkillNameX,     y, HHead, "Skill");
+            AddLabel(x + SkillBaseX,     y, HHead, "Base");
+            AddLabel(x + SkillEffX,      y, HHead, "Eff");
             AddLabel(x + SkillBtn1X + 2, y, HHead, "Up");
             AddLabel(x + SkillBtn2X + 2, y, HHead, "Dn");
             AddLabel(x + SkillBtn3X + 2, y, HHead, "Lk");
@@ -371,17 +373,27 @@ namespace Server.Gumps
 
         private void DrawSkillRow(Skill skill, int sortedIndex, int x, int y)
         {
-            bool atCap  = skill.Cap > 0 && skill.Value >= skill.Cap / 10.0 - 0.05;
-            int nameHue = atCap ? HAtCap : HValue;
+            double baseVal = skill.Base / 10.0;   // trained skill (no bonuses)
+            double effVal  = skill.Value;          // effective skill (with item/stat bonuses)
+            bool   atCap   = skill.Cap > 0 && effVal >= skill.Cap / 10.0 - 0.05;
+            bool   boosted = effVal > baseVal + 0.05; // item/buff bonus active
 
-            // Name — truncate at SkillNameW chars equivalent
-            string name = skill.Name.Length > 15 ? skill.Name.Substring(0, 15) : skill.Name;
-            AddLabel(x, y, nameHue, name);
+            int nameHue = atCap   ? HAtCap  : HValue;
+            int baseHue = HLabel;                     // grey — trained value
+            int effHue  = atCap   ? HAtCap  :
+                          boosted ? HGood   : HValue; // green if boosted above base
 
-            // Value
-            AddLabel(x + SkillValX, y, nameHue, $"{skill.Value:F1}");
+            // Name — truncate if needed
+            string name = skill.Name.Length > 14 ? skill.Name.Substring(0, 14) : skill.Name;
+            AddLabel(x + SkillNameX, y, nameHue, name);
 
-            // Lock buttons — active hue + brackets, inactive dimmed
+            // Base (trained) value — grey
+            AddLabel(x + SkillBaseX, y, baseHue, $"{baseVal:F1}");
+
+            // Effective value — white, or green if bonus active, red if at cap
+            AddLabel(x + SkillEffX, y, effHue, $"{effVal:F1}");
+
+            // Lock buttons
             bool isUp     = skill.Lock == SkillLock.Up;
             bool isDown   = skill.Lock == SkillLock.Down;
             bool isLocked = skill.Lock == SkillLock.Locked;
