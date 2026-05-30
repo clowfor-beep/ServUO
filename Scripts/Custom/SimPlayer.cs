@@ -74,9 +74,20 @@ namespace Server.Custom
         private static readonly TimeSpan Tier1Cooldown = TimeSpan.FromMinutes(5);
 
         // -- Constructor (for PlayerSimulatorManager) ------------------
+        // Chains to the protected constructor with default AI_Melee / FightMode.None.
         public SimPlayer(string guildName, string memberName, Point3D homeLocation,
                          SpawnZone homeZone, ScheduleProfile schedule)
-            : base(AIType.AI_Melee, FightMode.None, 10)
+            : this(guildName, memberName, homeLocation, homeZone, schedule,
+                   AIType.AI_Melee, FightMode.None)
+        {
+        }
+
+        // Extended constructor used by combat-capable guild subclasses that
+        // need a different AI type or fight mode (e.g. BloodPact, TheVoid).
+        protected SimPlayer(string guildName, string memberName, Point3D homeLocation,
+                            SpawnZone homeZone, ScheduleProfile schedule,
+                            AIType aiType, FightMode fightMode)
+            : base(aiType, fightMode, 10)
         {
             _guildName    = guildName;
             _memberName   = memberName;
@@ -159,6 +170,11 @@ namespace Server.Custom
 
             if (Map == Map.Internal) return; // inactive - skip
 
+            // Combat-capable subclasses (BloodPact, etc.) set this true
+            // while actively fighting so the state machine doesn't try to
+            // navigate them away from their target.
+            if (SkipStateTick) return;
+
             switch (_state)
             {
                 case SimState.Idle:       TickIdle();       break;
@@ -166,6 +182,14 @@ namespace Server.Custom
                 case SimState.Banking:    TickBanking();    break;
             }
         }
+
+        /// <summary>
+        /// When true, SimState tick processing is skipped this OnThink cycle.
+        /// Override in combat-capable guild subclasses to pause the state
+        /// machine while the mobile is actively engaged in combat.
+        /// Base returns false (never skip).
+        /// </summary>
+        protected virtual bool SkipStateTick => false;
 
         private void TickIdle()
         {

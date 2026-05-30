@@ -228,11 +228,13 @@ namespace Server.Custom
     // ============================================================
     // The Shadow Hand
     // Thief/Rogue template -- grey, hiding, town operations.
-    // Never fights. Flees Silver Wolves.
+    // Pickpockets gold from nearby players while hidden.
+    // Flees Silver Wolves. Never fights back.
     // ============================================================
     public class ShadowHandSimPlayer : SimPlayer
     {
-        private DateTime _nextHideTime = DateTime.MinValue;
+        private DateTime _nextHideTime    = DateTime.MinValue;
+        private DateTime _nextStealTime   = DateTime.MinValue; // transient — not serialized
 
         public ShadowHandSimPlayer(string memberName, Point3D home,
                                    SpawnZone zone, ScheduleProfile schedule)
@@ -272,9 +274,8 @@ namespace Server.Custom
             AddItem(boots);
         }
 
-        /// <summary>
-        /// Shadow Hand idle hook -- hide periodically and flee Silver Wolves.
-        /// </summary>
+        // -- Idle hook -------------------------------------------------
+
         protected override void OnTickIdle()
         {
             // Periodically go Hidden
@@ -284,11 +285,97 @@ namespace Server.Custom
                 _nextHideTime = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(20, 60));
             }
 
-            // Flee Silver Wolves on sight
+            // Flee Silver Wolves on sight (priority — do before steal attempt)
             Mobile wolf = FindNearbyWolf();
             if (wolf != null)
+            {
                 FleeFrom(wolf);
+                return; // don't steal while fleeing
+            }
+
+            // Attempt pickpocket if cooldown has passed
+            if (Hidden && DateTime.UtcNow >= _nextStealTime)
+                TryPickpocket();
         }
+
+        // -- Pickpocket logic ------------------------------------------
+
+        private void TryPickpocket()
+        {
+            // Find a real player within 2 tiles (pick-pocket range)
+            PlayerMobile target = null;
+            foreach (Mobile m in GetMobilesInRange(2))
+            {
+                if (m is PlayerMobile pm
+                    && !pm.Deleted && pm.Alive
+                    && pm.AccessLevel == AccessLevel.Player
+                    && pm.Map == Map)
+                {
+                    target = pm;
+                    break;
+                }
+            }
+
+            if (target == null)
+            {
+                _nextStealTime = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(20, 40));
+                return;
+            }
+
+            // Only steal gold -- avoids disrupting player inventories
+            Container pack = target.Backpack;
+            Gold goldItem  = null;
+
+            if (pack != null)
+            {
+                foreach (Item item in pack.Items)
+                {
+                    if (item is Gold g && g.Amount >= 10)
+                    { goldItem = g; break; }
+                }
+            }
+
+            if (goldItem == null)
+            {
+                // Nothing worth taking -- try again soon
+                _nextStealTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(2, 4));
+                return;
+            }
+
+            // Skill check -- steal skill vs target's Detect Hidden
+            double stealChance  = Skills[SkillName.Stealing].Value / 100.0 * 0.75; // max 75% at 80 skill
+            double detectChance = target.Skills[SkillName.DetectHidden].Value / 100.0 * 0.45;
+
+            bool caught  = Utility.RandomDouble() < detectChance;
+            bool success = !caught && Utility.RandomDouble() < stealChance;
+
+            if (success)
+            {
+                int amount = Math.Min(goldItem.Amount, Utility.RandomMinMax(50, 300));
+                goldItem.Amount -= amount;
+                if (goldItem.Amount <= 0)
+                    goldItem.Delete();
+
+                PackItem(new Gold(amount));
+                // Silent success -- player doesn't notice
+                _nextStealTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(5, 10));
+            }
+            else if (caught)
+            {
+                // Player notices the attempt
+                target.SendMessage(0x22, $"You feel {Name} trying to pick your pocket!");
+                this.Hidden = false; // revealed!
+                FleeFrom(target);
+                _nextStealTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(10, 15));
+            }
+            else
+            {
+                // Failed silently -- try again later
+                _nextStealTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(3, 6));
+            }
+        }
+
+        // -- Support methods -------------------------------------------
 
         private Mobile FindNearbyWolf()
         {
@@ -324,6 +411,7 @@ namespace Server.Custom
             }
         }
 
+        // -- Serialization ---------------------------------------------
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
@@ -334,6 +422,7 @@ namespace Server.Custom
         {
             base.Deserialize(reader);
             reader.ReadInt(); // version
+            // _nextStealTime is transient -- resets on load, that's fine
         }
     }
 
@@ -526,9 +615,12 @@ namespace Server.Custom
     // ============================================================
     public class BloodPactSimPlayer : SimPlayer
     {
+        // AI_Mage so they cast spells; FightMode.Closest so they aggro
+        // the nearest mobile (players and monsters near Destard outskirts).
         public BloodPactSimPlayer(string memberName, Point3D home,
                                   SpawnZone zone, ScheduleProfile schedule)
-            : base(FBGuilds.BloodPact, memberName, home, zone, schedule) { }
+            : base(FBGuilds.BloodPact, memberName, home, zone, schedule,
+                   AIType.AI_Mage, FightMode.Closest) { }
 
         public BloodPactSimPlayer(Serial serial) : base(serial) { }
 
@@ -538,6 +630,10 @@ namespace Server.Custom
 
         // Home is near Destard -- too far from Britain bank to make trips
         protected override bool CanBank => false;
+
+        // Pause the SimState machine while actively fighting so combat
+        // movement and state-machine movement don't fight each other.
+        protected override bool SkipStateTick => Combatant != null;
 
         protected override void ApplyTemplate()
         {
@@ -587,9 +683,12 @@ namespace Server.Custom
     // ============================================================
     public class TheVoidSimPlayer : SimPlayer
     {
+        // AI_Mage so they cast spells; FightMode.Closest so they aggro
+        // the nearest mobile near Deceit outskirts.
         public TheVoidSimPlayer(string memberName, Point3D home,
                                 SpawnZone zone, ScheduleProfile schedule)
-            : base(FBGuilds.TheVoid, memberName, home, zone, schedule) { }
+            : base(FBGuilds.TheVoid, memberName, home, zone, schedule,
+                   AIType.AI_Mage, FightMode.Closest) { }
 
         public TheVoidSimPlayer(Serial serial) : base(serial) { }
 
@@ -599,6 +698,9 @@ namespace Server.Custom
 
         // Home is near Deceit -- too far from Britain bank to make trips
         protected override bool CanBank => false;
+
+        // Pause state machine while actively fighting
+        protected override bool SkipStateTick => Combatant != null;
 
         protected override void ApplyTemplate()
         {
@@ -648,9 +750,11 @@ namespace Server.Custom
     // ============================================================
     public class ShadowbladeSimPlayer : SimPlayer
     {
+        // AI_Melee — high-Dex fencer; FightMode.Closest — ambush anything near Wrong.
         public ShadowbladeSimPlayer(string memberName, Point3D home,
                                     SpawnZone zone, ScheduleProfile schedule)
-            : base(FBGuilds.Shadowblade, memberName, home, zone, schedule) { }
+            : base(FBGuilds.Shadowblade, memberName, home, zone, schedule,
+                   AIType.AI_Melee, FightMode.Closest) { }
 
         public ShadowbladeSimPlayer(Serial serial) : base(serial) { }
 
@@ -659,6 +763,25 @@ namespace Server.Custom
 
         // Home is near Wrong -- too far from Britain bank to make trips
         protected override bool CanBank => false;
+
+        // Pause state machine while actively fighting
+        protected override bool SkipStateTick => Combatant != null;
+
+        // -- Hide / ambush ---------------------------------------------
+        // Shadowblade hides near the dungeon entrance between fights.
+        // FightMode.Closest auto-acquires a target; the act of attacking
+        // reveals them naturally (standard UO mechanic).
+        private DateTime _nextHideTime = DateTime.MinValue;
+
+        protected override void OnTickIdle()
+        {
+            if (DateTime.UtcNow >= _nextHideTime)
+            {
+                this.Hidden   = true;
+                _nextHideTime = DateTime.UtcNow
+                    + TimeSpan.FromSeconds(Utility.RandomMinMax(30, 90));
+            }
+        }
 
         protected override void ApplyTemplate()
         {
