@@ -711,6 +711,7 @@ namespace Server.Custom
         // Yew
         public static readonly Point3D Wanderers_Home_Yew              = new Point3D(535, 976, 0);
         public static readonly Point3D ArcaneBrotherhood_Home_Yew      = new Point3D(539, 976, 0);
+        public static readonly Point3D IronCompany_Home_Yew            = new Point3D(543, 976, 0);
 
         // Minoc
         public static readonly Point3D Wanderers_Home_Minoc            = new Point3D(2535, 577, 0);
@@ -730,6 +731,7 @@ namespace Server.Custom
         public static readonly Point3D Wanderers_Home_SkaraBrae        = new Point3D(588, 2130, 0);
         public static readonly Point3D CraftsmensLeague_Home_SkaraBrae = new Point3D(592, 2130, 0);
         public static readonly Point3D DeadWatchers_Home_SkaraBrae     = new Point3D(596, 2134, 0);
+        public static readonly Point3D IronCompany_Home_SkaraBrae      = new Point3D(600, 2134, 0);
 
         // Dungeon outskirt expansion homes (CanBank = false for all these guilds)
         public static readonly Point3D BloodPact_Home_NearShame      = new Point3D(515, 1556, 0);

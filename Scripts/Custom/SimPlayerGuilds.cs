@@ -186,7 +186,8 @@ namespace Server.Custom
                     break;
 
                 case ChampPhase.GatherAtBank:
-                    // SimState goes Idle when the short walk to the local bank completes
+                    // Transition fires via Timer.DelayCall fallback (90s) in StartChampRun/ForceChampRunAt.
+                    // Also trigger immediately if they happen to already be Idle (fast arrival).
                     if (State == SimState.Idle)
                         ArriveAtBank();
                     break;
@@ -211,17 +212,27 @@ namespace Server.Custom
                 return; // no surface Felucca spawn found — skip this run cycle
 
             _champPhase = ChampPhase.GatherAtBank;
-            _departAt   = DateTime.UtcNow + TimeSpan.FromMinutes(1);
             FightMode   = FightMode.None;
 
             // Walk to nearest city bank — a short, reliable trip
             StartTravelTo(_bankLocation, TimeSpan.FromMinutes(5));
             Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
+
+            // Fallback: guarantee transition to WaitingAtBank after 90 seconds
+            // even if the Idle-state check never fires (e.g. state machine overrides it).
+            Timer.DelayCall(TimeSpan.FromSeconds(90), () =>
+            {
+                if (!Deleted && _champPhase == ChampPhase.GatherAtBank)
+                    ArriveAtBank();
+            });
         }
 
         private void ArriveAtBank()
         {
+            if (_champPhase != ChampPhase.GatherAtBank) return; // already advanced
+
             _champPhase = ChampPhase.WaitingAtBank;
+            _departAt   = DateTime.UtcNow + TimeSpan.FromMinutes(1); // 1-min wait starts NOW
 
             Say(GatherSpeech[Utility.Random(GatherSpeech.Length)]);
 
@@ -509,15 +520,21 @@ namespace Server.Custom
             _champScheduleSet = true;
             _champAnnounced   = false;
             _lastKnownLevel   = spawn.Level;
-            _departAt         = DateTime.UtcNow + TimeSpan.FromMinutes(1);
             FightMode         = FightMode.None;
 
-            // Walk to local bank — Sacred Journey fires at _departAt
+            // Walk to local bank — ArriveAtBank() sets _departAt when they get there
             StartTravelTo(_bankLocation, TimeSpan.FromMinutes(5));
             Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
 
+            // Fallback: guarantee transition after 90 seconds
+            Timer.DelayCall(TimeSpan.FromSeconds(90), () =>
+            {
+                if (!Deleted && _champPhase == ChampPhase.GatherAtBank)
+                    ArriveAtBank();
+            });
+
             string spawnName = spawn.SpawnName ?? $"({spawn.X},{spawn.Y})";
-            return $"{MemberName}: rallying at bank, Sacred Journey to {spawnName} in ~1 min.";
+            return $"{MemberName}: rallying at bank, Sacred Journey to {spawnName} in ~2.5 min.";
         }
 
         // -- Template --------------------------------------------------
