@@ -42,11 +42,11 @@ namespace Server.Items
         }
 
         // ── Detect when the chest is opened after being picked ────────
-        protected override void OnOpened(Mobile from)
+        public override void OnDoubleClick(Mobile from)
         {
-            base.OnOpened(from);
+            base.OnDoubleClick(from);
 
-            // Only schedule re-lock once per pick; Locked==false means it was picked
+            // If unlocked (picked) and not already counting down, start relock timer
             if (!Locked && !_relockScheduled)
             {
                 _relockScheduled = true;
