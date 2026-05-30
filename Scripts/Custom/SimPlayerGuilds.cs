@@ -548,6 +548,7 @@ namespace Server.Custom
         {
             _champPhase     = ChampPhase.AtSpawn;
             FightMode       = FightMode.Closest;
+            Team            = 1; // non-zero team so BaseCreature.IsEnemy returns true for spawn monsters (Team 0)
             _leaveSpawnAt   = DateTime.UtcNow + TimeSpan.FromHours(2); // hard cap
             _champAnnounced = false;
 
@@ -878,6 +879,7 @@ namespace Server.Custom
         {
             // Clean up phase immediately so no other code re-enters
             _champPhase   = ChampPhase.None;
+            Team          = 0; // back to neutral — stop being targeted by random creatures
             _targetSpawn  = null;
             FightMode     = FightMode.None;
             Combatant     = null;
