@@ -446,6 +446,18 @@ namespace Server.Custom
                 return;
             }
             Say("*glances over* Let me show you what I have.");
+
+            // Pre-send OPL for all display items so hover tooltips work
+            // (items live on Map.Internal and don't auto-send to clients)
+            if (pm.NetState != null)
+            {
+                foreach (var slot in _stock)
+                {
+                    if (slot.Item != null && !slot.Item.Deleted)
+                        pm.Send(slot.Item.PropertyList);
+                }
+            }
+
             pm.CloseGump(typeof(RareMerchantGump));
             pm.SendGump(new RareMerchantGump(pm, this));
         }
@@ -518,95 +530,115 @@ namespace Server.Custom
         private readonly TravelingRareMerchant _npc;
 
         // Layout
-        private const int GW        = 620;
-        private const int ColW      = 295;
-        private const int RowH      = 85;
-        private const int GridLeft  = 10;
-        private const int GridRight = 315;
-        private const int GridTop   = 70;
+        private const int GW         = 640;
+        private const int ColW       = 305;
+        private const int RowH       = 95;
+        private const int GridLeft   = 8;
+        private const int GridRight  = 324;
+        private const int GridTop    = 80;
+        private const int HeaderH    = 72;
 
-        private const int BtnClose  = 0;
-        private const int BtnBuyBase = 100; // + slot index
+        private const int BtnClose   = 0;
+        private const int BtnBuyBase = 100;
 
         public RareMerchantGump(PlayerMobile player, TravelingRareMerchant npc)
-            : base(60, 40)
+            : base(50, 30)
         {
             _player = player;
             _npc    = npc;
 
             var stock  = npc.Stock;
             int rows   = (int)Math.Ceiling(stock.Count / 2.0);
-            int GH     = GridTop + rows * RowH + 50;
+            int GH     = GridTop + rows * RowH + 48;
 
+            // Outer frame
             AddBackground(0, 0, GW, GH, 9200);
-            AddAlphaRegion(5, 5, GW - 10, GH - 10);
+            AddAlphaRegion(4, 4, GW - 8, GH - 8);
 
-            // Title bar
-            AddImageTiled(5, 5, GW - 10, 55, 9304);
-            AddLabel(GW / 2 - 110, 14, 0x8A5, "The Rare Goods Merchant");
-            AddLabel(GW / 2 - 95, 32, 1152,   "Accepts Merchant Coins only");
+            // Header band
+            AddImageTiled(4, 4, GW - 8, HeaderH, 9304);
+            AddAlphaRegion(4, 4, GW - 8, HeaderH);
 
-            // Coin balance
+            // Title
+            AddLabel(GW / 2 - 120, 10, 0x8A5, "~ The Rare Goods Merchant ~");
+            AddLabel(GW / 2 - 105, 30, 1152,  "Accepts Merchant Coins only");
+
+            // Coin balance (top right)
             int coins = player.Backpack != null
                 ? player.Backpack.GetAmount(typeof(MerchantCoin)) : 0;
-            AddLabel(GW - 150, 14, 0x35, $"Your coins: {coins}");
-            AddItem(GW - 160, 10, 0xEED, 1153); // coin graphic
+            AddItem(GW - 155, 8, 0xEED, 1153);
+            AddLabel(GW - 135, 10, coins > 0 ? 0x35 : 33, $"Coins: {coins}");
 
-            // Discount summary
+            // Discount (below coin balance)
             string discSummary = RareMerchantDiscount.Summary(player);
             if (!string.IsNullOrEmpty(discSummary))
-                AddLabel(GW - 155, 33, 0x35, discSummary);
+                AddLabel(GW - 155, 30, 0x59, discSummary);
+
+            // Separator line below header
+            AddImageTiled(4, HeaderH + 2, GW - 8, 2, 9264);
 
             // Item grid — 2 columns
             for (int i = 0; i < stock.Count; i++)
             {
-                var slot = stock[i];
-                int col  = (i % 2 == 0) ? GridLeft : GridRight;
-                int row  = GridTop + (i / 2) * RowH;
+                var slot      = stock[i];
+                int col       = (i % 2 == 0) ? GridLeft : GridRight;
+                int row       = GridTop + (i / 2) * RowH;
+                int finalCost = RareMerchantDiscount.ApplyCost(slot.Cost, player);
+                bool disc     = finalCost < slot.Cost;
+                bool canAfford = coins >= finalCost;
 
-                // Cell background
-                AddImageTiled(col, row, ColW, RowH - 5, 9274);
-                AddAlphaRegion(col, row, ColW, RowH - 5);
+                // Cell background — alternate shade
+                int cellBg = (i / 2) % 2 == 0 ? 9274 : 9200;
+                AddImageTiled(col, row, ColW, RowH - 3, cellBg);
+                AddAlphaRegion(col, row, ColW, RowH - 3);
 
-                // Item icon + tooltip on hover
-                AddItem(col + 8, row + 17, slot.Item.ItemID, slot.Item.Hue);
+                // Left accent bar
+                AddImageTiled(col, row, 3, RowH - 3, canAfford ? 0x8A5 : 33);
+
+                // Item icon (larger area, centred vertically)
+                AddItem(col + 8, row + 10, slot.Item.ItemID, slot.Item.Hue);
                 AddItemProperty(slot.Item.Serial);
 
-                // Item name — truncate if too long
-                string name        = slot.Name.Length > 28 ? slot.Name.Substring(0, 27) + "…" : slot.Name;
-                int    finalCost   = RareMerchantDiscount.ApplyCost(slot.Cost, player);
-                bool   discounted  = finalCost < slot.Cost;
-                bool   canAfford   = coins >= finalCost;
+                // Item name
+                string name = slot.Name.Length > 30
+                    ? slot.Name.Substring(0, 29) + "…"
+                    : slot.Name;
+                AddLabel(col + 62, row + 8, canAfford ? 1152 : 0x848, name);
 
-                AddLabel(col + 60, row + 10, canAfford ? 1152 : 33, name);
-
-                // Price — show original struck-through if discounted, then final price
-                if (discounted)
+                // Pricing row
+                if (disc)
                 {
-                    AddLabel(col + 60, row + 28, 33,    $"{slot.Cost}c");   // original (grey = "old")
-                    AddLabel(col + 115, row + 28, 0x8A5, $"→ {finalCost}c");
+                    AddLabel(col + 62, row + 28, 0x3B2, $"{slot.Cost}c  →");
+                    AddLabel(col + 108, row + 28, 0x8A5, $"{finalCost} coins");
                 }
                 else
                 {
-                    AddLabel(col + 60, row + 28, canAfford ? 0x8A5 : 33, $"{finalCost} Merchant Coins");
+                    AddLabel(col + 62, row + 28, canAfford ? 0x8A5 : 0x3B2,
+                        $"{finalCost} Merchant Coins");
                 }
 
-                // Buy button
+                // Buy button or "insufficient funds" note
                 if (canAfford)
                 {
-                    AddButton(col + 60, row + 50, 4005, 4007, BtnBuyBase + i, GumpButtonType.Reply, 0);
-                    AddLabel(col + 95,  row + 52, 0x35, "Purchase");
+                    AddButton(col + 62, row + 56, 4005, 4007, BtnBuyBase + i,
+                        GumpButtonType.Reply, 0);
+                    AddLabel(col + 97, row + 58, 0x35, "Purchase");
                 }
                 else
                 {
-                    AddLabel(col + 60, row + 52, 33, "Cannot afford");
+                    AddLabel(col + 62, row + 56, 33, "Insufficient coins");
                 }
+
+                // Vertical divider between columns
+                if (i % 2 == 0)
+                    AddImageTiled(GridRight - 2, row, 2, RowH - 3, 9264);
             }
 
-            // Close button
-            int closeY = GH - 38;
-            AddButton(GW / 2 - 50, closeY, 4017, 4019, BtnClose, GumpButtonType.Reply, 0);
-            AddLabel(GW / 2 - 15,  closeY + 2, 33, "Leave");
+            // Footer
+            int footY = GH - 38;
+            AddImageTiled(4, footY - 6, GW - 8, 2, 9264);
+            AddButton(GW / 2 - 55, footY, 4017, 4019, BtnClose, GumpButtonType.Reply, 0);
+            AddLabel(GW / 2 - 20, footY + 2, 0x848, "Close");
         }
 
         public override void OnResponse(NetState sender, RelayInfo info)
@@ -766,7 +798,13 @@ namespace Server.Custom
                 0x376A, 9, 20, 5023);
             _player.PlaySound(0x2E6);
 
-            // Reopen shop with updated stock
+            // Pre-send OPL for remaining items then reopen shop
+            if (_player.NetState != null)
+            {
+                foreach (var s in _npc.Stock)
+                    if (s.Item != null && !s.Item.Deleted)
+                        _player.Send(s.Item.PropertyList);
+            }
             _player.SendGump(new RareMerchantGump(_player, _npc));
         }
     }
