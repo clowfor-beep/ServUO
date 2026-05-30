@@ -210,12 +210,20 @@ namespace Server.Mobiles
         public static void CreatePair(PlayerMobile pm, Point3D destination, Map destMap, TimeSpan duration)
         {
             // Portal A — at the player's current location, leads to destination
-            var portalA = new ArchWizardPortal(pm, destination,    destMap);
+            var portalA = new ArchWizardPortal(pm, destination, destMap);
             portalA.MoveToWorld(pm.Location, pm.Map);
+            Effects.SendLocationParticles(
+                EffectItem.Create(portalA.Location, portalA.Map, EffectItem.DefaultDuration),
+                0x376A, 9, 32, 5023);
+            Effects.PlaySound(portalA.Location, portalA.Map, 0x20E);
 
             // Portal B — at the destination, leads back to the player's origin
             var portalB = new ArchWizardPortal(pm, pm.Location, pm.Map);
             portalB.MoveToWorld(destination, destMap);
+            Effects.SendLocationParticles(
+                EffectItem.Create(portalB.Location, portalB.Map, EffectItem.DefaultDuration),
+                0x376A, 9, 32, 5023);
+            Effects.PlaySound(portalB.Location, portalB.Map, 0x20E);
 
             // Link them
             portalA._partner = portalB;
@@ -250,16 +258,6 @@ namespace Server.Mobiles
             Hue      = 1153;   // light blue
             Name     = "a wizard's portal";
             Light    = LightType.Circle300;
-        }
-
-        // Called after MoveToWorld so Location/Map are set
-        public override void OnAfterMove(Point3D oldLoc)
-        {
-            // Opening effect when first placed
-            Effects.SendLocationParticles(
-                EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
-                0x376A, 9, 32, 5023);
-            Effects.PlaySound(Location, Map, 0x20E);
         }
 
         public ArchWizardPortal(Serial serial) : base(serial) { }
