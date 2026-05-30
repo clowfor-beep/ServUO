@@ -37,6 +37,9 @@ namespace Server.Custom
         // All SimPlayers. Persisted via item serialization.
         private List<SimPlayer> _allSimPlayers = new List<SimPlayer>();
 
+        /// <summary>Read-only roster access for the SimPlayerGump.</summary>
+        public IEnumerable<SimPlayer> AllSimPlayers => _allSimPlayers;
+
         // -- Initialize() -- auto-called at server startup ------------
         public static void Initialize()
         {
@@ -47,6 +50,7 @@ namespace Server.Custom
             CommandSystem.Register("simtrigger", AccessLevel.GameMaster, e => SimTrigger(e.Mobile, e.ArgString?.Trim()));
             CommandSystem.Register("siminfo",    AccessLevel.GameMaster, e => SimInfo(e.Mobile, e.ArgString?.Trim()));
             CommandSystem.Register("simchamp",   AccessLevel.GameMaster, e => SimChamp(e.Mobile));
+            CommandSystem.Register("simpanel",   AccessLevel.GameMaster, e => e.Mobile.SendGump(new SimPlayerGump(e.Mobile)));
 
             // Find existing singleton in world
             if (_instance == null)
