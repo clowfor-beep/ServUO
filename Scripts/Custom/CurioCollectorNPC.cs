@@ -128,11 +128,9 @@ namespace Server.Custom
 
         private void ScanContainer(Container c, List<ScoredItem> results)
         {
+            // Top-level only — items inside sub-bags are not visible to the collector.
             foreach (Item item in c.Items)
             {
-                if (item is Container sub)
-                    ScanContainer(sub, results);
-
                 if (!IsEligibleItem(item)) continue;
 
                 var scored = ScoreItem(item);
@@ -336,13 +334,23 @@ namespace Server.Custom
             return count;
         }
 
-        // ── Diminishing returns ───────────────────────────────────────────────
+        // ── Diminishing returns (gold items only) ─────────────────────────────
 
         // Diminishing returns: -5% per item, floor at 1% (reached at the 20th item onward).
         // Index 0 = 100%, index 1 = 95%, index 2 = 90%, ... index 19+ = 1%
+        // Only applied to gold-tier items. Coin-tier items always pay full price.
         public static double GetMultiplier(int index)
         {
             return Math.Max(0.01, 1.0 - (index * 0.05));
+        }
+
+        // ── Begging bonus ─────────────────────────────────────────────────────
+
+        // +1% per 20 Begging skill (max +6% at skill 120)
+        public static double GetBeggingBonus(Mobile from)
+        {
+            double begging = from.Skills[SkillName.Begging].Value;
+            return Math.Floor(begging / 20.0) * 0.01;
         }
 
         // ── Serialization ─────────────────────────────────────────────────────
@@ -376,12 +384,20 @@ namespace Server.Custom
                 _from = from;
                 _npc  = npc;
 
-                // Sort highest score first for diminishing returns
-                items.Sort((a, b) => b.Score.CompareTo(a.Score));
+                // Sort power scrolls first (highest coin value), then highest score
+                items.Sort((a, b) =>
+                {
+                    bool aPS = a.Item is PowerScroll;
+                    bool bPS = b.Item is PowerScroll;
+                    if (aPS && !bPS) return -1;
+                    if (!aPS && bPS) return 1;
+                    if (aPS && bPS) return b.CoinPrice.CompareTo(a.CoinPrice);
+                    return b.Score.CompareTo(a.Score);
+                });
                 _items = items;
 
-                int gumpWidth  = 560;
-                int rowHeight  = 22;
+                int gumpWidth  = 580;
+                int rowHeight  = 30;   // taller rows to fit item icon
                 int headerY    = 60;
                 int rowsStart  = 90;
                 int rows       = _items.Count;
@@ -392,16 +408,19 @@ namespace Server.Custom
 
                 // Title
                 AddLabel(gumpWidth / 2 - 100, 12, 0x35, "Curio Collector — Appraisal");
+                AddLabel(gumpWidth / 2 - 115, 30, 1152, "Hover over an item icon to inspect its properties.");
 
                 // Column headers
                 AddLabel(38,  headerY, 0x3B2, "Sell");
-                AddLabel(70,  headerY, 0x3B2, "Item");
-                AddLabel(280, headerY, 0x3B2, "Tier");
-                AddLabel(360, headerY, 0x3B2, "Full Price");
-                AddLabel(450, headerY, 0x3B2, "Offer");
+                AddLabel(65,  headerY, 0x3B2, "  ");   // icon col
+                AddLabel(100, headerY, 0x3B2, "Item");
+                AddLabel(295, headerY, 0x3B2, "Tier");
+                AddLabel(370, headerY, 0x3B2, "Full Price");
+                AddLabel(465, headerY, 0x3B2, "Offer");
 
                 int totalGold  = 0;
                 int totalCoins = 0;
+                double beggingBonus = GetBeggingBonus(from);
 
                 for (int i = 0; i < _items.Count; i++)
                 {
@@ -410,14 +429,18 @@ namespace Server.Custom
                     double mult = GetMultiplier(i);
 
                     // Checkbox (checked by default)
-                    AddCheck(38, y + 2, 0xD2, 0xD3, true, i);
+                    AddCheck(38, y + 6, 0xD2, 0xD3, true, i);
+
+                    // Item icon — hover shows full property tooltip
+                    AddItem(63, y + 2, si.Item.ItemID, si.Item.Hue);
+                    AddItemProperty(si.Item.Serial);
 
                     // Name
                     string name = !string.IsNullOrEmpty(si.Item.Name)
                         ? si.Item.Name
                         : si.Item.GetType().Name;
-                    if (name.Length > 28) name = name.Substring(0, 28);
-                    AddLabel(70, y, 0xFFFF, name);
+                    if (name.Length > 26) name = name.Substring(0, 26);
+                    AddLabel(100, y + 7, 0xFFFF, name);
 
                     // Tier label and colour
                     int tierHue;
@@ -432,18 +455,20 @@ namespace Server.Custom
                     }
                     AddLabel(280, y, tierHue, tierLabel);
 
-                    // Full price (un-adjusted)
+                    // Full price → Offer
                     if (si.BasePrice > 0)
                     {
+                        // Gold items: diminishing returns + begging bonus
                         AddLabel(360, y, 0x9C2, $"{si.BasePrice:N0}g");
-                        int adjusted = (int)Math.Round(si.BasePrice * mult / 100.0) * 100;
+                        int adjusted = (int)Math.Round(si.BasePrice * mult * (1.0 + beggingBonus) / 100.0) * 100;
                         adjusted = Math.Max(100, adjusted);
                         AddLabel(450, y, 0x35, $"{adjusted:N0}g");
                         totalGold += adjusted;
                     }
                     else
                     {
-                        int adjCoins = Math.Max(1, (int)(si.CoinPrice * mult));
+                        // Coin items: no diminishing returns, begging bonus applies
+                        int adjCoins = Math.Max(1, (int)Math.Round(si.CoinPrice * (1.0 + beggingBonus)));
                         AddLabel(360, y, 0x4F, $"{si.CoinPrice}c");
                         AddLabel(450, y, 0x21, $"{adjCoins}c");
                         totalCoins += adjCoins;
@@ -452,7 +477,8 @@ namespace Server.Custom
 
                 // Footer totals
                 int footerY = rowsStart + rows * rowHeight + 10;
-                AddLabel(70,  footerY, 0x3B2, $"Total gold: {totalGold:N0}  |  Total coins: {totalCoins}");
+                string beggingNote = beggingBonus > 0 ? $"  (+{(int)(beggingBonus * 100)}% Begging bonus)" : "";
+                AddLabel(70,  footerY, 0x3B2, $"Total gold: {totalGold:N0}  |  Total coins: {totalCoins}{beggingNote}");
 
                 // Buttons
                 int btnY = footerY + 28;
@@ -484,6 +510,7 @@ namespace Server.Custom
                 int goldTotal  = 0;
                 int coinTotal  = 0;
                 int soldCount  = 0;
+                double beggingBonus = GetBeggingBonus(_from);
 
                 for (int i = 0; i < _items.Count; i++)
                 {
@@ -497,13 +524,15 @@ namespace Server.Custom
 
                     if (si.BasePrice > 0)
                     {
-                        int adjusted = (int)Math.Round(si.BasePrice * mult / 100.0) * 100;
+                        // Gold items: diminishing returns + begging bonus
+                        int adjusted = (int)Math.Round(si.BasePrice * mult * (1.0 + beggingBonus) / 100.0) * 100;
                         adjusted = Math.Max(100, adjusted);
                         goldTotal += adjusted;
                     }
                     else
                     {
-                        int adjCoins = Math.Max(1, (int)(si.CoinPrice * mult));
+                        // Coin items: no diminishing returns, begging bonus applies
+                        int adjCoins = Math.Max(1, (int)Math.Round(si.CoinPrice * (1.0 + beggingBonus)));
                         coinTotal += adjCoins;
                     }
 
