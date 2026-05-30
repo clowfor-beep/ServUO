@@ -248,12 +248,14 @@ namespace Server.Custom
         {
             _champPhase     = ChampPhase.AtSpawn; // prevent re-entry on next tick
             _champAnnounced = false;              // reset so champKilled can't false-trigger before arrival
+            _leaveSpawnAt   = DateTime.UtcNow + TimeSpan.FromHours(2); // set NOW — TickAtSpawn fires before ArriveAtSpawn
 
             if (_targetSpawn == null || _targetSpawn.Deleted)
             {
                 // Spawn is gone — abort run
                 _champPhase   = ChampPhase.None;
                 _targetSpawn  = null;
+                _leaveSpawnAt = DateTime.MinValue;
                 _nextChampRun = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(10, 20));
                 return;
             }
@@ -266,6 +268,10 @@ namespace Server.Custom
             Timer.DelayCall(TimeSpan.FromSeconds(2.0), () =>
             {
                 if (Deleted) return;
+
+                // Abort if BeginWithdraw already fired during the 2-second delay
+                if (_champPhase != ChampPhase.AtSpawn || _targetSpawn == null || _targetSpawn.Deleted)
+                    return;
 
                 // Find a walkable tile near the altar
                 Point3D landing = Point3D.Zero;
