@@ -116,7 +116,7 @@ namespace Server.Custom
             _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Woodcutter Bram",
                 craftHome, SpawnZone.Britain_Roads, ScheduleProfile.CraftsmensLeague(-15)));
 
-            // IRON COMPANY -- 3 members
+            // IRON COMPANY -- 6 members (Britain chapter)
             Point3D ironHome = FBZones.IronCompany_Home;
             _allSimPlayers.Add(new IronCompanySimPlayer("Sergeant Vale",
                 ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(0)));
@@ -124,6 +124,12 @@ namespace Server.Custom
                 ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(10)));
             _allSimPlayers.Add(new IronCompanySimPlayer("Ironhide",
                 ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(-10)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Stonewall Brec",
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(5)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Shield Maiden Rova",
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(-5)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Grim the Veteran",
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(20)));
 
             // ARCANE BROTHERHOOD -- 3 members
             Point3D arcaneHome = FBZones.ArcaneBrotherhood_Home;
@@ -232,13 +238,19 @@ namespace Server.Custom
             CreateSimPlayer(FBGuilds.Wanderers, "Old Saul",         wandTrinsic, SpawnZone.Trinsic_City, -15);
             CreateSimPlayer(FBGuilds.Wanderers, "Traveller Wyn",    wandTrinsic, SpawnZone.Trinsic_City,  10);
 
-            // Iron Company (3) -- Trinsic chapter, still runs champ spawns
+            // Iron Company (6) -- Trinsic chapter, still runs champ spawns
             _allSimPlayers.Add(new IronCompanySimPlayer("Vanguard Petra",
                 ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(0)));
             _allSimPlayers.Add(new IronCompanySimPlayer("Shield Wall Dorn",
                 ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(15)));
             _allSimPlayers.Add(new IronCompanySimPlayer("Tactician Yeln",
                 ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(-10)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Bladewarden Cass",
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(5)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Hardened Oryn",
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(-20)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Forgeborn Thane",
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(25)));
 
             // Silver Wolves (3) -- patrols the Trinsic streets
             _allSimPlayers.Add(new SilverWolvesSimPlayer("Constable Daven",
@@ -423,7 +435,7 @@ namespace Server.Custom
             _allSimPlayers.Add(new TheVoidSimPlayer("Void Remnant",
                 voidHythloth, SpawnZone.WantedZone_NearHythloth, ScheduleProfile.TheVoid(-20)));
 
-            Console.WriteLine($"[SimPlayer] Roster created: {_allSimPlayers.Count} SimPlayers (100 across 12 guilds, 7 cities).");
+            Console.WriteLine($"[SimPlayer] Roster created: {_allSimPlayers.Count} SimPlayers across 12 guilds, 7 cities.");
         }
 
         private void CreateSimPlayer(string guild, string memberName, Point3D home,
@@ -694,6 +706,26 @@ namespace Server.Custom
 
             from.SendMessage(0x35, $"[SimPlayer] {sent} Iron Company member(s) mobilized.");
             from.SendMessage(0x35,  "[SimPlayer] Use [simgoto iron to follow them.");
+        }
+
+        // -- Iron Company coordination --------------------------------
+
+        /// <summary>
+        /// Called by any IronCompanySimPlayer when they start a champ run.
+        /// Mobilises every other Iron Company member to the same spawn so
+        /// all 18 participate together.
+        /// </summary>
+        public static void BroadcastChampRun(ChampionSpawn spawn, IronCompanySimPlayer initiator)
+        {
+            if (_instance == null || spawn == null || spawn.Deleted) return;
+
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp.Deleted || sp == initiator) continue;
+                if (sp.GuildName != FBGuilds.IronCompany) continue;
+                if (sp is IronCompanySimPlayer ic)
+                    ic.ForceChampRunAt(spawn);
+            }
         }
 
         // -- Lookup helpers -------------------------------------------

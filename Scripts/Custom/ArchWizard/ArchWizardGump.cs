@@ -87,7 +87,6 @@ namespace Server.Custom.ArchWizard
         private readonly int            _selectedIdx;   // dest index for SelectService page
         private readonly bool           _isDungeon;     // true = dungeon dest, false = champ dest
 
-        private List<DungeonDestination>  _dungeons;
         private List<ChampionDestination> _champions;
 
         // ── Button IDs ───────────────────────────────────────────
