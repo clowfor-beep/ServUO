@@ -13,6 +13,7 @@
 // ============================================================
 
 using System;
+using System.Collections.Generic;
 using Server;
 using Server.Custom;
 using Server.Engines.CannedEvil;
@@ -113,8 +114,15 @@ namespace Server.Custom
         // None → Teleported (6s stuck) → CrossbowOut (5s after teleport still stuck)
         // → give up after 15s with crossbow → return to entry + re-equip melee
         private enum StuckPhase { None, Teleported, CrossbowOut }
-        private StuckPhase _stuckPhase  = StuckPhase.None;
+        private StuckPhase _stuckPhase   = StuckPhase.None;
         private DateTime   _stuckPhaseAt = DateTime.MinValue;
+
+        // -- Unreachable target blacklist ----------------------------------
+        // Targets we gave up on are skipped for 3 minutes so we don't
+        // immediately re-acquire an unreachable ledge monster.
+        private readonly Dictionary<Serial, DateTime> _blockedTargets
+            = new Dictionary<Serial, DateTime>();
+        private static readonly TimeSpan BlockDuration = TimeSpan.FromMinutes(3);
 
         // Used when no Felucca ChampionSpawn is found in the world at all
         private static readonly Point3D[] FallbackDestinations =
@@ -531,6 +539,10 @@ namespace Server.Custom
                             // 15s with crossbow, still no progress → give up, return
                             if (DateTime.UtcNow >= _stuckPhaseAt + TimeSpan.FromSeconds(15))
                             {
+                                // Blacklist this target so we don't immediately re-acquire it
+                                if (Combatant != null)
+                                    _blockedTargets[Combatant.Serial] = DateTime.UtcNow + BlockDuration;
+
                                 EquipMelee();
                                 _stuckPhase = StuckPhase.None;
                                 Combatant   = null;
@@ -556,7 +568,14 @@ namespace Server.Custom
             if (DateTime.UtcNow < _nextScanAt) return;
             _nextScanAt = DateTime.UtcNow + TimeSpan.FromSeconds(2);
 
-            // Champion is always top priority
+            // Prune expired blacklist entries
+            var expired = new List<Serial>();
+            foreach (var kvp in _blockedTargets)
+                if (DateTime.UtcNow >= kvp.Value) expired.Add(kvp.Key);
+            foreach (var s in expired)
+                _blockedTargets.Remove(s);
+
+            // Champion is always top priority — never blacklisted
             if (_targetSpawn != null && !_targetSpawn.Deleted
                 && _targetSpawn.Champion != null && !_targetSpawn.Champion.Deleted
                 && _targetSpawn.Champion.Alive)
@@ -578,6 +597,7 @@ namespace Server.Custom
                 if (m is SimPlayer sp2 && !sp2.AlwaysAttackable && !sp2.AlwaysMurderer) continue;
                 if (!(m is BaseCreature bc) || bc.Controlled) continue;
                 if (!CanBeHarmful(m, false)) continue;
+                if (_blockedTargets.ContainsKey(m.Serial)) continue; // skip unreachable targets
 
                 double dist = GetDistanceToSqrt(m);
                 if (dist < nearestDist) { nearestDist = dist; nearest = m; }
@@ -685,6 +705,7 @@ namespace Server.Custom
             _targetSpawn  = null;
             FightMode     = FightMode.None;
             Combatant     = null;
+            _blockedTargets.Clear(); // reset for next run
             _nextChampRun = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
 
             if (!victory)
