@@ -110,7 +110,7 @@ namespace Server.Custom
 
         private static readonly string[] GatherSpeech = {
             "Iron Company, rally at the bank!",
-            "Form up here. Sacred Journey in two minutes.",
+            "Form up here. Sacred Journey in one minute.",
             "Everyone gear up. We depart shortly.",
             "Hold at the bank. Move out soon.",
         };
@@ -147,8 +147,10 @@ namespace Server.Custom
 
         // -- Overrides -------------------------------------------------
 
-        /// <summary>Pause SimState movement ticks while fighting or rallying at the bank.</summary>
-        protected override bool SkipStateTick => Combatant != null || _champPhase == ChampPhase.WaitingAtBank;
+        /// <summary>Pause SimState movement ticks while fighting, rallying at bank, or fighting at spawn.</summary>
+        protected override bool SkipStateTick => Combatant != null
+            || _champPhase == ChampPhase.WaitingAtBank
+            || _champPhase == ChampPhase.AtSpawn;
 
         /// <summary>No banking while on a champ run.</summary>
         protected override bool CanBank => _champPhase == ChampPhase.None;
@@ -209,7 +211,7 @@ namespace Server.Custom
                 return; // no surface Felucca spawn found — skip this run cycle
 
             _champPhase = ChampPhase.GatherAtBank;
-            _departAt   = DateTime.UtcNow + TimeSpan.FromMinutes(2);
+            _departAt   = DateTime.UtcNow + TimeSpan.FromMinutes(1);
             FightMode   = FightMode.None;
 
             // Walk to nearest city bank — a short, reliable trip
@@ -297,11 +299,10 @@ namespace Server.Custom
 
         private void TickAtSpawn()
         {
-            // If spawn reference is gone, fall through to timeout
+            // Spawn reference gone — withdraw immediately, don't wait for the hard cap
             if (_targetSpawn == null || _targetSpawn.Deleted)
             {
-                if (DateTime.UtcNow >= _leaveSpawnAt)
-                    BeginWithdraw(false);
+                BeginWithdraw(false);
                 return;
             }
 
@@ -315,13 +316,13 @@ namespace Server.Custom
                 _lastKnownLevel = level;
             }
 
-            // Detect and engage champion when it spawns
+            // Detect and directly engage champion when it spawns
             if (!_champAnnounced
                 && _targetSpawn.Champion != null
                 && !_targetSpawn.Champion.Deleted)
             {
                 _champAnnounced = true;
-                Combatant = _targetSpawn.Champion; // direct target override
+                Combatant = _targetSpawn.Champion;
             }
 
             // Detect champion killed → victory
@@ -337,7 +338,47 @@ namespace Server.Custom
 
             // Hard 2-hour timeout
             if (DateTime.UtcNow >= _leaveSpawnAt)
+            {
                 BeginWithdraw(false);
+                return;
+            }
+
+            // Actively acquire a target if not currently fighting
+            if (Combatant == null || Combatant.Deleted || !Combatant.Alive)
+                AcquireSpawnTarget();
+        }
+
+        /// <summary>
+        /// Scans nearby mobiles and sets Combatant to kick off fighting.
+        /// Prefers the champion if it exists, otherwise the nearest creature.
+        /// </summary>
+        private void AcquireSpawnTarget()
+        {
+            // Champion first
+            if (_targetSpawn != null && !_targetSpawn.Deleted
+                && _targetSpawn.Champion != null && !_targetSpawn.Champion.Deleted
+                && _targetSpawn.Champion.Alive)
+            {
+                Combatant = _targetSpawn.Champion;
+                return;
+            }
+
+            // Nearest hostile creature within 15 tiles
+            Mobile nearest     = null;
+            double nearestDist = double.MaxValue;
+
+            foreach (Mobile m in GetMobilesInRange(15))
+            {
+                if (m == this || m.Deleted || !m.Alive) continue;
+                if (!(m is BaseCreature bc) || bc.Controlled) continue;
+                if (!CanBeHarmful(m, false)) continue;
+
+                double dist = GetDistanceToSqrt(m);
+                if (dist < nearestDist) { nearestDist = dist; nearest = m; }
+            }
+
+            if (nearest != null)
+                Combatant = nearest;
         }
 
         private void BeginWithdraw(bool victory)
@@ -468,7 +509,7 @@ namespace Server.Custom
             _champScheduleSet = true;
             _champAnnounced   = false;
             _lastKnownLevel   = spawn.Level;
-            _departAt         = DateTime.UtcNow + TimeSpan.FromMinutes(2);
+            _departAt         = DateTime.UtcNow + TimeSpan.FromMinutes(1);
             FightMode         = FightMode.None;
 
             // Walk to local bank — Sacred Journey fires at _departAt
@@ -476,7 +517,7 @@ namespace Server.Custom
             Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
 
             string spawnName = spawn.SpawnName ?? $"({spawn.X},{spawn.Y})";
-            return $"{MemberName}: rallying at bank, Sacred Journey to {spawnName} in ~2 min.";
+            return $"{MemberName}: rallying at bank, Sacred Journey to {spawnName} in ~1 min.";
         }
 
         // -- Template --------------------------------------------------
