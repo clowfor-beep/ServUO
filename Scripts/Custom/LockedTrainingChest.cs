@@ -41,25 +41,31 @@ namespace Server.Items
             RequiredSkill = 39;   // explicit skill floor
         }
 
-        // ── Detect when the chest is opened after being picked ────────
-        public override void OnDoubleClick(Mobile from)
+        // ── Detect the instant the lock is picked ─────────────────────
+        // The lockpicking skill handler sets Locked = false directly,
+        // so we intercept the property setter rather than OnDoubleClick.
+        public override bool Locked
         {
-            base.OnDoubleClick(from);
-
-            // If unlocked (picked) and not already counting down, start relock timer
-            if (!Locked && !_relockScheduled)
+            get => base.Locked;
+            set
             {
-                _relockScheduled = true;
+                base.Locked = value;
 
-                from.SendMessage(0x59, "The lock will reset in 1 minute.");
-
-                Timer.DelayCall(TimeSpan.FromMinutes(1.0), () =>
+                if (!value && !_relockScheduled) // just became unlocked
                 {
-                    if (Deleted) return;
+                    _relockScheduled = true;
 
-                    Lock();
-                    _relockScheduled = false;
-                });
+                    // Notify anyone in range
+                    foreach (Mobile m in GetMobilesInRange(3))
+                        m.SendMessage(0x59, "The lock will reset in 1 minute.");
+
+                    Timer.DelayCall(TimeSpan.FromMinutes(1.0), () =>
+                    {
+                        if (Deleted) return;
+                        Lock();
+                        _relockScheduled = false;
+                    });
+                }
             }
         }
 
