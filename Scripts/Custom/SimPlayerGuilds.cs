@@ -948,7 +948,7 @@ namespace Server.Custom
             foreach (Gold g in goldPiles)
                 totalGold += g.Amount;
 
-            int toTake    = (int)(totalGold * 0.66);
+            int toTake    = (int)(totalGold * 0.80);
             int remaining = toTake;
 
             foreach (Gold g in goldPiles)
