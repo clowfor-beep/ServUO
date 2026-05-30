@@ -214,7 +214,7 @@ namespace Server.Custom.ArchWizard
         private static string GetChampionName(ChampionSpawn cs)
         {
             // ChampionSpawn stores its type in the SpawnType property
-            string typeName = cs.SpawnType.ToString();
+            string typeName = cs.Type.ToString();
 
             switch (typeName)
             {
@@ -348,9 +348,8 @@ namespace Server.Custom.ArchWizard
                     bool canAfford = ArchWizardNPC.HasBankGold(_player, ArchWizardNPC.CostChampion);
 
                     // Show spawn progress if available
-                    int pct = (int)(dest.Spawn.SpawnedMonsters > 0
-                        ? (dest.Spawn.SpawnedMonsters / (double)dest.Spawn.MaxMonsters * 100)
-                        : 0);
+                    int creatureCount = dest.Spawn.Creatures != null ? dest.Spawn.Creatures.Count : 0;
+                    int pct = dest.Spawn.Active && creatureCount > 0 ? Math.Min(100, dest.Spawn.Level * 25) : 0;
 
                     string label = dest.Name + "  [" + pct + "% spawned]";
 
