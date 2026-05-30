@@ -1231,18 +1231,6 @@ namespace Server.Custom
             SetWeaponAbility(WeaponAbility.ConcussionBlow); // Longsword secondary — reduces target Int
         }
 
-        // -- Serialization (all champ state is transient) -------------
-        public override void Serialize(GenericWriter writer)
-        {
-            base.Serialize(writer);
-            writer.Write(0); // version
-        }
-
-        public override void Deserialize(GenericReader reader)
-        {
-            base.Deserialize(reader);
-            reader.ReadInt(); // version
-        }
     }
 
     // ============================================================
