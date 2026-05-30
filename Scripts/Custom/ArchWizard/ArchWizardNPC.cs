@@ -85,10 +85,24 @@ namespace Server.Mobiles
                 return;
             }
 
-            pm.MoveToWorld(destination, map);
-            pm.SendMessage(0x35, "The Arch Wizard gestures and the world blurs around you...");
-            Effects.SendLocationParticles(EffectItem.Create(pm.Location, map, EffectItem.DefaultDuration), 0x3728, 10, 10, 5023);
-            pm.PlaySound(0x1FE);
+            // Wizard cast animation + speech
+            Animate(203, 7, 1, true, false, 0);
+            Say("*weaves a rift in the fabric of space*");
+
+            // Create the portal at the player's feet after a short cast delay
+            PlayerMobile   capturedPm   = pm;
+            Point3D        capturedDest = destination;
+            Map            capturedMap  = map;
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            {
+                if (capturedPm == null || capturedPm.Deleted) return;
+
+                var portal = new ArchWizardPortal(capturedPm, capturedDest, capturedMap);
+                portal.MoveToWorld(capturedPm.Location, capturedPm.Map);
+
+                capturedPm.SendMessage(0x35, "A shimmering portal opens at your feet — step through it!");
+            });
         }
 
         // ── Gold helpers — check/deduct from pack first, then bank ────────
@@ -150,6 +164,114 @@ namespace Server.Mobiles
         {
             base.Deserialize(reader);
             reader.ReadInt();
+        }
+    }
+
+    // ================================================================
+    // ArchWizardPortal
+    // A temporary personal moongate placed at the player's feet.
+    // Only the target player can use it. Auto-deletes after 30 seconds.
+    // ================================================================
+    public class ArchWizardPortal : Item
+    {
+        private PlayerMobile _target;
+        private Point3D      _destination;
+        private Map          _destMap;
+        private bool         _used;
+
+        // Not persisted — portals vanish on server restart
+        public ArchWizardPortal(PlayerMobile target, Point3D destination, Map destMap)
+            : base(0xF6C)   // moongate graphic
+        {
+            _target      = target;
+            _destination = destination;
+            _destMap     = destMap;
+            _used        = false;
+
+            Movable  = false;
+            Hue      = 1153;   // light blue — distinct from regular moongates
+            Name     = "a wizard's portal";
+            Light    = LightType.Circle300;
+
+            // Opening effect
+            Effects.SendLocationParticles(
+                EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                0x376A, 9, 32, 5023);
+            Effects.PlaySound(Location, Map, 0x20E);
+
+            // Auto-delete after 30 seconds if unused
+            Timer.DelayCall(TimeSpan.FromSeconds(30.0), () =>
+            {
+                if (!Deleted && !_used)
+                {
+                    Effects.SendLocationParticles(
+                        EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                        0x3728, 8, 20, 5042);
+                    Effects.PlaySound(Location, Map, 0x1FE);
+                    Delete();
+                }
+            });
+        }
+
+        public ArchWizardPortal(Serial serial) : base(serial) { }
+
+        // Triggered when any mobile moves onto the same tile
+        public override bool OnMoveOver(Mobile m)
+        {
+            UsePortal(m);
+            return true;
+        }
+
+        // Also triggered on double-click for accessibility
+        public override void OnDoubleClick(Mobile from)
+        {
+            UsePortal(from);
+        }
+
+        private void UsePortal(Mobile m)
+        {
+            if (_used || Deleted) return;
+            if (!(m is PlayerMobile pm)) return;
+            if (pm != _target)
+            {
+                pm.SendMessage("This portal was not opened for you.");
+                return;
+            }
+
+            _used = true;
+
+            // Through-the-gate effects at origin
+            Effects.SendLocationParticles(
+                EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                0x376A, 9, 32, 5023);
+            Effects.PlaySound(Location, Map, 0x1FE);
+
+            // Move player
+            pm.MoveToWorld(_destination, _destMap);
+            pm.SendMessage(0x35, "The portal whisks you across the world...");
+
+            // Arrival effect at destination
+            Effects.SendLocationParticles(
+                EffectItem.Create(_destination, _destMap, EffectItem.DefaultDuration),
+                0x376A, 9, 32, 5023);
+            Effects.PlaySound(_destination, _destMap, 0x20E);
+
+            Delete();
+        }
+
+        // Portals are transient — no fields to save
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.Write(0);
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            reader.ReadInt();
+            // Portal expired — delete on load
+            Timer.DelayCall(TimeSpan.Zero, Delete);
         }
     }
 }
