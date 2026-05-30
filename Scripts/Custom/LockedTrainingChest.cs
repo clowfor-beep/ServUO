@@ -37,8 +37,8 @@ namespace Server.Items
         {
             Locked        = true;
             LockLevel     = 39;   // requires ~39.0 Lockpicking
-            MaxLockLevel  = 100;  // no upper-skill restriction — anyone >= 39 can pick it
-            MinLockLevel  = 0;
+            MaxLockLevel  = 100;  // no upper-skill cap — anyone >= 39 can pick it
+            RequiredSkill = 39;   // explicit skill floor
         }
 
         // ── Detect when the chest is opened after being picked ────────
