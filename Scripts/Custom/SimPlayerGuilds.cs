@@ -435,9 +435,18 @@ namespace Server.Custom
             }
             else
             {
+                // Too far from spawn — drop the chase and return to fight inside the spawn area
+                double distFromSpawn = _spawnEntryPoint != Point3D.Zero
+                    ? GetDistanceToSqrt(_spawnEntryPoint)
+                    : (_targetSpawn != null ? GetDistanceToSqrt(_targetSpawn.Location) : 0);
+
+                if (distFromSpawn > 20 && DateTime.UtcNow >= _nextReturnAt)
+                {
+                    Combatant = null;
+                    TeleportToEntryPoint();
+                }
                 // Stuck check: combatant alive but out of melee range for too long → teleport to them
-                double distToTarget = GetDistanceToSqrt(Combatant);
-                if (distToTarget > 6
+                else if (GetDistanceToSqrt(Combatant) > 6
                     && _combatantSince != DateTime.MinValue
                     && DateTime.UtcNow >= _combatantSince + TimeSpan.FromSeconds(6)
                     && DateTime.UtcNow >= _nextTeleportAt)
