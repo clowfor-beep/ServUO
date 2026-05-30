@@ -631,6 +631,10 @@ namespace Server.Custom
             AddItem(sword);
 
             PackItem(new BookOfChivalry()); // always PackItem
+
+            // Weapon specials — AI uses these automatically in combat
+            SetWeaponAbility(WeaponAbility.ArmorIgnore);    // Longsword primary — bypasses armor
+            SetWeaponAbility(WeaponAbility.ConcussionBlow); // Longsword secondary — reduces target Int
         }
 
         // -- Serialization (all champ state is transient) -------------
