@@ -80,15 +80,18 @@ namespace Server.Custom
     public class IronCompanySimPlayer : SimPlayer
     {
         // -- Champion run phase (transient — not serialized) -----------
-        private enum ChampPhase { None, TravelToSpawn, AtSpawn, TravelHome }
+        // Flow: None → GatherAtBank (walk to local bank) → WaitingAtBank (2-min rally)
+        //       → AtSpawn (Sacred Journey teleport, then fight) → back to None (Sacred Journey home)
+        private enum ChampPhase { None, GatherAtBank, WaitingAtBank, AtSpawn }
 
         private ChampPhase    _champPhase       = ChampPhase.None;
         private bool          _champScheduleSet = false;
         private DateTime      _nextChampRun     = DateTime.MinValue;
+        private DateTime      _departAt         = DateTime.MinValue; // when to Sacred Journey
         private DateTime      _leaveSpawnAt     = DateTime.MinValue; // 2-hour hard cap
         private ChampionSpawn _targetSpawn      = null;
-        private int           _lastKnownLevel   = -1;  // tracks level for tier announcements
-        private bool          _champAnnounced   = false; // true once champion mob detected
+        private int           _lastKnownLevel   = -1;
+        private bool          _champAnnounced   = false;
 
         // Used when no Felucca ChampionSpawn is found in the world at all
         private static readonly Point3D[] FallbackDestinations =
@@ -103,6 +106,13 @@ namespace Server.Custom
             "We have a spawn to clear. Let's go.",
             "Form up. We march now.",
             "Time to earn our pay. Move.",
+        };
+
+        private static readonly string[] GatherSpeech = {
+            "Iron Company, rally at the bank!",
+            "Form up here. Sacred Journey in two minutes.",
+            "Everyone gear up. We depart shortly.",
+            "Hold at the bank. Move out soon.",
         };
 
         private static readonly string[] ArrivalSpeech = {
@@ -137,8 +147,8 @@ namespace Server.Custom
 
         // -- Overrides -------------------------------------------------
 
-        /// <summary>Pause SimState movement ticks while actively fighting.</summary>
-        protected override bool SkipStateTick => Combatant != null;
+        /// <summary>Pause SimState movement ticks while fighting or rallying at the bank.</summary>
+        protected override bool SkipStateTick => Combatant != null || _champPhase == ChampPhase.WaitingAtBank;
 
         /// <summary>No banking while on a champ run.</summary>
         protected override bool CanBank => _champPhase == ChampPhase.None;
@@ -173,24 +183,20 @@ namespace Server.Custom
                         StartChampRun();
                     break;
 
-                case ChampPhase.TravelToSpawn:
-                    // ArriveAtDest() (base) sets state to Idle — that is our signal
+                case ChampPhase.GatherAtBank:
+                    // SimState goes Idle when the short walk to the local bank completes
                     if (State == SimState.Idle)
-                        ArriveAtSpawn();
+                        ArriveAtBank();
+                    break;
+
+                case ChampPhase.WaitingAtBank:
+                    // SkipStateTick holds them still while waiting
+                    if (DateTime.UtcNow >= _departAt)
+                        SacredJourneyToSpawn();
                     break;
 
                 case ChampPhase.AtSpawn:
                     TickAtSpawn();
-                    break;
-
-                case ChampPhase.TravelHome:
-                    if (State == SimState.Idle)
-                    {
-                        _champPhase   = ChampPhase.None;
-                        _targetSpawn  = null;
-                        _nextChampRun = DateTime.UtcNow
-                            + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
-                    }
                     break;
             }
         }
@@ -198,15 +204,72 @@ namespace Server.Custom
         private void StartChampRun()
         {
             _targetSpawn = FindBestFeluccaSpawn();
-            _champPhase  = ChampPhase.TravelToSpawn;
-            FightMode    = FightMode.None; // peaceful during travel
 
-            Point3D dest = (_targetSpawn != null)
-                ? _targetSpawn.Location
-                : FallbackDestinations[Utility.Random(FallbackDestinations.Length)];
+            if (_targetSpawn == null)
+                return; // no surface Felucca spawn found — skip this run cycle
 
-            StartTravelTo(dest, TimeSpan.FromMinutes(12));
+            _champPhase = ChampPhase.GatherAtBank;
+            _departAt   = DateTime.UtcNow + TimeSpan.FromMinutes(2);
+            FightMode   = FightMode.None;
+
+            // Walk to nearest city bank — a short, reliable trip
+            StartTravelTo(_bankLocation, TimeSpan.FromMinutes(5));
             Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
+        }
+
+        private void ArriveAtBank()
+        {
+            _champPhase = ChampPhase.WaitingAtBank;
+
+            Say(GatherSpeech[Utility.Random(GatherSpeech.Length)]);
+
+            // Open the bank after 1 second (flavour)
+            Timer.DelayCall(TimeSpan.FromSeconds(1.0), () =>
+            {
+                if (!Deleted && _champPhase == ChampPhase.WaitingAtBank)
+                    Say("bank");
+            });
+        }
+
+        private void SacredJourneyToSpawn()
+        {
+            _champPhase = ChampPhase.AtSpawn; // prevent re-entry on next tick
+
+            if (_targetSpawn == null || _targetSpawn.Deleted)
+            {
+                // Spawn is gone — abort run
+                _champPhase   = ChampPhase.None;
+                _targetSpawn  = null;
+                _nextChampRun = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(10, 20));
+                return;
+            }
+
+            Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
+            FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
+            PlaySound(0x1F5); // chivalry casting sound
+
+            ChampionSpawn dest = _targetSpawn;
+            Timer.DelayCall(TimeSpan.FromSeconds(2.0), () =>
+            {
+                if (Deleted) return;
+
+                // Find a walkable tile near the altar
+                Point3D landing = Point3D.Zero;
+                for (int i = 0; i < 15; i++)
+                {
+                    int ox = dest.X + Utility.RandomMinMax(-8, 8);
+                    int oy = dest.Y + Utility.RandomMinMax(-8, 8);
+                    int oz = Map.Felucca.GetAverageZ(ox, oy);
+                    if (Map.Felucca.CanSpawnMobile(ox, oy, oz))
+                    { landing = new Point3D(ox, oy, oz); break; }
+                }
+                if (landing == Point3D.Zero)
+                    landing = dest.Location;
+
+                MoveToWorld(landing, Map.Felucca);
+                ForceIdle(); // reset SimState after teleport
+                ArriveAtSpawn();
+            });
         }
 
         private void ArriveAtSpawn()
@@ -279,14 +342,32 @@ namespace Server.Custom
 
         private void BeginWithdraw(bool victory)
         {
-            _champPhase = ChampPhase.TravelHome;
-            FightMode   = FightMode.None;
-            Combatant   = null;
+            // Clean up phase immediately so no other code re-enters
+            _champPhase   = ChampPhase.None;
+            _targetSpawn  = null;
+            FightMode     = FightMode.None;
+            Combatant     = null;
+            _nextChampRun = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
 
             if (!victory)
                 Say(WithdrawSpeech[Utility.Random(1, WithdrawSpeech.Length)]);
 
-            StartTravelTo(_homeLocation, TimeSpan.FromMinutes(12));
+            // Sacred Journey back home after a short pause
+            Timer.DelayCall(TimeSpan.FromSeconds(3.0), () =>
+            {
+                if (Deleted || Map == Map.Internal) return;
+                FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
+                PlaySound(0x1F5);
+
+                Timer.DelayCall(TimeSpan.FromSeconds(2.0), () =>
+                {
+                    if (!Deleted)
+                    {
+                        MoveToWorld(_homeLocation, Map.Felucca);
+                        ForceIdle();
+                    }
+                });
+            });
         }
 
         // -- Spawn selection ------------------------------------------
@@ -370,7 +451,7 @@ namespace Server.Custom
         /// </summary>
         public string ForceChampRunAt(ChampionSpawn spawn)
         {
-            // Cleanly abort any current run
+            // Abort any current run
             if (_champPhase != ChampPhase.None)
             {
                 _champPhase = ChampPhase.None;
@@ -378,22 +459,24 @@ namespace Server.Custom
                 Combatant   = null;
             }
 
-            // Bring into world if currently inactive
+            // Bring into world if inactive
             if (Map == Map.Internal)
                 Activate();
 
             _targetSpawn      = spawn;
-            _champPhase       = ChampPhase.TravelToSpawn;
+            _champPhase       = ChampPhase.GatherAtBank;
             _champScheduleSet = true;
             _champAnnounced   = false;
             _lastKnownLevel   = spawn.Level;
-            FightMode         = FightMode.None; // peaceful during travel
+            _departAt         = DateTime.UtcNow + TimeSpan.FromMinutes(2);
+            FightMode         = FightMode.None;
 
-            StartTravelTo(spawn.Location, TimeSpan.FromMinutes(15));
+            // Walk to local bank — Sacred Journey fires at _departAt
+            StartTravelTo(_bankLocation, TimeSpan.FromMinutes(5));
             Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
 
             string spawnName = spawn.SpawnName ?? $"({spawn.X},{spawn.Y})";
-            return $"{MemberName}: marching to {spawnName}.";
+            return $"{MemberName}: rallying at bank, Sacred Journey to {spawnName} in ~2 min.";
         }
 
         // -- Template --------------------------------------------------

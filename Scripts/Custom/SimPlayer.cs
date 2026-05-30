@@ -47,7 +47,7 @@ namespace Server.Custom
         private SimState _state = SimState.OnCooldown;
         private DateTime _cooldownUntil;
         protected Point3D _homeLocation;   // protected so ShadowHandSimPlayer can use it in FleeFrom()
-        private Point3D   _bankLocation;   // nearest city bank — derived from home, not serialized
+        protected Point3D _bankLocation;   // nearest city bank — derived from home, not serialized
         private SpawnZone _homeZone;
 
         [CommandProperty(AccessLevel.GameMaster)]
@@ -436,6 +436,19 @@ namespace Server.Custom
             $"{MemberName} has no triggerable events defined.";
 
         // -- Helpers ---------------------------------------------------
+
+        /// <summary>
+        /// Resets the SimState to Idle.
+        /// Called by combat subclasses after MoveToWorld (teleport) so the state
+        /// machine doesn't try to continue interrupted travel.
+        /// </summary>
+        protected void ForceIdle()
+        {
+            _state            = SimState.Idle;
+            _idleUntil        = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(5, 15));
+            _inBankingCycle   = false;
+            _travelIsBankTrip = false;
+        }
 
         /// <summary>Returns the correct ScheduleProfile for a given guild name.</summary>
         internal static ScheduleProfile MakeSchedule(string guildName)
