@@ -46,7 +46,8 @@ namespace Server.Gumps
         private const int BTN_SKILL_LOCKED = 300;
 
         // ── State ────────────────────────────────────────────────────────
-        private static readonly HashSet<Serial> _refreshEnabled = new HashSet<Serial>();
+        private static readonly HashSet<Serial>        _refreshEnabled = new HashSet<Serial>();
+        private static readonly Dictionary<Serial,int> _currentTab     = new Dictionary<Serial,int>();
         private readonly Mobile _from;
         private readonly int    _tab;   // 0=Stats  1=Reputation  2=Skills
         private const double RefreshSeconds = 3.0;
@@ -64,10 +65,15 @@ namespace Server.Gumps
         {
             if (e.Beholder == e.Beheld && e.Beholder is PlayerMobile) OpenFor(e.Beholder, 0);
         }
-        private static void OnLogout(LogoutEventArgs e) { _refreshEnabled.Remove(e.Mobile.Serial); }
+        private static void OnLogout(LogoutEventArgs e)
+        {
+            _refreshEnabled.Remove(e.Mobile.Serial);
+            _currentTab.Remove(e.Mobile.Serial);
+        }
 
         private static void OpenFor(Mobile from, int tab)
         {
+            _currentTab[from.Serial] = tab;   // always track the latest tab choice
             _refreshEnabled.Add(from.Serial);
             from.CloseGump(typeof(CharacterStatsGump));
             from.SendGump(new CharacterStatsGump(from, tab));
@@ -88,10 +94,21 @@ namespace Server.Gumps
         private void DoRefresh()
         {
             if (_from == null || _from.Deleted || _from.NetState == null)
-            { _refreshEnabled.Remove(_from.Serial); return; }
+            { _refreshEnabled.Remove(_from.Serial); _currentTab.Remove(_from.Serial); return; }
             if (!_refreshEnabled.Contains(_from.Serial)) return;
+
+            // Use the most recently selected tab (another gump instance may have changed it)
+            int tab = _currentTab.ContainsKey(_from.Serial) ? _currentTab[_from.Serial] : 0;
+
+            // Only auto-refresh the Stats tab — Reputation and Skills don't change in real-time
+            if (tab != 0)
+            {
+                Timer.DelayCall(TimeSpan.FromSeconds(RefreshSeconds), DoRefresh);
+                return;
+            }
+
             _from.CloseGump(typeof(CharacterStatsGump));
-            _from.SendGump(new CharacterStatsGump(_from, _tab));
+            _from.SendGump(new CharacterStatsGump(_from, tab));
         }
 
         // ── Top-level builder ─────────────────────────────────────────────
@@ -336,41 +353,47 @@ namespace Server.Gumps
             }
         }
 
+        // Per-column offsets for the skills tab (relative to column x)
+        private const int SkillNameW  = 130; // name label width
+        private const int SkillValX   = 133; // value label offset
+        private const int SkillBtn1X  = 178; // Up button offset
+        private const int SkillBtn2X  = 208; // Down button offset  (+30)
+        private const int SkillBtn3X  = 238; // Locked button offset (+30)
+
         private void DrawSkillColHeader(int x, int y)
         {
-            AddLabel(x,       y, HHead, "Skill");
-            AddLabel(x + 140, y, HHead, "Value");
-            AddLabel(x + 186, y, HHead, "Up");
-            AddLabel(x + 206, y, HHead, "Dn");
-            AddLabel(x + 226, y, HHead, "Lk");
+            AddLabel(x,                  y, HHead, "Skill");
+            AddLabel(x + SkillValX,      y, HHead, "Value");
+            AddLabel(x + SkillBtn1X + 2, y, HHead, "Up");
+            AddLabel(x + SkillBtn2X + 2, y, HHead, "Dn");
+            AddLabel(x + SkillBtn3X + 2, y, HHead, "Lk");
         }
 
         private void DrawSkillRow(Skill skill, int sortedIndex, int x, int y)
         {
-            bool atCap  = skill.Value >= skill.Base / 10.0 && skill.Cap > 0 &&
-                          skill.Value >= skill.Cap / 10.0 - 0.05;
+            bool atCap  = skill.Cap > 0 && skill.Value >= skill.Cap / 10.0 - 0.05;
             int nameHue = atCap ? HAtCap : HValue;
 
-            // Name (truncated if needed)
-            string name = skill.Name.Length > 17 ? skill.Name.Substring(0, 17) : skill.Name;
+            // Name — truncate at SkillNameW chars equivalent
+            string name = skill.Name.Length > 15 ? skill.Name.Substring(0, 15) : skill.Name;
             AddLabel(x, y, nameHue, name);
 
             // Value
-            AddLabel(x + 140, y, nameHue, $"{skill.Value:F1}");
+            AddLabel(x + SkillValX, y, nameHue, $"{skill.Value:F1}");
 
-            // Lock buttons — active state shown with bright hue, inactive dimmed
+            // Lock buttons — active hue + brackets, inactive dimmed
             bool isUp     = skill.Lock == SkillLock.Up;
             bool isDown   = skill.Lock == SkillLock.Down;
             bool isLocked = skill.Lock == SkillLock.Locked;
 
-            AddButton(x + 183, y, 4005, 4007, BTN_SKILL_UP     + sortedIndex, GumpButtonType.Reply, 0);
-            AddLabel( x + 183, y, isUp     ? HGood    : HLabel, isUp     ? "[^]" : " ^ ");
+            AddButton(x + SkillBtn1X, y, 4005, 4007, BTN_SKILL_UP     + sortedIndex, GumpButtonType.Reply, 0);
+            AddLabel( x + SkillBtn1X, y, isUp     ? HGood    : HLabel, isUp     ? "[Up]" : " Up ");
 
-            AddButton(x + 203, y, 4005, 4007, BTN_SKILL_DOWN   + sortedIndex, GumpButtonType.Reply, 0);
-            AddLabel( x + 203, y, isDown   ? HAtCap   : HLabel, isDown   ? "[v]" : " v ");
+            AddButton(x + SkillBtn2X, y, 4005, 4007, BTN_SKILL_DOWN   + sortedIndex, GumpButtonType.Reply, 0);
+            AddLabel( x + SkillBtn2X, y, isDown   ? HAtCap   : HLabel, isDown   ? "[Dn]" : " Dn ");
 
-            AddButton(x + 223, y, 4005, 4007, BTN_SKILL_LOCKED + sortedIndex, GumpButtonType.Reply, 0);
-            AddLabel( x + 223, y, isLocked ? HNearCap : HLabel, isLocked ? "[=]" : " = ");
+            AddButton(x + SkillBtn3X, y, 4005, 4007, BTN_SKILL_LOCKED + sortedIndex, GumpButtonType.Reply, 0);
+            AddLabel( x + SkillBtn3X, y, isLocked ? HNearCap : HLabel, isLocked ? "[Lk]" : " Lk ");
         }
 
         private List<Skill> GetSortedSkills()
