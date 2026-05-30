@@ -2,22 +2,26 @@
 // ShadyFigure.cs
 // Scripts/Custom/ShadyFigure.cs
 //
-// A mysterious hidden informant who lurks near the Britain
-// Town Crier. He can be found via Detect Hidden, which reveals
-// him for 60 seconds before he vanishes again.
+// A mysterious hidden informant near the Britain Town Crier.
 //
-// He also responds to "I need information" spoken nearby,
-// whispering that intel costs 1,000 gold. If the player says
-// "yes" he charges the gold and reveals:
-//   - Current location of the Traveling Rare Merchant
-//   - What the Iron Company is doing with champion spawns
+// Movement behaviour:
+//   - Always hidden
+//   - Stealths for ~15 seconds (moves), then pauses for ~8 seconds
+//     to "re-hide" before moving again — mimicking a player using
+//     the Stealth skill
+//   - When revealed by Detect Hidden: freezes in place, stays
+//     visible for 60 seconds, then re-hides and resumes stealthing
+//
+// Speech:
+//   - Responds to "I need information" spoken within 8 tiles
+//   - Charges 1,000 gold when player says "yes"
+//   - Whispers current Rare Merchant location + Iron Company status
 //
 // Spawn: [add ShadyFigure
 // ============================================================
 
 using System;
 using Server;
-using Server.Commands;
 using Server.Items;
 using Server.Mobiles;
 using Server.Network;
@@ -26,20 +30,27 @@ namespace Server.Custom
 {
     public class ShadyFigure : BaseCreature
     {
-        // Anchor point — Britain Town Crier area, Felucca
+        // ── Constants ─────────────────────────────────────────────────────────
         private static readonly Point3D _anchor    = new Point3D(1446, 1696, 5);
         private static readonly Map     _anchorMap = Map.Felucca;
-        private const int WanderRadius = 10;
-        private const int InfoCost     = 1000;
+        private const int  WanderRadius   = 10;
+        private const int  InfoCost       = 1000;
+        private const int  StealthSecs    = 15;  // seconds of active stealthy movement
+        private const int  RechargeSecs   = 8;   // seconds frozen while "re-hiding"
+        private const int  RevealSecs     = 60;  // seconds visible after Detect Hidden
 
-        // Re-hide tracking
-        private bool  _wasHidden   = true;
-        private Timer _revealTimer = null;
+        // ── State ─────────────────────────────────────────────────────────────
+        private enum StealthState { Stealthing, Recharging, Revealed }
+
+        private StealthState _state        = StealthState.Stealthing;
+        private DateTime     _stateUntil   = DateTime.UtcNow.AddSeconds(StealthSecs);
+        private bool         _wasHidden    = true;
 
         // Pending buyer (30-second window to say "yes")
         private Mobile   _pendingBuyer;
         private DateTime _pendingExpiry;
 
+        // ── Construction ──────────────────────────────────────────────────────
         [Constructable]
         public ShadyFigure()
             : base(AIType.AI_Melee, FightMode.None, 10, 1, 0.2, 0.4)
@@ -52,22 +63,25 @@ namespace Server.Custom
 
             SetStr(60); SetDex(100); SetInt(100);
             SetHits(100);
-            SetSkill(SkillName.Hiding,  100.0);
-            SetSkill(SkillName.Stealth, 100.0);
+            SetSkill(SkillName.Hiding,  120.0);
+            SetSkill(SkillName.Stealth, 120.0);
             VirtualArmor = 5;
-            Fame         = 0;
-            Karma        = 0;
+            Fame  = 0;
+            Karma = 0;
 
-            // All black outfit
+            // All black
             AddItem(new Robe(1));
             AddItem(new Cloak(1));
             AddItem(new Boots(1));
             AddItem(new FloppyHat(1));
             AddItem(new BodySash(1));
 
-            // Wander within 10 tiles of anchor
             Home      = _anchor;
             RangeHome = WanderRadius;
+
+            // Start stealthing right away
+            _state      = StealthState.Stealthing;
+            _stateUntil = DateTime.UtcNow.AddSeconds(StealthSecs);
         }
 
         public ShadyFigure(Serial serial) : base(serial) { }
@@ -76,35 +90,75 @@ namespace Server.Custom
         public override bool CanBeRenamedBy(Mobile from) => false;
         public override bool ShowFameTitle              => false;
 
-        // ── Hidden detection ──────────────────────────────────────────
+        // ── Main tick ─────────────────────────────────────────────────────────
 
         public override void OnThink()
         {
             base.OnThink();
 
-            // Was hidden, now revealed — start 60-second re-hide timer
-            if (!Hidden && _wasHidden)
+            // ── Detect-hidden reveal ──────────────────────────────────────────
+            // If something externally unhid us, switch to Revealed state
+            if (!Hidden && _wasHidden && _state != StealthState.Revealed)
             {
-                _wasHidden = false;
-
-                if (_revealTimer != null) { _revealTimer.Stop(); _revealTimer = null; }
-
-                _revealTimer = Timer.DelayCall(TimeSpan.FromSeconds(60), () =>
-                {
-                    if (Deleted) return;
-                    Hidden       = true;
-                    _wasHidden   = true;
-                    _revealTimer = null;
-                });
+                _wasHidden  = false;
+                _state      = StealthState.Revealed;
+                _stateUntil = DateTime.UtcNow.AddSeconds(RevealSecs);
+                CantWalk    = true; // freeze while visible
+                return;
             }
-            else if (Hidden && !_wasHidden)
+
+            // ── State machine ─────────────────────────────────────────────────
+            switch (_state)
             {
-                // Re-hidden (e.g. timer fired)
-                _wasHidden = true;
+                case StealthState.Stealthing:
+                    // Moving while hidden — let base AI wander
+                    CantWalk = false;
+                    _wasHidden = true;
+
+                    if (DateTime.UtcNow >= _stateUntil)
+                    {
+                        // Time to pause and re-hide
+                        CantWalk    = true;
+                        Hidden      = true;
+                        _wasHidden  = true;
+                        _state      = StealthState.Recharging;
+                        _stateUntil = DateTime.UtcNow.AddSeconds(RechargeSecs);
+                    }
+                    break;
+
+                case StealthState.Recharging:
+                    // Frozen in place, re-hiding
+                    CantWalk   = true;
+                    Hidden     = true;
+                    _wasHidden = true;
+
+                    if (DateTime.UtcNow >= _stateUntil)
+                    {
+                        // Resume stealthing
+                        CantWalk    = false;
+                        _state      = StealthState.Stealthing;
+                        _stateUntil = DateTime.UtcNow.AddSeconds(StealthSecs);
+                    }
+                    break;
+
+                case StealthState.Revealed:
+                    // Visible after Detect Hidden — stay put
+                    CantWalk = true;
+
+                    if (DateTime.UtcNow >= _stateUntil)
+                    {
+                        // Re-hide and resume stealth cycle
+                        Hidden      = true;
+                        _wasHidden  = true;
+                        CantWalk    = false;
+                        _state      = StealthState.Stealthing;
+                        _stateUntil = DateTime.UtcNow.AddSeconds(StealthSecs);
+                    }
+                    break;
             }
         }
 
-        // ── Speech handler ────────────────────────────────────────────
+        // ── Speech handler ────────────────────────────────────────────────────
 
         public override void OnSpeech(SpeechEventArgs e)
         {
@@ -120,9 +174,9 @@ namespace Server.Custom
             if (speech.Contains("i need information"))
             {
                 _pendingBuyer  = from;
-                _pendingExpiry = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+                _pendingExpiry = DateTime.UtcNow.AddSeconds(30);
 
-                pm.SendMessage(0x55, "*A voice from the shadows...*");
+                pm.SendMessage(0x55, "*A voice whispers from the shadows...*");
                 pm.SendMessage(0x55, $"Information costs {InfoCost:N0} gold. Say 'yes' if you want it.");
                 return;
             }
@@ -142,44 +196,31 @@ namespace Server.Custom
 
                 pm.Backpack.ConsumeTotal(typeof(Gold), InfoCost);
 
-                // Briefly reveal self for effect
-                if (Hidden)
-                {
-                    Hidden     = true; // stays hidden — ghostly whisper only
-                }
-
-                string merchantInfo = GetMerchantInfo();
-                string champInfo    = GetChampInfo();
-
                 pm.SendMessage(0x55, "*Coins vanish into the shadows...*");
-                pm.SendMessage(0x55, $"The wandering merchant — {merchantInfo}");
-                pm.SendMessage(0x55, $"The Iron Company — {champInfo}");
+                pm.SendMessage(0x55, $"The wandering merchant — {GetMerchantInfo()}");
+                pm.SendMessage(0x55, $"The Iron Company — {GetChampInfo()}");
             }
         }
 
-        // ── Information queries ───────────────────────────────────────
+        // ── Information queries ───────────────────────────────────────────────
 
         private static string GetMerchantInfo()
         {
             string town = TravelingRareMerchantSystem.GetCurrentMerchantLocation();
-
-            if (string.IsNullOrEmpty(town))
-                return "he hasn't been spotted yet today. Check the banks — he moves every 30 minutes.";
-
-            return $"last seen at the {town} bank. He moves on every 30 minutes, so don't dawdle.";
+            return string.IsNullOrEmpty(town)
+                ? "he hasn't been spotted yet. Check the banks — he moves every 30 minutes."
+                : $"last seen at the {town} bank. He moves every 30 minutes, so don't dawdle.";
         }
 
         private static string GetChampInfo()
-        {
-            return PlayerSimulatorManager.GetIronCompanyChampStatus();
-        }
+            => PlayerSimulatorManager.GetIronCompanyChampStatus();
 
-        // ── Serialization ─────────────────────────────────────────────
+        // ── Serialization ─────────────────────────────────────────────────────
 
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
-            writer.Write(0); // version
+            writer.Write(0);
         }
 
         public override void Deserialize(GenericReader reader)
@@ -187,9 +228,12 @@ namespace Server.Custom
             base.Deserialize(reader);
             reader.ReadInt();
 
-            // Always re-hide on load — timers don't persist
-            Hidden     = true;
-            _wasHidden = true;
+            // Always start hidden and stealthing on load
+            Hidden      = true;
+            _wasHidden  = true;
+            CantWalk    = false;
+            _state      = StealthState.Stealthing;
+            _stateUntil = DateTime.UtcNow.AddSeconds(StealthSecs);
         }
     }
 }
