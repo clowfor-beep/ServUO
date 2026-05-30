@@ -70,16 +70,142 @@ namespace Server.Custom
 
     // ============================================================
     // Iron Company
-    // Heavy Warrior template -- plate armour, chivalry
+    // Heavy Warrior template -- plate armour, chivalry.
+    // Periodically forms up and travels to champion spawn areas.
+    // Fights whatever is there, then marches back to Britain.
     // ============================================================
     public class IronCompanySimPlayer : SimPlayer
     {
+        // -- Internal champ-run state (transient — not serialized) -----
+        private enum ChampPhase { None, TravelToSpawn, AtSpawn, TravelHome }
+
+        private ChampPhase _champPhase       = ChampPhase.None;
+        private bool       _champScheduleSet = false; // first-run delay init guard
+        private DateTime   _nextChampRun     = DateTime.MinValue;
+        private DateTime   _leaveSpawnAt     = DateTime.MinValue;
+
+        // Dungeon entrance coords (Felucca) used as champ run destinations.
+        // Iron Company travels here, fights whatever is present, then returns.
+        // Adjust coords to align with active ServUO champ spawn placements.
+        private static readonly Point3D[] ChampDestinations =
+        {
+            new Point3D(1296, 1263, 0),   // Despise entrance (Felucca)
+            new Point3D(533,  1566, 0),   // Shame entrance (Felucca)
+        };
+
+        // -- Flavour speech pools --------------------------------------
+        private static readonly string[] DepartureSpeech = {
+            "Iron Company, move out.",
+            "We have a spawn to clear. Let's go.",
+            "Form up. We march now.",
+            "Time to earn our pay. Move.",
+        };
+
+        private static readonly string[] ArrivalSpeech = {
+            "Iron Company — hold this floor!",
+            "Form up! We clear this spawn!",
+            "Nobody leaves until this is done.",
+            "Support on my position.",
+        };
+
+        private static readonly string[] WithdrawSpeech = {
+            "Good work. Fall back.",
+            "Clear. We're heading back.",
+            "Iron Company, withdraw.",
+            "Job done. Back to Britain.",
+        };
+
+        // -- Constructors ----------------------------------------------
         public IronCompanySimPlayer(string memberName, Point3D home,
                                     SpawnZone zone, ScheduleProfile schedule)
             : base(FBGuilds.IronCompany, memberName, home, zone, schedule) { }
 
         public IronCompanySimPlayer(Serial serial) : base(serial) { }
 
+        // -- Overrides -------------------------------------------------
+
+        /// <summary>Pause SimState ticks while actively fighting at the spawn.</summary>
+        protected override bool SkipStateTick => Combatant != null;
+
+        /// <summary>No banking while on a champ run.</summary>
+        protected override bool CanBank => _champPhase == ChampPhase.None;
+
+        public override void OnThink()
+        {
+            // Champ state machine always runs regardless of combat / SkipStateTick
+            ManageChampPhase();
+            base.OnThink();
+        }
+
+        // -- Champ run state machine -----------------------------------
+
+        private void ManageChampPhase()
+        {
+            if (Map == Map.Internal) return;
+
+            // Set the first champ run timer once, 30–90 min after first activation.
+            // Transient — resets on each server restart, which is fine.
+            if (!_champScheduleSet)
+            {
+                _champScheduleSet = true;
+                _nextChampRun     = DateTime.UtcNow
+                    + TimeSpan.FromMinutes(Utility.RandomMinMax(30, 90));
+            }
+
+            switch (_champPhase)
+            {
+                case ChampPhase.None:
+                    // Wait for the scheduled run window, then depart from Idle
+                    if (State == SimState.Idle && DateTime.UtcNow >= _nextChampRun)
+                        StartChampRun();
+                    break;
+
+                case ChampPhase.TravelToSpawn:
+                    // Base ArriveAtDest() sets state back to Idle — that is our
+                    // arrival signal (works for both clean arrival and timeout).
+                    if (State == SimState.Idle)
+                    {
+                        _champPhase   = ChampPhase.AtSpawn;
+                        FightMode     = FightMode.Closest;
+                        _leaveSpawnAt = DateTime.UtcNow
+                            + TimeSpan.FromMinutes(Utility.RandomMinMax(20, 35));
+                        Say(ArrivalSpeech[Utility.Random(ArrivalSpeech.Length)]);
+                    }
+                    break;
+
+                case ChampPhase.AtSpawn:
+                    if (DateTime.UtcNow >= _leaveSpawnAt)
+                    {
+                        _champPhase = ChampPhase.TravelHome;
+                        FightMode   = FightMode.None;
+                        Combatant   = null;
+                        Say(WithdrawSpeech[Utility.Random(WithdrawSpeech.Length)]);
+                        StartTravelTo(_homeLocation, TimeSpan.FromMinutes(12));
+                    }
+                    break;
+
+                case ChampPhase.TravelHome:
+                    // Same arrival detection — Idle means we're back home
+                    if (State == SimState.Idle)
+                    {
+                        _champPhase   = ChampPhase.None;
+                        _nextChampRun = DateTime.UtcNow
+                            + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
+                    }
+                    break;
+            }
+        }
+
+        private void StartChampRun()
+        {
+            _champPhase = ChampPhase.TravelToSpawn;
+            FightMode   = FightMode.None; // peaceful during travel
+            Point3D dest = ChampDestinations[Utility.Random(ChampDestinations.Length)];
+            StartTravelTo(dest, TimeSpan.FromMinutes(12));
+            Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
+        }
+
+        // -- Template --------------------------------------------------
         protected override void ApplyTemplate()
         {
             SetStr(85, 85);
@@ -110,6 +236,8 @@ namespace Server.Custom
             PackItem(new BookOfChivalry()); // always PackItem
         }
 
+        // -- Serialization --------------------------------------------
+        // All ChampPhase fields are transient — resetting on restart is fine.
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
