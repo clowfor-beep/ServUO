@@ -1104,7 +1104,7 @@ namespace Server.Custom
                     string leftText  = guildStr + goalText;
                     string rewardStr = $"{q.RewardGold:N0} gp  +{q.RepAmount} rep";
                     int    rewardX   = cX + cW - 10 - rewardStr.Length * charPx;
-                    AddLabel(ix, iy, 0x1, leftText);
+                    AddLabel(ix, iy, 1153, leftText);
                     AddLabel(Math.Max(rewardX, ix + leftText.Length * charPx + 10), iy, 1153, rewardStr);
 
                     y += CardH + CardGap;
