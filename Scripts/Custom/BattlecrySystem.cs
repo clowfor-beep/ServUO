@@ -120,7 +120,7 @@ namespace Server.Custom
                 m.Hits = m.HitsMax;
                 m.Stam = m.StamMax;
                 m.Mana = m.ManaMax;
-                m.CurePoison();
+                m.CurePoison(m);
 
                 if (m is PlayerMobile)
                     m.SendMessage(0x35,
@@ -203,6 +203,8 @@ namespace Server.Custom
         private Timer               _expireTimer;
         private RegenTimer          _regenTimer;
         private BattlecryLuckCharm  _luckCharm;
+        // Stored so we can remove by reference (RemoveResistanceMod takes the object)
+        private ResistanceMod       _modPhys, _modFire, _modCold, _modPois, _modNrgy;
 
         public BattlecryEntry(Mobile m, BattlecryType type, TimeSpan duration)
         {
@@ -242,11 +244,16 @@ namespace Server.Custom
                     break;
 
                 case BattlecryType.AllResists:
-                    _mobile.AddResistanceMod(new ResistanceMod(ResistanceType.Physical, ModName + "_Phys", 75));
-                    _mobile.AddResistanceMod(new ResistanceMod(ResistanceType.Fire,     ModName + "_Fire", 75));
-                    _mobile.AddResistanceMod(new ResistanceMod(ResistanceType.Cold,     ModName + "_Cold", 75));
-                    _mobile.AddResistanceMod(new ResistanceMod(ResistanceType.Poison,   ModName + "_Pois", 75));
-                    _mobile.AddResistanceMod(new ResistanceMod(ResistanceType.Energy,   ModName + "_Nrgy", 75));
+                    _modPhys = new ResistanceMod(ResistanceType.Physical, 75);
+                    _modFire = new ResistanceMod(ResistanceType.Fire,     75);
+                    _modCold = new ResistanceMod(ResistanceType.Cold,     75);
+                    _modPois = new ResistanceMod(ResistanceType.Poison,   75);
+                    _modNrgy = new ResistanceMod(ResistanceType.Energy,   75);
+                    _mobile.AddResistanceMod(_modPhys);
+                    _mobile.AddResistanceMod(_modFire);
+                    _mobile.AddResistanceMod(_modCold);
+                    _mobile.AddResistanceMod(_modPois);
+                    _mobile.AddResistanceMod(_modNrgy);
                     break;
 
                 case BattlecryType.SpeedBoost:
@@ -281,11 +288,11 @@ namespace Server.Custom
                     break;
 
                 case BattlecryType.AllResists:
-                    _mobile.RemoveResistanceMod(ModName + "_Phys");
-                    _mobile.RemoveResistanceMod(ModName + "_Fire");
-                    _mobile.RemoveResistanceMod(ModName + "_Cold");
-                    _mobile.RemoveResistanceMod(ModName + "_Pois");
-                    _mobile.RemoveResistanceMod(ModName + "_Nrgy");
+                    if (_modPhys != null) _mobile.RemoveResistanceMod(_modPhys);
+                    if (_modFire != null) _mobile.RemoveResistanceMod(_modFire);
+                    if (_modCold != null) _mobile.RemoveResistanceMod(_modCold);
+                    if (_modPois != null) _mobile.RemoveResistanceMod(_modPois);
+                    if (_modNrgy != null) _mobile.RemoveResistanceMod(_modNrgy);
                     break;
             }
         }
@@ -340,7 +347,6 @@ namespace Server.Custom
         [Constructable]
         public BattlecryLuckCharm() : base(0x1EBE, Layer.Ring)  // coin/token graphic
         {
-            Blessed          = true;
             Movable          = false;
             LootType         = LootType.Blessed;
             Attributes.Luck  = 500;
