@@ -264,10 +264,11 @@ namespace Server.Custom
             _allSimPlayers.Add(new ShadowHandSimPlayer("Pale Fen",
                 shadTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.ShadowHand(-25)));
 
-            // ── YEW (7 new members across 2 guilds) ──────────────────────────────
+            // ── YEW (10 new members across 3 guilds) ─────────────────────────────
 
             Point3D wandYew   = FBZones.Wanderers_Home_Yew;
             Point3D arcYew    = FBZones.ArcaneBrotherhood_Home_Yew;
+            Point3D ironYew   = FBZones.IronCompany_Home_Yew;
 
             // Wanderers (4)
             CreateSimPlayer(FBGuilds.Wanderers, "Forest Quinn",     wandYew, SpawnZone.Yew_City,   0);
@@ -282,6 +283,14 @@ namespace Server.Custom
                 arcYew, SpawnZone.Yew_City, ScheduleProfile.ArcaneBrotherhood(20)));
             _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("Warden Theron",
                 arcYew, SpawnZone.Yew_City, ScheduleProfile.ArcaneBrotherhood(-15)));
+
+            // Iron Company (3) -- Yew chapter, patrols the forest roads
+            _allSimPlayers.Add(new IronCompanySimPlayer("Forester Dunric",
+                ironYew, SpawnZone.Yew_City, ScheduleProfile.IronCompany(0)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Ashveil",
+                ironYew, SpawnZone.Yew_City, ScheduleProfile.IronCompany(20)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Steelback Orvyn",
+                ironYew, SpawnZone.Yew_City, ScheduleProfile.IronCompany(-15)));
 
             // ── MINOC (11 new members across 4 guilds) ───────────────────────────
 
@@ -358,11 +367,12 @@ namespace Server.Custom
             _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("Astrologer Mira",
                 arcMoonglow, SpawnZone.Moonglow_City, ScheduleProfile.ArcaneBrotherhood(-20)));
 
-            // ── SKARA BRAE (9 new members across 3 guilds) ───────────────────────
+            // ── SKARA BRAE (12 new members across 4 guilds) ──────────────────────
 
             Point3D wandSkara  = FBZones.Wanderers_Home_SkaraBrae;
             Point3D craftSkara = FBZones.CraftsmensLeague_Home_SkaraBrae;
             Point3D deadSkara  = FBZones.DeadWatchers_Home_SkaraBrae;
+            Point3D ironSkara  = FBZones.IronCompany_Home_SkaraBrae;
 
             // Wanderers (3) -- island travellers
             CreateSimPlayer(FBGuilds.Wanderers, "Saltwind",   wandSkara, SpawnZone.SkaraBrae_City,   0);
@@ -384,6 +394,14 @@ namespace Server.Custom
                 deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(20)));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Ashrift",
                 deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(-15)));
+
+            // Iron Company (3) -- Skara Brae chapter, guards the island docks
+            _allSimPlayers.Add(new IronCompanySimPlayer("Harborguard Mads",
+                ironSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.IronCompany(0)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Tide Warden Brek",
+                ironSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.IronCompany(25)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Ironclad Sael",
+                ironSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.IronCompany(-20)));
 
             // ── DUNGEON EXPANSION (6 new red/grey members) ───────────────────────
 

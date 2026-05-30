@@ -1636,7 +1636,14 @@ namespace Server.Mobiles
                     }
                     else
                     {
-                        User.SendLocalizedMessage(1157550); // You lack the taming skill required to train this creature.
+                        // Show the exact taming skill required so the player knows what to aim for
+                        double required = Math.Min(
+                            BaseCreature.MaxTameRequirement,
+                            Creature.CurrentTameSkill + profile.GetRequirementIncrease(!profile.HasIncreasedControlSlot));
+
+                        User.SendMessage(0x22,
+                            $"You lack the Animal Taming skill required to complete this training plan. " +
+                            $"You need {required:F1} taming (you have {User.Skills[SkillName.AnimalTaming].Value:F1}).");
                     }
                     break;
                 case 9:
