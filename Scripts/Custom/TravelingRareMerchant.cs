@@ -463,6 +463,46 @@ namespace Server.Custom
         }
     }
 
+    // ── Discount helpers ──────────────────────────────────────────────────────
+
+    public static class RareMerchantDiscount
+    {
+        /// <summary>
+        /// Returns the total discount fraction (0.0–1.0) for a player:
+        ///   +1% per Paladin Order reputation tier (max 4% at Allied)
+        ///   +1% per 20 points of Begging skill (max 6% at skill 120)
+        /// </summary>
+        public static double GetDiscount(PlayerMobile pm)
+        {
+            int    repTier  = (int)ReputationSystem.GetTier(pm, FBGuilds.PaladinOrder);
+            double repPct   = repTier * 0.01;
+
+            double begging  = pm.Skills[SkillName.Begging].Value;
+            double begPct   = Math.Floor(begging / 20.0) * 0.01;
+
+            return repPct + begPct; // max 10% (4 rep tiers + 6 begging tiers)
+        }
+
+        /// <summary>Returns the discounted cost, minimum 1 coin.</summary>
+        public static int ApplyCost(int baseCost, PlayerMobile pm)
+        {
+            double disc = GetDiscount(pm);
+            return Math.Max(1, (int)Math.Round(baseCost * (1.0 - disc)));
+        }
+
+        /// <summary>Returns a short readable summary e.g. "3% (Rep: 2% + Begging: 1%)"</summary>
+        public static string Summary(PlayerMobile pm)
+        {
+            int    repTier = (int)ReputationSystem.GetTier(pm, FBGuilds.PaladinOrder);
+            double begging = pm.Skills[SkillName.Begging].Value;
+            int    begTier = (int)Math.Floor(begging / 20.0);
+            int    total   = repTier + begTier;
+
+            if (total == 0) return string.Empty;
+            return $"{total}% off  (Paladin: {repTier}%  Begging: {begTier}%)";
+        }
+    }
+
     // ── Main shop gump ────────────────────────────────────────────────────────
 
     public class RareMerchantGump : Gump
@@ -505,6 +545,11 @@ namespace Server.Custom
             AddLabel(GW - 150, 14, 0x35, $"Your coins: {coins}");
             AddItem(GW - 160, 10, 0xEED, 1153); // coin graphic
 
+            // Discount summary
+            string discSummary = RareMerchantDiscount.Summary(player);
+            if (!string.IsNullOrEmpty(discSummary))
+                AddLabel(GW - 155, 33, 0x35, discSummary);
+
             // Item grid — 2 columns
             for (int i = 0; i < stock.Count; i++)
             {
@@ -521,12 +566,23 @@ namespace Server.Custom
                 AddItemProperty(slot.Item.Serial);
 
                 // Item name — truncate if too long
-                string name = slot.Name.Length > 28 ? slot.Name.Substring(0, 27) + "…" : slot.Name;
-                bool canAfford = coins >= slot.Cost;
+                string name        = slot.Name.Length > 28 ? slot.Name.Substring(0, 27) + "…" : slot.Name;
+                int    finalCost   = RareMerchantDiscount.ApplyCost(slot.Cost, player);
+                bool   discounted  = finalCost < slot.Cost;
+                bool   canAfford   = coins >= finalCost;
+
                 AddLabel(col + 60, row + 10, canAfford ? 1152 : 33, name);
 
-                // Price
-                AddLabel(col + 60, row + 28, canAfford ? 0x8A5 : 33, $"{slot.Cost} Merchant Coins");
+                // Price — show original struck-through if discounted, then final price
+                if (discounted)
+                {
+                    AddLabel(col + 60, row + 28, 33,    $"{slot.Cost}c");   // original (grey = "old")
+                    AddLabel(col + 115, row + 28, 0x8A5, $"→ {finalCost}c");
+                }
+                else
+                {
+                    AddLabel(col + 60, row + 28, canAfford ? 0x8A5 : 33, $"{finalCost} Merchant Coins");
+                }
 
                 // Buy button
                 if (canAfford)
@@ -597,12 +653,16 @@ namespace Server.Custom
             _npc       = npc;
             _slotIndex = slotIndex;
 
-            var slot  = npc.Stock[slotIndex];
-            int coins = player.Backpack != null
+            var slot      = npc.Stock[slotIndex];
+            int finalCost = RareMerchantDiscount.ApplyCost(slot.Cost, player);
+            int coins     = player.Backpack != null
                 ? player.Backpack.GetAmount(typeof(MerchantCoin)) : 0;
 
-            AddBackground(0, 0, 340, 200, 9200);
-            AddAlphaRegion(5, 5, 330, 190);
+            string discSummary = RareMerchantDiscount.Summary(player);
+            int    gumpH       = string.IsNullOrEmpty(discSummary) ? 200 : 215;
+
+            AddBackground(0, 0, 340, gumpH, 9200);
+            AddAlphaRegion(5, 5, 330, gumpH - 10);
             AddImageTiled(5, 5, 330, 45, 9304);
 
             AddLabel(170 - 60, 14, 0x8A5, "Confirm Purchase");
@@ -611,26 +671,36 @@ namespace Server.Custom
             AddItem(20, 60, slot.Item.ItemID, slot.Item.Hue);
             AddItemProperty(slot.Item.Serial);
 
-            // Item name
+            // Item name + pricing
             string name = slot.Name.Length > 26 ? slot.Name.Substring(0, 25) + "…" : slot.Name;
             AddLabel(80, 58, 1152, name);
-            AddLabel(80, 76, 0x8A5, $"Cost: {slot.Cost} Merchant Coins");
 
-            int remaining = coins - slot.Cost;
-            AddLabel(80, 94, remaining >= 0 ? 0x35 : 33,
+            if (finalCost < slot.Cost)
+            {
+                AddLabel(80, 76, 33,    $"Base: {slot.Cost}c");
+                AddLabel(80, 94, 0x8A5, $"Your price: {finalCost}c  ({discSummary})");
+            }
+            else
+            {
+                AddLabel(80, 76, 0x8A5, $"Cost: {finalCost} Merchant Coins");
+            }
+
+            int remaining = coins - finalCost;
+            int noteY = finalCost < slot.Cost ? 112 : 94;
+            AddLabel(80, noteY, remaining >= 0 ? 0x35 : 33,
                 $"Balance after: {remaining} coins");
 
-            // Separator
-            AddImageTiled(10, 120, 320, 1, 9264);
-
-            AddLabel(30, 130, 1152, "Are you sure you want to buy this item?");
+            // Separator + confirm question
+            int sepY = gumpH - 80;
+            AddImageTiled(10, sepY, 320, 1, 9264);
+            AddLabel(30, sepY + 10, 1152, "Are you sure you want to buy this item?");
 
             // Buttons
-            AddButton(60,  160, 4005, 4007, BtnConfirm, GumpButtonType.Reply, 0);
-            AddLabel(95,   162, 0x35, "Confirm");
-
-            AddButton(200, 160, 4017, 4019, BtnCancel, GumpButtonType.Reply, 0);
-            AddLabel(235,  162, 33, "Cancel");
+            int btnY = gumpH - 38;
+            AddButton(60,  btnY, 4005, 4007, BtnConfirm, GumpButtonType.Reply, 0);
+            AddLabel(95,   btnY + 2, 0x35, "Confirm");
+            AddButton(200, btnY, 4017, 4019, BtnCancel, GumpButtonType.Reply, 0);
+            AddLabel(235,  btnY + 2, 33, "Cancel");
         }
 
         public override void OnResponse(NetState sender, RelayInfo info)
@@ -660,11 +730,12 @@ namespace Server.Custom
                 return;
             }
 
-            var slot  = _npc.Stock[_slotIndex];
-            int coins = _player.Backpack != null
+            var slot      = _npc.Stock[_slotIndex];
+            int finalCost = RareMerchantDiscount.ApplyCost(slot.Cost, _player);
+            int coins     = _player.Backpack != null
                 ? _player.Backpack.GetAmount(typeof(MerchantCoin)) : 0;
 
-            if (coins < slot.Cost)
+            if (coins < finalCost)
             {
                 _player.SendMessage(0x22, "You no longer have enough coins.");
                 _player.SendGump(new RareMerchantGump(_player, _npc));
@@ -672,7 +743,7 @@ namespace Server.Custom
             }
 
             // Deduct coins and deliver item
-            _player.Backpack.ConsumeTotal(typeof(MerchantCoin), slot.Cost);
+            _player.Backpack.ConsumeTotal(typeof(MerchantCoin), finalCost);
 
             Item purchased = _npc.PurchaseSlot(_slotIndex);
             if (purchased != null)
@@ -680,7 +751,7 @@ namespace Server.Custom
 
             _npc.Say($"A fine choice. Enjoy your {slot.Name.Split(':')[0].Trim()}.");
             _player.SendMessage(0x35,
-                $"You purchased {slot.Name} for {slot.Cost} Merchant Coins.");
+                $"You purchased {slot.Name} for {finalCost} Merchant Coins.");
 
             // Effects
             Effects.SendLocationParticles(
