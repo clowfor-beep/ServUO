@@ -94,12 +94,18 @@ namespace Server.Custom
         private bool          _champAnnounced   = false;
 
         // -- Combat healing + mobility (transient) ------------------------
-        private DateTime _nextHealAt           = DateTime.MinValue;
-        private Point3D  _spawnEntryPoint      = Point3D.Zero;   // where they landed at the spawn
-        private Serial   _lastCombatantSerial  = Serial.Zero;    // for stuck detection
-        private DateTime _combatantSince       = DateTime.MinValue; // when current combatant was acquired
-        private DateTime _nextTeleportAt       = DateTime.MinValue; // teleport cooldown
-        private DateTime _nextReturnAt         = DateTime.MinValue; // return-to-entry cooldown
+        private DateTime _nextHealAt          = DateTime.MinValue;
+        private Point3D  _spawnEntryPoint     = Point3D.Zero;
+        private Serial   _lastCombatantSerial = Serial.Zero;
+        private DateTime _combatantSince      = DateTime.MinValue;
+        private DateTime _nextReturnAt        = DateTime.MinValue;
+
+        // -- Stuck resolution (3-phase) -----------------------------------
+        // None → Teleported (6s stuck) → CrossbowOut (5s after teleport still stuck)
+        // → give up after 15s with crossbow → return to entry + re-equip melee
+        private enum StuckPhase { None, Teleported, CrossbowOut }
+        private StuckPhase _stuckPhase  = StuckPhase.None;
+        private DateTime   _stuckPhaseAt = DateTime.MinValue;
 
         // Used when no Felucca ChampionSpawn is found in the world at all
         private static readonly Point3D[] FallbackDestinations =
@@ -408,24 +414,32 @@ namespace Server.Custom
             if (Combatant is SimPlayer sp && !sp.AlwaysAttackable && !sp.AlwaysMurderer)
                 Combatant = null;
 
-            // Track how long we've had this specific combatant (for stuck detection)
+            // Track how long we've had this specific combatant
             if (Combatant == null)
             {
-                _lastCombatantSerial = Serial.Zero;
-                _combatantSince      = DateTime.MinValue;
+                if (_lastCombatantSerial != Serial.Zero)
+                {
+                    // Combat ended — reset stuck phase and re-equip melee if needed
+                    if (_stuckPhase == StuckPhase.CrossbowOut) EquipMelee();
+                    _stuckPhase          = StuckPhase.None;
+                    _lastCombatantSerial = Serial.Zero;
+                    _combatantSince      = DateTime.MinValue;
+                }
             }
             else if (Combatant.Serial != _lastCombatantSerial)
             {
+                // New target — reset stuck phase
+                if (_stuckPhase == StuckPhase.CrossbowOut) EquipMelee();
+                _stuckPhase          = StuckPhase.None;
                 _lastCombatantSerial = Combatant.Serial;
                 _combatantSince      = DateTime.UtcNow;
             }
 
-            // Actively acquire a spawn target if not currently fighting
+            // No target — scan and optionally return to entry
             if (Combatant == null || Combatant.Deleted || !Combatant.Alive)
             {
                 AcquireSpawnTarget();
 
-                // Return to entry point if we drifted far away and have no target
                 if (Combatant == null && _spawnEntryPoint != Point3D.Zero
                     && GetDistanceToSqrt(_spawnEntryPoint) > 8
                     && DateTime.UtcNow >= _nextReturnAt)
@@ -435,23 +449,65 @@ namespace Server.Custom
             }
             else
             {
-                // Too far from spawn — drop the chase and return to fight inside the spawn area
-                double distFromSpawn = _spawnEntryPoint != Point3D.Zero
+                double distFromEntry = _spawnEntryPoint != Point3D.Zero
                     ? GetDistanceToSqrt(_spawnEntryPoint)
-                    : (_targetSpawn != null ? GetDistanceToSqrt(_targetSpawn.Location) : 0);
+                    : (_targetSpawn != null ? GetDistanceToSqrt(_targetSpawn.Location) : 0.0);
 
-                if (distFromSpawn > 20 && DateTime.UtcNow >= _nextReturnAt)
+                double distToTarget = GetDistanceToSqrt(Combatant);
+
+                // Chased too far outside spawn — abort and return
+                if (distFromEntry > 20 && DateTime.UtcNow >= _nextReturnAt)
                 {
-                    Combatant = null;
+                    if (_stuckPhase == StuckPhase.CrossbowOut) EquipMelee();
+                    _stuckPhase = StuckPhase.None;
+                    Combatant   = null;
                     TeleportToEntryPoint();
                 }
-                // Stuck check: combatant alive but out of melee range for too long → teleport to them
-                else if (GetDistanceToSqrt(Combatant) > 6
-                    && _combatantSince != DateTime.MinValue
-                    && DateTime.UtcNow >= _combatantSince + TimeSpan.FromSeconds(6)
-                    && DateTime.UtcNow >= _nextTeleportAt)
+                else if (distToTarget <= 4 && _stuckPhase == StuckPhase.CrossbowOut)
                 {
-                    TeleportToCombatant(Combatant as Mobile);
+                    // Managed to close the gap — swap back to melee
+                    EquipMelee();
+                    _stuckPhase = StuckPhase.None;
+                }
+                else
+                {
+                    // 3-phase stuck resolution
+                    switch (_stuckPhase)
+                    {
+                        case StuckPhase.None:
+                            // Stuck in melee range for 6s → teleport
+                            if (distToTarget > 6
+                                && _combatantSince != DateTime.MinValue
+                                && DateTime.UtcNow >= _combatantSince + TimeSpan.FromSeconds(6))
+                            {
+                                TeleportToCombatant(Combatant as Mobile);
+                                _stuckPhase  = StuckPhase.Teleported;
+                                _stuckPhaseAt = DateTime.UtcNow;
+                            }
+                            break;
+
+                        case StuckPhase.Teleported:
+                            // 5s after teleport still out of range → pull out crossbow
+                            if (distToTarget > 6
+                                && DateTime.UtcNow >= _stuckPhaseAt + TimeSpan.FromSeconds(5))
+                            {
+                                EquipCrossbow();
+                                _stuckPhase   = StuckPhase.CrossbowOut;
+                                _stuckPhaseAt = DateTime.UtcNow;
+                            }
+                            break;
+
+                        case StuckPhase.CrossbowOut:
+                            // 15s with crossbow, still no progress → give up, return
+                            if (DateTime.UtcNow >= _stuckPhaseAt + TimeSpan.FromSeconds(15))
+                            {
+                                EquipMelee();
+                                _stuckPhase = StuckPhase.None;
+                                Combatant   = null;
+                                TeleportToEntryPoint();
+                            }
+                            break;
+                    }
                 }
             }
         }
@@ -492,13 +548,11 @@ namespace Server.Custom
         }
 
         /// <summary>
-        /// Teleports to a stuck combatant that is out of melee reach.
-        /// Fires a chivalry visual, lands adjacent to the target, then re-engages.
+        /// Phase 1 stuck response: teleport next to the target.
         /// </summary>
         private void TeleportToCombatant(Mobile target)
         {
-            _nextTeleportAt = DateTime.UtcNow + TimeSpan.FromSeconds(15); // 15s cooldown
-            _combatantSince = DateTime.MinValue; // reset stuck timer
+            if (target == null) return;
 
             FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
             PlaySound(0x1F5);
@@ -508,7 +562,6 @@ namespace Server.Custom
                 if (Deleted || _champPhase != ChampPhase.AtSpawn) return;
                 if (target == null || target.Deleted || !target.Alive) return;
 
-                // Land 1-2 tiles from the target
                 Point3D landing = Point3D.Zero;
                 for (int i = 0; i < 12; i++)
                 {
@@ -522,10 +575,37 @@ namespace Server.Custom
                 MoveToWorld(landing, Map);
                 FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
 
-                // Re-engage immediately
                 if (!target.Deleted && target.Alive)
                     Combatant = target;
             });
+        }
+
+        /// <summary>Phase 2: swap to heavy crossbow for ranged engagement.</summary>
+        private void EquipCrossbow()
+        {
+            if (Backpack == null) return;
+            var xbow = Backpack.FindItemByType(typeof(HeavyCrossbow)) as HeavyCrossbow;
+            if (xbow == null) return;
+
+            var current = Weapon as BaseWeapon;
+            if (current != null && !(current is HeavyCrossbow))
+                PackItem(current);
+
+            EquipItem(xbow);
+        }
+
+        /// <summary>Swap back to longsword after ranged phase ends.</summary>
+        private void EquipMelee()
+        {
+            if (Backpack == null) return;
+            var sword = Backpack.FindItemByType(typeof(Longsword)) as Longsword;
+            if (sword == null) return;
+
+            var current = Weapon as BaseWeapon;
+            if (current != null && !(current is Longsword))
+                PackItem(current);
+
+            EquipItem(sword);
         }
 
         /// <summary>
@@ -719,6 +799,7 @@ namespace Server.Custom
             SetSkill(SkillName.Parry,       110.0, 110.0);
             SetSkill(SkillName.MagicResist, 100.0, 100.0);
             SetSkill(SkillName.Chivalry,    100.0, 100.0);
+            SetSkill(SkillName.Archery,     100.0, 100.0);
             VirtualArmor = 65;
             Fame  = 2000;
             Karma = 2000;
@@ -742,6 +823,15 @@ namespace Server.Custom
             AddItem(sword);
 
             PackItem(new BookOfChivalry()); // always PackItem
+
+            // Ranged fallback: magic heavy crossbow stored in pack
+            // EquipCrossbow() swaps to this when stuck on unreachable targets
+            var xbow = new HeavyCrossbow();
+            xbow.WeaponAttributes.HitFireball  = 30; // 30% hit fireball — ranged elemental damage
+            xbow.Attributes.WeaponDamage       = 50;
+            xbow.Attributes.AttackChance       = 15;
+            PackItem(xbow);
+            PackItem(new Bolt(500)); // 500 bolts
 
             // Weapon specials — AI uses these automatically in combat
             SetWeaponAbility(WeaponAbility.ArmorIgnore);    // Longsword primary — bypasses armor
