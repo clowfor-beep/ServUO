@@ -30,7 +30,7 @@ namespace Server.Custom
         private static readonly Point3D ManagerLocation = new Point3D(0, 0, 0);
 
         // -- Config ---------------------------------------------------
-        public const int MaxActiveSimultaneous = 30;
+        public const int MaxActiveSimultaneous = 100;
 
         // -- Roster ---------------------------------------------------
         // All SimPlayers. Persisted via item serialization.
@@ -128,12 +128,16 @@ namespace Server.Custom
             _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("The Recluse",
                 arcaneHome, SpawnZone.Britain_Roads, ScheduleProfile.ArcaneBrotherhood(-30)));
 
-            // SILVER WOLVES -- 2 members
+            // SILVER WOLVES -- 4 members
             Point3D wolvesHome = FBZones.SilverWolves_Home;
             _allSimPlayers.Add(new SilverWolvesSimPlayer("Captain Rowena",
                 wolvesHome, SpawnZone.Britain_Roads, ScheduleProfile.SilverWolves(0)));
             _allSimPlayers.Add(new SilverWolvesSimPlayer("Scout Finn",
                 wolvesHome, SpawnZone.Britain_Roads, ScheduleProfile.SilverWolves(15)));
+            _allSimPlayers.Add(new SilverWolvesSimPlayer("Patrol Ryen",
+                wolvesHome, SpawnZone.Britain_Roads, ScheduleProfile.SilverWolves(-20)));
+            _allSimPlayers.Add(new SilverWolvesSimPlayer("Sentinel Kade",
+                wolvesHome, SpawnZone.Britain_Roads, ScheduleProfile.SilverWolves(30)));
 
             // THE SHADOW HAND -- 3 members
             Point3D shadowHome = FBZones.ShadowHand_Home;
@@ -201,7 +205,201 @@ namespace Server.Custom
             _allSimPlayers.Add(new ShadowbladeSimPlayer("The Ledger",
                 bladeHome, SpawnZone.WantedZone_NearWrong, ScheduleProfile.Shadowblade(-20)));
 
-            Console.WriteLine($"[SimPlayer] Roster created: {_allSimPlayers.Count} SimPlayers (36 across 12 guilds).");
+            // ════════════════════════════════════════════════════════════════════
+            // MULTI-CITY EXPANSION
+            // Each SimPlayer automatically banks at whichever city bank is nearest
+            // its home — no extra wiring needed.  All coords are approximate; verify
+            // with [where in-game and adjust FBZones constants if needed.
+            // ════════════════════════════════════════════════════════════════════
+
+            // ── TRINSIC (16 new members across 5 guilds) ─────────────────────────
+
+            Point3D wandTrinsic   = FBZones.Wanderers_Home_Trinsic;
+            Point3D ironTrinsic   = FBZones.IronCompany_Home_Trinsic;
+            Point3D wolvTrinsic   = FBZones.SilverWolves_Home_Trinsic;
+            Point3D palTrinsic    = FBZones.PaladinOrder_Home_Trinsic;
+            Point3D shadTrinsic   = FBZones.ShadowHand_Home_Trinsic;
+
+            // Wanderers (4)
+            CreateSimPlayer(FBGuilds.Wanderers, "Alec Southford",   wandTrinsic, SpawnZone.Trinsic_City,   0);
+            CreateSimPlayer(FBGuilds.Wanderers, "Brin of Trinsic",  wandTrinsic, SpawnZone.Trinsic_City,  20);
+            CreateSimPlayer(FBGuilds.Wanderers, "Old Saul",         wandTrinsic, SpawnZone.Trinsic_City, -15);
+            CreateSimPlayer(FBGuilds.Wanderers, "Traveller Wyn",    wandTrinsic, SpawnZone.Trinsic_City,  10);
+
+            // Iron Company (3) -- Trinsic chapter, still runs champ spawns
+            _allSimPlayers.Add(new IronCompanySimPlayer("Vanguard Petra",
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(0)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Shield Wall Dorn",
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(15)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Tactician Yeln",
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(-10)));
+
+            // Silver Wolves (3) -- patrols the Trinsic streets
+            _allSimPlayers.Add(new SilverWolvesSimPlayer("Constable Daven",
+                wolvTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.SilverWolves(0)));
+            _allSimPlayers.Add(new SilverWolvesSimPlayer("Warden Tess",
+                wolvTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.SilverWolves(20)));
+            _allSimPlayers.Add(new SilverWolvesSimPlayer("Watchman Ardor",
+                wolvTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.SilverWolves(-15)));
+
+            // Paladin Order (3) -- Trinsic is the paladin city
+            _allSimPlayers.Add(new PaladinOrderSimPlayer("Knight-Captain Lira",
+                palTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.PaladinOrder(0)));
+            _allSimPlayers.Add(new PaladinOrderSimPlayer("Squire Petyr",
+                palTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.PaladinOrder(25)));
+            _allSimPlayers.Add(new PaladinOrderSimPlayer("High Justiciar Wren",
+                palTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.PaladinOrder(-20)));
+
+            // Shadow Hand (3) -- thieves work every city
+            _allSimPlayers.Add(new ShadowHandSimPlayer("Dockside Sam",
+                shadTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.ShadowHand(0)));
+            _allSimPlayers.Add(new ShadowHandSimPlayer("The Hook",
+                shadTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.ShadowHand(30)));
+            _allSimPlayers.Add(new ShadowHandSimPlayer("Pale Fen",
+                shadTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.ShadowHand(-25)));
+
+            // ── YEW (7 new members across 2 guilds) ──────────────────────────────
+
+            Point3D wandYew   = FBZones.Wanderers_Home_Yew;
+            Point3D arcYew    = FBZones.ArcaneBrotherhood_Home_Yew;
+
+            // Wanderers (4)
+            CreateSimPlayer(FBGuilds.Wanderers, "Forest Quinn",     wandYew, SpawnZone.Yew_City,   0);
+            CreateSimPlayer(FBGuilds.Wanderers, "Dara of Yew",      wandYew, SpawnZone.Yew_City,  15);
+            CreateSimPlayer(FBGuilds.Wanderers, "Rowan Fartrail",   wandYew, SpawnZone.Yew_City, -20);
+            CreateSimPlayer(FBGuilds.Wanderers, "Nils the Pilgrim", wandYew, SpawnZone.Yew_City,  10);
+
+            // Arcane Brotherhood (3) -- court mages at Yew courthouse
+            _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("Court Mage Orin",
+                arcYew, SpawnZone.Yew_City, ScheduleProfile.ArcaneBrotherhood(0)));
+            _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("Druid Sylva",
+                arcYew, SpawnZone.Yew_City, ScheduleProfile.ArcaneBrotherhood(20)));
+            _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("Warden Theron",
+                arcYew, SpawnZone.Yew_City, ScheduleProfile.ArcaneBrotherhood(-15)));
+
+            // ── MINOC (11 new members across 4 guilds) ───────────────────────────
+
+            Point3D wandMinoc  = FBZones.Wanderers_Home_Minoc;
+            Point3D craftMinoc = FBZones.CraftsmensLeague_Home_Minoc;
+            Point3D dreadMinoc = FBZones.DreadHunters_Home_Minoc;
+            Point3D shadMinoc  = FBZones.ShadowHand_Home_Minoc;
+
+            // Wanderers (2)
+            CreateSimPlayer(FBGuilds.Wanderers, "Crossroads Fen",    wandMinoc, SpawnZone.Minoc_City,   0);
+            CreateSimPlayer(FBGuilds.Wanderers, "Mountain Pass Dar", wandMinoc, SpawnZone.Minoc_City,  20);
+
+            // Craftsmen's League (3) -- miners and smelters
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Miner Keth",
+                craftMinoc, SpawnZone.Minoc_City, ScheduleProfile.CraftsmensLeague(0)));
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Stonecutter Riva",
+                craftMinoc, SpawnZone.Minoc_City, ScheduleProfile.CraftsmensLeague(20)));
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Smelter Bors",
+                craftMinoc, SpawnZone.Minoc_City, ScheduleProfile.CraftsmensLeague(-15)));
+
+            // Dread Hunters (3) -- hunt near the mines
+            _allSimPlayers.Add(new DreadHuntersSimPlayer("Mountaineer Cask",
+                dreadMinoc, SpawnZone.Minoc_City, ScheduleProfile.DreadHunters(0)));
+            _allSimPlayers.Add(new DreadHuntersSimPlayer("Tracker Bolt",
+                dreadMinoc, SpawnZone.Minoc_City, ScheduleProfile.DreadHunters(15)));
+            _allSimPlayers.Add(new DreadHuntersSimPlayer("Ridge Walker",
+                dreadMinoc, SpawnZone.Minoc_City, ScheduleProfile.DreadHunters(-25)));
+
+            // Shadow Hand (3) -- ore thieves and fence operators
+            _allSimPlayers.Add(new ShadowHandSimPlayer("Tunnels",
+                shadMinoc, SpawnZone.Minoc_City, ScheduleProfile.ShadowHand(0)));
+            _allSimPlayers.Add(new ShadowHandSimPlayer("Ore Fingers",
+                shadMinoc, SpawnZone.Minoc_City, ScheduleProfile.ShadowHand(30)));
+            _allSimPlayers.Add(new ShadowHandSimPlayer("Rook",
+                shadMinoc, SpawnZone.Minoc_City, ScheduleProfile.ShadowHand(-20)));
+
+            // ── VESPER (10 new members across 3 guilds) ──────────────────────────
+
+            Point3D wandVesper  = FBZones.Wanderers_Home_Vesper;
+            Point3D craftVesper = FBZones.CraftsmensLeague_Home_Vesper;
+            Point3D shadVesper  = FBZones.ShadowHand_Home_Vesper;
+
+            // Wanderers (4)
+            CreateSimPlayer(FBGuilds.Wanderers, "Merchant Devin",   wandVesper, SpawnZone.Vesper_City,   0);
+            CreateSimPlayer(FBGuilds.Wanderers, "Tomas of Vesper",  wandVesper, SpawnZone.Vesper_City,  20);
+            CreateSimPlayer(FBGuilds.Wanderers, "Lorn the Drifter", wandVesper, SpawnZone.Vesper_City, -15);
+            CreateSimPlayer(FBGuilds.Wanderers, "Harbour Wick",     wandVesper, SpawnZone.Vesper_City,  10);
+
+            // Craftsmen's League (3) -- shipwrights and rope-makers
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Shipwright Colm",
+                craftVesper, SpawnZone.Vesper_City, ScheduleProfile.CraftsmensLeague(0)));
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Sailmaker Darra",
+                craftVesper, SpawnZone.Vesper_City, ScheduleProfile.CraftsmensLeague(25)));
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Cooper Wex",
+                craftVesper, SpawnZone.Vesper_City, ScheduleProfile.CraftsmensLeague(-20)));
+
+            // Shadow Hand (3) -- smugglers and dock runners
+            _allSimPlayers.Add(new ShadowHandSimPlayer("River Kyn",
+                shadVesper, SpawnZone.Vesper_City, ScheduleProfile.ShadowHand(0)));
+            _allSimPlayers.Add(new ShadowHandSimPlayer("The Smuggler",
+                shadVesper, SpawnZone.Vesper_City, ScheduleProfile.ShadowHand(20)));
+            _allSimPlayers.Add(new ShadowHandSimPlayer("Nocturne",
+                shadVesper, SpawnZone.Vesper_City, ScheduleProfile.ShadowHand(-10)));
+
+            // ── MOONGLOW (3 new members, 1 guild) ────────────────────────────────
+
+            Point3D arcMoonglow = FBZones.ArcaneBrotherhood_Home_Moonglow;
+
+            // Arcane Brotherhood (3) -- mage island chapter
+            _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("Inscriber Lorn",
+                arcMoonglow, SpawnZone.Moonglow_City, ScheduleProfile.ArcaneBrotherhood(0)));
+            _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("Reagent Keeper Voss",
+                arcMoonglow, SpawnZone.Moonglow_City, ScheduleProfile.ArcaneBrotherhood(30)));
+            _allSimPlayers.Add(new ArcaneBrotherhoodSimPlayer("Astrologer Mira",
+                arcMoonglow, SpawnZone.Moonglow_City, ScheduleProfile.ArcaneBrotherhood(-20)));
+
+            // ── SKARA BRAE (9 new members across 3 guilds) ───────────────────────
+
+            Point3D wandSkara  = FBZones.Wanderers_Home_SkaraBrae;
+            Point3D craftSkara = FBZones.CraftsmensLeague_Home_SkaraBrae;
+            Point3D deadSkara  = FBZones.DeadWatchers_Home_SkaraBrae;
+
+            // Wanderers (3) -- island travellers
+            CreateSimPlayer(FBGuilds.Wanderers, "Saltwind",   wandSkara, SpawnZone.SkaraBrae_City,   0);
+            CreateSimPlayer(FBGuilds.Wanderers, "Brine Yael", wandSkara, SpawnZone.SkaraBrae_City,  25);
+            CreateSimPlayer(FBGuilds.Wanderers, "Tidewalker", wandSkara, SpawnZone.SkaraBrae_City, -20);
+
+            // Craftsmen's League (3) -- fishermen, netmakers, boatwrights
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Fisherman Gareth",
+                craftSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.CraftsmensLeague(0)));
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Netmaker Sian",
+                craftSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.CraftsmensLeague(15)));
+            _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Boatwright Edda",
+                craftSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.CraftsmensLeague(-25)));
+
+            // Dead Watchers (3) -- the island's graveyard has its appeal
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("The Ferryman",
+                deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(0)));
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("Isle Shade",
+                deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(20)));
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("Ashrift",
+                deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(-15)));
+
+            // ── DUNGEON EXPANSION (6 new red/grey members) ───────────────────────
+
+            // Blood Pact near Shame entrance (3) -- surface ambushers
+            Point3D bloodShame = FBZones.BloodPact_Home_NearShame;
+            _allSimPlayers.Add(new BloodPactSimPlayer("Shade Covenant",
+                bloodShame, SpawnZone.WantedZone_NearShame, ScheduleProfile.BloodPact(0)));
+            _allSimPlayers.Add(new BloodPactSimPlayer("The Rite Keeper",
+                bloodShame, SpawnZone.WantedZone_NearShame, ScheduleProfile.BloodPact(25)));
+            _allSimPlayers.Add(new BloodPactSimPlayer("Pale Magister",
+                bloodShame, SpawnZone.WantedZone_NearShame, ScheduleProfile.BloodPact(-20)));
+
+            // The Void near Hythloth entrance (3) -- surface ambushers
+            Point3D voidHythloth = FBZones.TheVoid_Home_NearHythloth;
+            _allSimPlayers.Add(new TheVoidSimPlayer("Null",
+                voidHythloth, SpawnZone.WantedZone_NearHythloth, ScheduleProfile.TheVoid(0)));
+            _allSimPlayers.Add(new TheVoidSimPlayer("The Abyss Watcher",
+                voidHythloth, SpawnZone.WantedZone_NearHythloth, ScheduleProfile.TheVoid(30)));
+            _allSimPlayers.Add(new TheVoidSimPlayer("Void Remnant",
+                voidHythloth, SpawnZone.WantedZone_NearHythloth, ScheduleProfile.TheVoid(-20)));
+
+            Console.WriteLine($"[SimPlayer] Roster created: {_allSimPlayers.Count} SimPlayers (100 across 12 guilds, 7 cities).");
         }
 
         private void CreateSimPlayer(string guild, string memberName, Point3D home,

@@ -47,6 +47,7 @@ namespace Server.Custom
         private SimState _state = SimState.OnCooldown;
         private DateTime _cooldownUntil;
         protected Point3D _homeLocation;   // protected so ShadowHandSimPlayer can use it in FleeFrom()
+        private Point3D   _bankLocation;   // nearest city bank — derived from home, not serialized
         private SpawnZone _homeZone;
 
         [CommandProperty(AccessLevel.GameMaster)]
@@ -93,6 +94,7 @@ namespace Server.Custom
             _memberName   = memberName;
             _homeLocation = homeLocation;
             _homeZone     = homeZone;
+            _bankLocation = DeriveNearestBank(homeLocation);
             _schedule     = schedule;
             _chatBrain    = new SimChatBrain(guildName);
 
@@ -231,8 +233,8 @@ namespace Server.Custom
 
         private void StartBankingTrip()
         {
-            // Pick a tile within +-4 of the Britain bank NPC coord
-            Point3D bankBase = FBZones.BountyBoard_Britain_Bank;
+            // Pick a tile within +-4 of the nearest city bank
+            Point3D bankBase = _bankLocation;
             int bx = bankBase.X + Utility.RandomMinMax(-4, 4);
             int by = bankBase.Y + Utility.RandomMinMax(-4, 4);
             int bz = Map.Felucca.GetAverageZ(bx, by);
@@ -299,6 +301,27 @@ namespace Server.Custom
                 _state           = SimState.Idle;
                 _idleUntil       = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(5, 20));
             }
+        }
+
+        /// <summary>
+        /// Returns the city bank Point3D closest to the given home location.
+        /// Called once in the constructor and once in Deserialize.
+        /// Dungeon-based guilds have CanBank==false so the value is never used for them,
+        /// but we still compute it to avoid a null-like default.
+        /// </summary>
+        private static Point3D DeriveNearestBank(Point3D home)
+        {
+            Point3D nearest  = FBZones.BountyBoard_Britain_Bank;
+            double  minDist2 = double.MaxValue;
+
+            foreach (Point3D bank in FBZones.AllCityBanks)
+            {
+                long dx   = bank.X - home.X;
+                long dy   = bank.Y - home.Y;
+                double d2 = dx * dx + dy * dy;
+                if (d2 < minDist2) { minDist2 = d2; nearest = bank; }
+            }
+            return nearest;
         }
 
         /// <summary>Returns a random walkable point within ~20 tiles of home.</summary>
@@ -458,6 +481,7 @@ namespace Server.Custom
             _cooldownUntil = reader.ReadDateTime();
             _homeLocation  = reader.ReadPoint3D();
             _homeZone      = (SpawnZone)reader.ReadInt();
+            _bankLocation  = DeriveNearestBank(_homeLocation); // computed — not serialized
 
             if (version >= 1)
                 _nextBankingTime = reader.ReadDateTime();

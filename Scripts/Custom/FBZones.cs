@@ -129,6 +129,16 @@ namespace Server.Custom
         WantedZone_NearDestard,
         WantedZone_NearDeceit,
         WantedZone_NearHythloth,
+
+        // ── SimPlayer city wander zones ───────────────────────────────────────────
+        // Used by SimPlayer.GetRandomNearbyPoint to keep wandering within city limits.
+        // Also used as the homeZone parameter for city-based SimPlayer members.
+        Trinsic_City,
+        Yew_City,
+        Minoc_City,
+        Vesper_City,
+        Moonglow_City,
+        SkaraBrae_City,
     }
 
     // ── Hunter spawn entry ────────────────────────────────────────────────
@@ -436,6 +446,29 @@ namespace Server.Custom
 
                 [SpawnZone.WantedZone_NearHythloth] = new ZoneData(Map.Felucca,
                     new Rectangle2D(4685, 3785, 50, 50)),
+
+                // ── SimPlayer city wander zones ───────────────────────────────────
+                // Main inhabited area of each Felucca city.
+                // All coords approximate — verify with [where and tune if SimPlayers
+                // spawn inside buildings or on water.
+
+                [SpawnZone.Trinsic_City] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(1815, 2690, 130, 140)),
+
+                [SpawnZone.Yew_City] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(490, 950, 170, 90)),
+
+                [SpawnZone.Minoc_City] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(2470, 530, 140, 120)),
+
+                [SpawnZone.Vesper_City] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(2920, 775, 140, 110)),
+
+                [SpawnZone.Moonglow_City] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(4370, 1100, 180, 160)),
+
+                [SpawnZone.SkaraBrae_City] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(525, 2000, 180, 200)),
             };
         }
 
@@ -641,6 +674,66 @@ namespace Server.Custom
         public static readonly Point3D BritainBoard = BountyBoard_Britain_Bank;
         public static readonly Point3D TrinsicBoard = ReputationNPC_PaladinOrder_Trinsic;
         public static readonly Point3D MinocBoard   = CraftsmensLeague_Board_Minoc;
+
+        // ── City bank locations ───────────────────────────────────────────────────
+        // Used by SimPlayer.DeriveNearestBank to auto-assign banking destinations.
+        // All coords approximate — verify with [where in-game.
+        public static readonly Point3D Bank_Trinsic   = new Point3D(1823, 2745, 0);
+        public static readonly Point3D Bank_Yew       = new Point3D( 557,  984, 0);
+        public static readonly Point3D Bank_Minoc     = new Point3D(2519,  583, 0);
+        public static readonly Point3D Bank_Vesper    = new Point3D(2979,  822, 0);
+        public static readonly Point3D Bank_Moonglow  = new Point3D(4458, 1169, 0);
+        public static readonly Point3D Bank_SkaraBrae = new Point3D( 596, 2119, 0);
+
+        // Flat array of all city banks — iterated by SimPlayer.DeriveNearestBank
+        public static readonly Point3D[] AllCityBanks =
+        {
+            new Point3D(1439, 1695,  5), // Britain   (matches BountyBoard_Britain_Bank)
+            new Point3D(1823, 2745,  0), // Trinsic
+            new Point3D( 557,  984,  0), // Yew
+            new Point3D(2519,  583,  0), // Minoc
+            new Point3D(2979,  822,  0), // Vesper
+            new Point3D(4458, 1169,  0), // Moonglow
+            new Point3D( 596, 2119,  0), // Skara Brae
+        };
+
+        // ── New city guild homes ──────────────────────────────────────────────────
+        // All approximate — verify with [where before deploying.
+        // SimPlayers wander ±20 tiles of their home so small offsets are fine.
+
+        // Trinsic
+        public static readonly Point3D Wanderers_Home_Trinsic          = new Point3D(1857, 2757, 0);
+        public static readonly Point3D IronCompany_Home_Trinsic        = new Point3D(1861, 2757, 0);
+        public static readonly Point3D SilverWolves_Home_Trinsic       = new Point3D(1865, 2757, 0);
+        public static readonly Point3D PaladinOrder_Home_Trinsic       = new Point3D(1869, 2757, 0);
+        public static readonly Point3D ShadowHand_Home_Trinsic         = new Point3D(1853, 2761, 0);
+
+        // Yew
+        public static readonly Point3D Wanderers_Home_Yew              = new Point3D(535, 976, 0);
+        public static readonly Point3D ArcaneBrotherhood_Home_Yew      = new Point3D(539, 976, 0);
+
+        // Minoc
+        public static readonly Point3D Wanderers_Home_Minoc            = new Point3D(2535, 577, 0);
+        public static readonly Point3D CraftsmensLeague_Home_Minoc     = new Point3D(2527, 573, 0);
+        public static readonly Point3D DreadHunters_Home_Minoc         = new Point3D(2531, 573, 0);
+        public static readonly Point3D ShadowHand_Home_Minoc           = new Point3D(2523, 577, 0);
+
+        // Vesper
+        public static readonly Point3D Wanderers_Home_Vesper           = new Point3D(2995, 816, 0);
+        public static readonly Point3D CraftsmensLeague_Home_Vesper    = new Point3D(2991, 816, 0);
+        public static readonly Point3D ShadowHand_Home_Vesper          = new Point3D(2987, 816, 0);
+
+        // Moonglow
+        public static readonly Point3D ArcaneBrotherhood_Home_Moonglow = new Point3D(4449, 1161, 0);
+
+        // Skara Brae
+        public static readonly Point3D Wanderers_Home_SkaraBrae        = new Point3D(588, 2130, 0);
+        public static readonly Point3D CraftsmensLeague_Home_SkaraBrae = new Point3D(592, 2130, 0);
+        public static readonly Point3D DeadWatchers_Home_SkaraBrae     = new Point3D(596, 2134, 0);
+
+        // Dungeon outskirt expansion homes (CanBank = false for all these guilds)
+        public static readonly Point3D BloodPact_Home_NearShame      = new Point3D(515, 1556, 0);
+        public static readonly Point3D TheVoid_Home_NearHythloth     = new Point3D(4710, 3808, 0);
 
         // ── Public helpers ────────────────────────────────────────────────────
 
