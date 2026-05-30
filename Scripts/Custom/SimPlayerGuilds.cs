@@ -15,6 +15,7 @@
 using System;
 using Server;
 using Server.Custom;
+using Server.Engines.CannedEvil;
 using Server.Items;
 using Server.Mobiles;
 
@@ -71,29 +72,32 @@ namespace Server.Custom
     // ============================================================
     // Iron Company
     // Heavy Warrior template -- plate armour, chivalry.
-    // Periodically forms up and travels to champion spawn areas.
-    // Fights whatever is there, then marches back to Britain.
+    // Periodically finds a real ChampionSpawn on Felucca, travels
+    // to it, activates it if needed, fights through all tiers,
+    // targets the champion directly when it spawns, and returns
+    // home when the champion dies (or after a 2-hour hard cap).
     // ============================================================
     public class IronCompanySimPlayer : SimPlayer
     {
-        // -- Internal champ-run state (transient — not serialized) -----
+        // -- Champion run phase (transient — not serialized) -----------
         private enum ChampPhase { None, TravelToSpawn, AtSpawn, TravelHome }
 
-        private ChampPhase _champPhase       = ChampPhase.None;
-        private bool       _champScheduleSet = false; // first-run delay init guard
-        private DateTime   _nextChampRun     = DateTime.MinValue;
-        private DateTime   _leaveSpawnAt     = DateTime.MinValue;
+        private ChampPhase    _champPhase       = ChampPhase.None;
+        private bool          _champScheduleSet = false;
+        private DateTime      _nextChampRun     = DateTime.MinValue;
+        private DateTime      _leaveSpawnAt     = DateTime.MinValue; // 2-hour hard cap
+        private ChampionSpawn _targetSpawn      = null;
+        private int           _lastKnownLevel   = -1;  // tracks level for tier announcements
+        private bool          _champAnnounced   = false; // true once champion mob detected
 
-        // Dungeon entrance coords (Felucca) used as champ run destinations.
-        // Iron Company travels here, fights whatever is present, then returns.
-        // Adjust coords to align with active ServUO champ spawn placements.
-        private static readonly Point3D[] ChampDestinations =
+        // Used when no Felucca ChampionSpawn is found in the world at all
+        private static readonly Point3D[] FallbackDestinations =
         {
             new Point3D(1296, 1263, 0),   // Despise entrance (Felucca)
             new Point3D(533,  1566, 0),   // Shame entrance (Felucca)
         };
 
-        // -- Flavour speech pools --------------------------------------
+        // -- Speech pools ----------------------------------------------
         private static readonly string[] DepartureSpeech = {
             "Iron Company, move out.",
             "We have a spawn to clear. Let's go.",
@@ -108,11 +112,20 @@ namespace Server.Custom
             "Support on my position.",
         };
 
+        // Indexed 0-3 for level 1-4 transitions
+        private static readonly string[] TierSpeech = {
+            "First skulls lit! Keep pushing!",
+            "Second tier! Stay focused!",
+            "Third tier! Champion is close!",
+            "Final tier! CHAMPION INCOMING!",
+        };
+
+        // Index 0 = victory line (champion killed); 1-3 = timeout withdraw lines
         private static readonly string[] WithdrawSpeech = {
+            "Champion down! Iron Company stands!",
             "Good work. Fall back.",
             "Clear. We're heading back.",
             "Iron Company, withdraw.",
-            "Job done. Back to Britain.",
         };
 
         // -- Constructors ----------------------------------------------
@@ -124,7 +137,7 @@ namespace Server.Custom
 
         // -- Overrides -------------------------------------------------
 
-        /// <summary>Pause SimState ticks while actively fighting at the spawn.</summary>
+        /// <summary>Pause SimState movement ticks while actively fighting.</summary>
         protected override bool SkipStateTick => Combatant != null;
 
         /// <summary>No banking while on a champ run.</summary>
@@ -132,63 +145,47 @@ namespace Server.Custom
 
         public override void OnThink()
         {
-            // Champ state machine always runs regardless of combat / SkipStateTick
+            // Champ state machine always runs — even during combat / SkipStateTick
             ManageChampPhase();
             base.OnThink();
         }
 
-        // -- Champ run state machine -----------------------------------
+        // -- Champion run state machine --------------------------------
 
         private void ManageChampPhase()
         {
             if (Map == Map.Internal) return;
 
-            // Set the first champ run timer once, 30–90 min after first activation.
-            // Transient — resets on each server restart, which is fine.
+            // One-time init: stagger first run 30-90 min after activation
             if (!_champScheduleSet)
             {
                 _champScheduleSet = true;
-                _nextChampRun     = DateTime.UtcNow
+                _nextChampRun = DateTime.UtcNow
                     + TimeSpan.FromMinutes(Utility.RandomMinMax(30, 90));
             }
 
             switch (_champPhase)
             {
                 case ChampPhase.None:
-                    // Wait for the scheduled run window, then depart from Idle
                     if (State == SimState.Idle && DateTime.UtcNow >= _nextChampRun)
                         StartChampRun();
                     break;
 
                 case ChampPhase.TravelToSpawn:
-                    // Base ArriveAtDest() sets state back to Idle — that is our
-                    // arrival signal (works for both clean arrival and timeout).
+                    // ArriveAtDest() (base) sets state to Idle — that is our signal
                     if (State == SimState.Idle)
-                    {
-                        _champPhase   = ChampPhase.AtSpawn;
-                        FightMode     = FightMode.Closest;
-                        _leaveSpawnAt = DateTime.UtcNow
-                            + TimeSpan.FromMinutes(Utility.RandomMinMax(20, 35));
-                        Say(ArrivalSpeech[Utility.Random(ArrivalSpeech.Length)]);
-                    }
+                        ArriveAtSpawn();
                     break;
 
                 case ChampPhase.AtSpawn:
-                    if (DateTime.UtcNow >= _leaveSpawnAt)
-                    {
-                        _champPhase = ChampPhase.TravelHome;
-                        FightMode   = FightMode.None;
-                        Combatant   = null;
-                        Say(WithdrawSpeech[Utility.Random(WithdrawSpeech.Length)]);
-                        StartTravelTo(_homeLocation, TimeSpan.FromMinutes(12));
-                    }
+                    TickAtSpawn();
                     break;
 
                 case ChampPhase.TravelHome:
-                    // Same arrival detection — Idle means we're back home
                     if (State == SimState.Idle)
                     {
                         _champPhase   = ChampPhase.None;
+                        _targetSpawn  = null;
                         _nextChampRun = DateTime.UtcNow
                             + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
                     }
@@ -198,11 +195,169 @@ namespace Server.Custom
 
         private void StartChampRun()
         {
-            _champPhase = ChampPhase.TravelToSpawn;
-            FightMode   = FightMode.None; // peaceful during travel
-            Point3D dest = ChampDestinations[Utility.Random(ChampDestinations.Length)];
+            _targetSpawn = FindBestFeluccaSpawn();
+            _champPhase  = ChampPhase.TravelToSpawn;
+            FightMode    = FightMode.None; // peaceful during travel
+
+            Point3D dest = (_targetSpawn != null)
+                ? _targetSpawn.Location
+                : FallbackDestinations[Utility.Random(FallbackDestinations.Length)];
+
             StartTravelTo(dest, TimeSpan.FromMinutes(12));
             Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
+        }
+
+        private void ArriveAtSpawn()
+        {
+            _champPhase     = ChampPhase.AtSpawn;
+            FightMode       = FightMode.Closest;
+            _leaveSpawnAt   = DateTime.UtcNow + TimeSpan.FromHours(2); // hard cap
+            _champAnnounced = false;
+
+            if (_targetSpawn != null && !_targetSpawn.Deleted)
+            {
+                _lastKnownLevel = _targetSpawn.Level;
+
+                // Activate the spawn if nobody has started it yet
+                if (!_targetSpawn.Active)
+                    _targetSpawn.Active = true;
+            }
+            else
+            {
+                _lastKnownLevel = 0;
+            }
+
+            Say(ArrivalSpeech[Utility.Random(ArrivalSpeech.Length)]);
+        }
+
+        private void TickAtSpawn()
+        {
+            // If spawn reference is gone, fall through to timeout
+            if (_targetSpawn == null || _targetSpawn.Deleted)
+            {
+                if (DateTime.UtcNow >= _leaveSpawnAt)
+                    BeginWithdraw(false);
+                return;
+            }
+
+            int level = _targetSpawn.Level;
+
+            // Announce each tier advance
+            if (level > _lastKnownLevel && level >= 1)
+            {
+                int idx = Math.Min(level - 1, TierSpeech.Length - 1);
+                Say(TierSpeech[idx]);
+                _lastKnownLevel = level;
+            }
+
+            // Detect and engage champion when it spawns
+            if (!_champAnnounced
+                && _targetSpawn.Champion != null
+                && !_targetSpawn.Champion.Deleted)
+            {
+                _champAnnounced = true;
+                Combatant = _targetSpawn.Champion; // direct target override
+            }
+
+            // Detect champion killed → victory
+            bool champKilled = _champAnnounced
+                && (_targetSpawn.Champion == null || _targetSpawn.Champion.Deleted);
+
+            if (champKilled)
+            {
+                Say(WithdrawSpeech[0]); // "Champion down! Iron Company stands!"
+                BeginWithdraw(true);
+                return;
+            }
+
+            // Hard 2-hour timeout
+            if (DateTime.UtcNow >= _leaveSpawnAt)
+                BeginWithdraw(false);
+        }
+
+        private void BeginWithdraw(bool victory)
+        {
+            _champPhase = ChampPhase.TravelHome;
+            FightMode   = FightMode.None;
+            Combatant   = null;
+
+            if (!victory)
+                Say(WithdrawSpeech[Utility.Random(1, WithdrawSpeech.Length)]);
+
+            StartTravelTo(_homeLocation, TimeSpan.FromMinutes(12));
+        }
+
+        // -- Spawn selection ------------------------------------------
+
+        /// <summary>
+        /// Finds the best ChampionSpawn to run on Felucca.
+        /// Preference order:
+        ///   1. Active spawns — join a run already in progress (score = dist × 0.5)
+        ///   2. Inactive spawns closest to home (we activate them ourselves)
+        /// Underground spawns (Z &lt; -5) are skipped — Iron Company walks, not teleports.
+        /// Returns null if the shard has no Felucca champion spawns configured.
+        /// </summary>
+        private ChampionSpawn FindBestFeluccaSpawn()
+        {
+            ChampionSpawn best      = null;
+            double        bestScore = double.MaxValue;
+
+            foreach (ChampionSpawn cs in ChampionSystem.AllSpawns)
+            {
+                if (cs == null || cs.Deleted)      continue;
+                if (cs.Map != Map.Felucca)          continue;
+                if (cs.Location.Z < -5)             continue; // skip underground altars
+
+                double dist  = DistanceTo(_homeLocation, cs.Location);
+                double score = cs.Active ? dist * 0.5 : dist;
+
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best      = cs;
+                }
+            }
+
+            return best;
+        }
+
+        private static double DistanceTo(Point3D a, Point3D b)
+        {
+            int dx = a.X - b.X;
+            int dy = a.Y - b.Y;
+            return Math.Sqrt(dx * dx + dy * dy);
+        }
+
+        // -- Staff hooks -----------------------------------------------
+
+        [CommandProperty(AccessLevel.GameMaster)]
+        public string ChampPhaseInfo => GetStatusDetail();
+
+        public override string GetStatusDetail()
+        {
+            if (_champPhase == ChampPhase.None)
+            {
+                TimeSpan remaining = _nextChampRun - DateTime.UtcNow;
+                return remaining > TimeSpan.Zero
+                    ? $"ChampPhase: None — next run in {(int)remaining.TotalMinutes}m {remaining.Seconds}s"
+                    : "ChampPhase: None — ready (waiting for Idle)";
+            }
+
+            string spawnInfo = (_targetSpawn != null && !_targetSpawn.Deleted)
+                ? $" spawn={_targetSpawn.SpawnName ?? "?"} lvl={_targetSpawn.Level}/4"
+                : " (no spawn ref)";
+
+            return $"ChampPhase: {_champPhase}{spawnInfo}";
+        }
+
+        public override string TriggerNextEvent()
+        {
+            if (_champPhase != ChampPhase.None)
+                return $"{MemberName} is already on a champ run (phase: {_champPhase}) — use [simreset to abort.";
+
+            _champScheduleSet = true;
+            _nextChampRun     = DateTime.UtcNow; // fire on the very next idle tick
+            return $"{MemberName}: champ run queued — will depart on the next Idle tick.";
         }
 
         // -- Template --------------------------------------------------
@@ -236,8 +391,7 @@ namespace Server.Custom
             PackItem(new BookOfChivalry()); // always PackItem
         }
 
-        // -- Serialization --------------------------------------------
-        // All ChampPhase fields are transient — resetting on restart is fine.
+        // -- Serialization (all champ state is transient) -------------
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
@@ -501,6 +655,26 @@ namespace Server.Custom
                 // Failed silently -- try again later
                 _nextStealTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(3, 6));
             }
+        }
+
+        // -- Staff hooks -----------------------------------------------
+
+        [CommandProperty(AccessLevel.GameMaster)]
+        public string StealInfo => GetStatusDetail();
+
+        public override string GetStatusDetail()
+        {
+            if (_nextStealTime <= DateTime.UtcNow)
+                return $"Steal: ready (hidden={Hidden})";
+            TimeSpan remaining = _nextStealTime - DateTime.UtcNow;
+            return $"Steal cooldown: {(int)remaining.TotalMinutes}m {remaining.Seconds}s (hidden={Hidden})";
+        }
+
+        public override string TriggerNextEvent()
+        {
+            Hidden         = true;
+            _nextStealTime = DateTime.UtcNow;
+            return $"{MemberName}: steal cooldown cleared and hidden — will attempt pickpocket on next idle tick near a player.";
         }
 
         // -- Support methods -------------------------------------------

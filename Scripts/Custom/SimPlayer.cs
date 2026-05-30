@@ -396,6 +396,22 @@ namespace Server.Custom
                 list.Add($"[{_guildName}]");
         }
 
+        // -- Staff hooks -----------------------------------------------
+
+        /// <summary>
+        /// Returns a one-line detail string shown in [simstatus and [siminfo.
+        /// Override in subclasses to surface guild-specific state (champ phase, steal cooldown, etc.)
+        /// </summary>
+        public virtual string GetStatusDetail() => string.Empty;
+
+        /// <summary>
+        /// Immediately triggers the SimPlayer's next scheduled behaviour,
+        /// bypassing all cooldown timers.  Used by the [simtrigger staff command.
+        /// Returns a human-readable result string shown to the GM.
+        /// </summary>
+        public virtual string TriggerNextEvent() =>
+            $"{MemberName} has no triggerable events defined.";
+
         // -- Helpers ---------------------------------------------------
 
         /// <summary>Returns the correct ScheduleProfile for a given guild name.</summary>

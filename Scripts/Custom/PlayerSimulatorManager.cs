@@ -40,8 +40,11 @@ namespace Server.Custom
         public static void Initialize()
         {
             // Register staff commands
-            CommandSystem.Register("simreset",  AccessLevel.GameMaster, e => SimReset(e.Mobile));
-            CommandSystem.Register("simstatus", AccessLevel.GameMaster, e => SimStatus(e.Mobile));
+            CommandSystem.Register("simreset",   AccessLevel.GameMaster, e => SimReset(e.Mobile));
+            CommandSystem.Register("simstatus",  AccessLevel.GameMaster, e => SimStatus(e.Mobile));
+            CommandSystem.Register("simgoto",    AccessLevel.GameMaster, e => SimGoto(e.Mobile, e.ArgString?.Trim()));
+            CommandSystem.Register("simtrigger", AccessLevel.GameMaster, e => SimTrigger(e.Mobile, e.ArgString?.Trim()));
+            CommandSystem.Register("siminfo",    AccessLevel.GameMaster, e => SimInfo(e.Mobile, e.ArgString?.Trim()));
 
             // Find existing singleton in world
             if (_instance == null)
@@ -280,7 +283,7 @@ namespace Server.Custom
         }
 
         /// <summary>
-        /// [simstatus -- show roster state to the invoking staff member.
+        /// [simstatus -- roster overview: location, state, and one-line guild detail for every SimPlayer.
         /// </summary>
         public static void SimStatus(Mobile from)
         {
@@ -293,11 +296,161 @@ namespace Server.Custom
             from.SendMessage(0x4AA, $"=== SimPlayer Status ({_instance._allSimPlayers.Count} roster / {_instance.CountActive()} active) ===");
             foreach (SimPlayer sp in _instance._allSimPlayers)
             {
-                string location = sp.Deleted  ? "DELETED" :
-                                  sp.Map == Map.Internal ? $"Internal (cooldown={sp.IsOnCooldown}, schedule={sp.Schedule_ShouldBeActive()})" :
-                                  $"{sp.Map.Name} ({sp.X},{sp.Y}) state={sp.State}";
+                string location = sp.Deleted
+                    ? "DELETED"
+                    : sp.Map == Map.Internal
+                        ? $"Internal  cooldown={sp.IsOnCooldown}  schedule={sp.Schedule_ShouldBeActive()}"
+                        : $"{sp.Map.Name} ({sp.X},{sp.Y})  state={sp.State}";
+
                 from.SendMessage(1153, $"  {sp.MemberName} [{sp.GuildName}] -- {location}");
+
+                string detail = sp.GetStatusDetail();
+                if (!string.IsNullOrEmpty(detail))
+                    from.SendMessage(1153, $"      {detail}");
             }
+        }
+
+        /// <summary>
+        /// [siminfo [name] -- detailed state dump for a specific SimPlayer (partial name match).
+        /// If no name is given, shows all SimPlayers with guild detail.
+        /// </summary>
+        public static void SimInfo(Mobile from, string filter)
+        {
+            if (_instance == null)
+            {
+                from.SendMessage(0x22, "[SimPlayer] No manager instance found.");
+                return;
+            }
+
+            var matches = FindSimPlayers(filter);
+            if (matches.Count == 0)
+            {
+                from.SendMessage(0x22, $"[SimPlayer] No SimPlayer matching '{filter}'.");
+                return;
+            }
+
+            from.SendMessage(0x4AA, $"=== SimInfo: {matches.Count} match(es) for '{filter}' ===");
+            foreach (SimPlayer sp in matches)
+            {
+                from.SendMessage(0x4AA, $"  {sp.MemberName} [{sp.GuildName}]");
+
+                string loc = sp.Deleted
+                    ? "DELETED"
+                    : sp.Map == Map.Internal
+                        ? $"Map.Internal  cooldown={sp.IsOnCooldown}"
+                        : $"{sp.Map.Name} ({sp.X},{sp.Y},{sp.Z})";
+
+                from.SendMessage(1153, $"    Location : {loc}");
+                from.SendMessage(1153, $"    State    : {sp.State}");
+                from.SendMessage(1153, $"    Schedule : {sp.Schedule_ShouldBeActive()}");
+                from.SendMessage(1153, $"    Combatant: {(sp.Combatant != null ? sp.Combatant.Name : "none")}");
+
+                string detail = sp.GetStatusDetail();
+                if (!string.IsNullOrEmpty(detail))
+                    from.SendMessage(1153, $"    {detail}");
+            }
+        }
+
+        /// <summary>
+        /// [simgoto [name] -- teleport the GM to the first SimPlayer whose name/guild matches.
+        /// Usage: [simgoto Sergeant  or  [simgoto Iron Company
+        /// </summary>
+        public static void SimGoto(Mobile from, string filter)
+        {
+            if (string.IsNullOrEmpty(filter))
+            {
+                from.SendMessage(0x22, "Usage: [simgoto <partial name or guild>");
+                return;
+            }
+
+            SimPlayer match = FindSimPlayer(filter);
+            if (match == null)
+            {
+                from.SendMessage(0x22, $"[SimPlayer] No SimPlayer matching '{filter}'.");
+                return;
+            }
+
+            if (match.Map == Map.Internal)
+            {
+                from.SendMessage(0x22, $"[SimPlayer] {match.MemberName} is currently inactive (internal map).");
+                return;
+            }
+
+            from.MoveToWorld(match.Location, match.Map);
+            from.SendMessage(0x35, $"[SimPlayer] Jumped to {match.MemberName} [{match.GuildName}]  state={match.State}");
+
+            string detail = match.GetStatusDetail();
+            if (!string.IsNullOrEmpty(detail))
+                from.SendMessage(0x35, $"  {detail}");
+        }
+
+        /// <summary>
+        /// [simtrigger [filter] -- immediately trigger the next scheduled event on ALL matching
+        /// SimPlayers.  Use a guild name to trigger all members at once.
+        /// Usage: [simtrigger iron          (triggers all Iron Company members)
+        ///        [simtrigger Fingers        (triggers that specific SimPlayer)
+        ///        [simtrigger shadow hand    (triggers all Shadow Hand members)
+        /// </summary>
+        public static void SimTrigger(Mobile from, string filter)
+        {
+            if (string.IsNullOrEmpty(filter))
+            {
+                from.SendMessage(0x22, "Usage: [simtrigger <partial name or guild>");
+                return;
+            }
+
+            var matches = FindSimPlayers(filter);
+            if (matches.Count == 0)
+            {
+                from.SendMessage(0x22, $"[SimPlayer] No SimPlayer matching '{filter}'.");
+                return;
+            }
+
+            from.SendMessage(0x4AA, $"[SimPlayer] Triggering {matches.Count} SimPlayer(s) matching '{filter}':");
+            foreach (SimPlayer sp in matches)
+            {
+                string result = sp.TriggerNextEvent();
+                from.SendMessage(0x35, $"  {result}");
+            }
+        }
+
+        // -- Lookup helpers -------------------------------------------
+
+        private static SimPlayer FindSimPlayer(string filter)
+        {
+            if (_instance == null || string.IsNullOrEmpty(filter)) return null;
+            string f = filter.ToLowerInvariant();
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (!sp.Deleted
+                    && (sp.MemberName.ToLowerInvariant().Contains(f)
+                        || sp.GuildName.ToLowerInvariant().Contains(f)))
+                    return sp;
+            }
+            return null;
+        }
+
+        private static List<SimPlayer> FindSimPlayers(string filter)
+        {
+            var result = new List<SimPlayer>();
+            if (_instance == null) return result;
+
+            // Empty filter = return all
+            if (string.IsNullOrEmpty(filter))
+            {
+                result.AddRange(_instance._allSimPlayers);
+                return result;
+            }
+
+            string f = filter.ToLowerInvariant();
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (!sp.Deleted
+                    && (sp.MemberName.ToLowerInvariant().Contains(f)
+                        || sp.GuildName.ToLowerInvariant().Contains(f)))
+                    result.Add(sp);
+            }
+            return result;
         }
 
         // -- Serialization --------------------------------------------
