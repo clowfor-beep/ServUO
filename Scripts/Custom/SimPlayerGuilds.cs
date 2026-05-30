@@ -369,7 +369,12 @@ namespace Server.Custom
                 return;
             }
 
-            // Actively acquire a target if not currently fighting
+            // Never fight friendly SimPlayers — clear if the AI auto-acquired one.
+            // Hostile SimPlayers (AlwaysAttackable or AlwaysMurderer) are fair game.
+            if (Combatant is SimPlayer sp && !sp.AlwaysAttackable && !sp.AlwaysMurderer)
+                Combatant = null;
+
+            // Actively acquire a spawn target if not currently fighting
             if (Combatant == null || Combatant.Deleted || !Combatant.Alive)
                 AcquireSpawnTarget();
         }
@@ -389,13 +394,15 @@ namespace Server.Custom
                 return;
             }
 
-            // Nearest hostile creature within 15 tiles
+            // Nearest hostile creature within 15 tiles — never target other SimPlayers
             Mobile nearest     = null;
             double nearestDist = double.MaxValue;
 
             foreach (Mobile m in GetMobilesInRange(15))
             {
                 if (m == this || m.Deleted || !m.Alive) continue;
+                // Skip friendly SimPlayers; hostile ones (red/grey) are valid targets
+                if (m is SimPlayer sp2 && !sp2.AlwaysAttackable && !sp2.AlwaysMurderer) continue;
                 if (!(m is BaseCreature bc) || bc.Controlled) continue;
                 if (!CanBeHarmful(m, false)) continue;
 
