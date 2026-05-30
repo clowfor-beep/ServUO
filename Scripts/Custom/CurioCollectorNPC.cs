@@ -146,6 +146,7 @@ namespace Server.Custom
             if (item.Deleted || item.LootType == LootType.Blessed) return false;
             if (item is Container) return false;
             if (item is Gold || item is MerchantCoin) return false;
+            if (item is PowerScroll) return true;
             if (item.Stackable && !(item is BaseWeapon) && !(item is BaseArmor)) return false;
             return item is BaseWeapon || item is BaseArmor || item is BaseJewel || item is BaseClothing;
         }
@@ -154,6 +155,21 @@ namespace Server.Custom
 
         private static ScoredItem ScoreItem(Item item)
         {
+            // Power scrolls — priced directly by their skill value
+            if (item is PowerScroll ps)
+            {
+                var si2 = new ScoredItem { Item = item, Score = 0 };
+                switch (ps.Value)
+                {
+                    case 105: si2.Tier = ItemTier.CoinsHighEnd;  si2.CoinPrice = 5;  break;
+                    case 110: si2.Tier = ItemTier.CoinsHighEnd;  si2.CoinPrice = 10; break;
+                    case 115: si2.Tier = ItemTier.CoinsArtifact; si2.CoinPrice = 15; break;
+                    case 120: si2.Tier = ItemTier.CoinsArtifact; si2.CoinPrice = 20; break;
+                    default:  si2.Tier = ItemTier.CoinsHighEnd;  si2.CoinPrice = 5;  break;
+                }
+                return si2;
+            }
+
             int score = GetPropertyScore(item);
             var si = new ScoredItem { Item = item, Score = score };
 
@@ -164,12 +180,12 @@ namespace Server.Custom
             else if (score < 100)
             {
                 si.Tier      = ItemTier.GoldMinor;
-                si.BasePrice = 2000 + (int)((score - 40) / 60.0 * 23000);
+                si.BasePrice = 500 + (int)((score - 40) / 60.0 * 5750);
             }
             else if (score < 180)
             {
                 si.Tier      = ItemTier.GoldNotable;
-                si.BasePrice = 25000 + (int)((score - 100) / 80.0 * 75000);
+                si.BasePrice = 6250 + (int)((score - 100) / 80.0 * 18750);
             }
             else if (score < 280)
             {
