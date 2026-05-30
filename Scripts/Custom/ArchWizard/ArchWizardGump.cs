@@ -106,51 +106,77 @@ namespace Server.Custom.ArchWizard
         // ============================================================
         private static readonly DungeonDestination[] AllDungeons =
         {
-            new DungeonDestination("Covetous – Level 1",  new Point3D(2500,  975,   0), Map.Felucca),
-            new DungeonDestination("Covetous – Level 2",  new Point3D(2479, 1016, -20), Map.Felucca),
-            new DungeonDestination("Covetous – Level 3",  new Point3D(2358,  974, -40), Map.Felucca),
+            // Coordinates sourced directly from Data/Locations/felucca.xml
+            // (the same file the GM [go command uses)
 
-            new DungeonDestination("Deceit – Level 1",    new Point3D(1300,  170,   0), Map.Felucca),
-            new DungeonDestination("Deceit – Level 2",    new Point3D(1350,  400, -20), Map.Felucca),
-            new DungeonDestination("Deceit – Level 3",    new Point3D(1450,  175, -40), Map.Felucca),
-            new DungeonDestination("Deceit – Level 4",    new Point3D(1475,  480, -60), Map.Felucca),
+            // ── Covetous ──────────────────────────────────────────────────────
+            new DungeonDestination("Covetous – Level 1",  new Point3D(5456, 1863,   0), Map.Felucca),
+            new DungeonDestination("Covetous – Level 2",  new Point3D(5614, 1997,   0), Map.Felucca),
+            new DungeonDestination("Covetous – Level 3",  new Point3D(5579, 1924,   0), Map.Felucca),
 
-            new DungeonDestination("Despise – Level 1",   new Point3D(1298, 1081,   0), Map.Felucca),
-            new DungeonDestination("Despise – Level 2",   new Point3D(1297, 1172,  20), Map.Felucca),
-            new DungeonDestination("Despise – Level 3",   new Point3D(1302, 1338,   0), Map.Felucca),
+            // ── Deceit ────────────────────────────────────────────────────────
+            new DungeonDestination("Deceit – Level 1",    new Point3D(5188,  638,   0), Map.Felucca),
+            new DungeonDestination("Deceit – Level 2",    new Point3D(5305,  533,   2), Map.Felucca),
+            new DungeonDestination("Deceit – Level 3",    new Point3D(5137,  650,   5), Map.Felucca),
+            new DungeonDestination("Deceit – Level 4",    new Point3D(5306,  652,   2), Map.Felucca),
 
-            new DungeonDestination("Destard – Level 1",   new Point3D(1176, 2640,   0), Map.Felucca),
-            new DungeonDestination("Destard – Level 2",   new Point3D(1176, 2800, -20), Map.Felucca),
+            // ── Despise ───────────────────────────────────────────────────────
+            new DungeonDestination("Despise – Level 1",   new Point3D(5501,  570,  59), Map.Felucca),
+            new DungeonDestination("Despise – Level 2",   new Point3D(5519,  673,  20), Map.Felucca),
+            new DungeonDestination("Despise – Level 3",   new Point3D(5407,  859,  45), Map.Felucca),
 
-            new DungeonDestination("Hythloth – Level 1",  new Point3D( 722, 3814,   0), Map.Felucca),
-            new DungeonDestination("Hythloth – Level 2",  new Point3D( 722, 3900, -20), Map.Felucca),
-            new DungeonDestination("Hythloth – Level 3",  new Point3D( 722, 4000, -40), Map.Felucca),
-            new DungeonDestination("Hythloth – Level 4",  new Point3D( 722, 4100, -60), Map.Felucca),
+            // ── Destard ───────────────────────────────────────────────────────
+            new DungeonDestination("Destard – Level 1",   new Point3D(5243, 1006,   0), Map.Felucca),
+            new DungeonDestination("Destard – Level 2",   new Point3D(5143,  801,   4), Map.Felucca),
+            new DungeonDestination("Destard – Level 3",   new Point3D(5137,  986,   5), Map.Felucca),
 
-            new DungeonDestination("Shame – Level 1",     new Point3D( 512, 1559,   0), Map.Felucca),
-            new DungeonDestination("Shame – Level 2",     new Point3D( 512, 1700, -20), Map.Felucca),
-            new DungeonDestination("Shame – Level 3",     new Point3D( 512, 1850, -40), Map.Felucca),
-            new DungeonDestination("Shame – Level 4",     new Point3D( 512, 2000, -60), Map.Felucca),
-            new DungeonDestination("Shame – Level 5",     new Point3D( 512, 2150, -80), Map.Felucca),
+            // ── Hythloth ──────────────────────────────────────────────────────
+            new DungeonDestination("Hythloth – Level 1",  new Point3D(5905,   20,  46), Map.Felucca),
+            new DungeonDestination("Hythloth – Level 2",  new Point3D(5976,  169,   0), Map.Felucca),
+            new DungeonDestination("Hythloth – Level 3",  new Point3D(6083,  145, -20), Map.Felucca),
+            new DungeonDestination("Hythloth – Level 4",  new Point3D(6059,   89,  24), Map.Felucca),
 
-            new DungeonDestination("Wrong – Level 1",     new Point3D(2040,  213,   0), Map.Felucca),
-            new DungeonDestination("Wrong – Level 2",     new Point3D(2040,  310, -20), Map.Felucca),
-            new DungeonDestination("Wrong – Level 3",     new Point3D(2040,  440, -40), Map.Felucca),
+            // ── Shame ─────────────────────────────────────────────────────────
+            new DungeonDestination("Shame – Level 1",     new Point3D(5395,  126,   0), Map.Felucca),
+            new DungeonDestination("Shame – Level 2",     new Point3D(5515,   11,   5), Map.Felucca),
+            new DungeonDestination("Shame – Level 3",     new Point3D(5514,  148,  25), Map.Felucca),
+            new DungeonDestination("Shame – Level 4",     new Point3D(5875,   20,  -5), Map.Felucca),
 
-            new DungeonDestination("Khaldun – Level 1",   new Point3D(5765, 2098,   0), Map.Felucca),
-            new DungeonDestination("Khaldun – Level 2",   new Point3D(5850, 2098, -20), Map.Felucca),
+            // ── Wrong ─────────────────────────────────────────────────────────
+            new DungeonDestination("Wrong – Level 1",     new Point3D(5825,  630,   0), Map.Felucca),
+            new DungeonDestination("Wrong – Level 2",     new Point3D(5690,  569,  25), Map.Felucca),
+            new DungeonDestination("Wrong – Level 3",     new Point3D(5703,  639,   0), Map.Felucca),
 
-            new DungeonDestination("Orc Caves – Level 1", new Point3D(1036, 1649,   0), Map.Felucca),
-            new DungeonDestination("Orc Caves – Level 2", new Point3D(1036, 1750, -20), Map.Felucca),
+            // ── Khaldun ───────────────────────────────────────────────────────
+            new DungeonDestination("Khaldun – Level 1",   new Point3D(5571, 1302,   0), Map.Felucca),
 
-            new DungeonDestination("Terathan Keep – L1",  new Point3D(2571,  772,   0), Map.Felucca),
-            new DungeonDestination("Terathan Keep – L2",  new Point3D(2571,  860, -20), Map.Felucca),
+            // ── Orc Cave ──────────────────────────────────────────────────────
+            new DungeonDestination("Orc Cave – Level 1",  new Point3D(5137, 2014,   0), Map.Felucca),
+            new DungeonDestination("Orc Cave – Level 2",  new Point3D(5332, 1376,   0), Map.Felucca),
+            new DungeonDestination("Orc Cave – Level 3",  new Point3D(5272, 2036,   0), Map.Felucca),
 
-            new DungeonDestination("Ice – Level 1",       new Point3D(1999,   81,   0), Map.Felucca),
-            new DungeonDestination("Ice – Level 2",       new Point3D(1999,  200, -20), Map.Felucca),
+            // ── Terathan Keep ─────────────────────────────────────────────────
+            new DungeonDestination("Terathan Keep",       new Point3D(5342, 1601,   0), Map.Felucca),
 
-            new DungeonDestination("Fire – Level 1",      new Point3D(2923, 3438,   0), Map.Felucca),
-            new DungeonDestination("Fire – Level 2",      new Point3D(2923, 3550, -20), Map.Felucca),
+            // ── Ice Dungeon ───────────────────────────────────────────────────
+            new DungeonDestination("Ice – Level 1",       new Point3D(5875,  150,  15), Map.Felucca),
+            new DungeonDestination("Ice – Demon Lair",    new Point3D(5700,  305,   0), Map.Felucca),
+
+            // ── Fire Dungeon ──────────────────────────────────────────────────
+            new DungeonDestination("Fire – Level 1",      new Point3D(5790, 1416,  40), Map.Felucca),
+            new DungeonDestination("Fire – Level 2",      new Point3D(5702, 1316,   1), Map.Felucca),
+
+            // ── Doom (Malas) ──────────────────────────────────────────────────
+            new DungeonDestination("Doom – Entrance",     new Point3D(2357, 1268,   0), Map.Malas),
+
+            // ── Bedlam (Malas) ────────────────────────────────────────────────
+            new DungeonDestination("Bedlam – Entrance",   new Point3D(2068, 1372,   0), Map.Malas),
+
+            // ── Underworld (Ter Mur) ──────────────────────────────────────────
+            new DungeonDestination("Underworld",          new Point3D(1128, 1207,  -2), Map.TerMur),
+
+            // ── Stygian Abyss (Ter Mur) ───────────────────────────────────────
+            new DungeonDestination("Stygian Abyss",       new Point3D( 985,  366, -11), Map.TerMur),
         };
 
         private const int ItemsPerPage = 10;
@@ -268,7 +294,7 @@ namespace Server.Custom.ArchWizard
             int startIdx   = _pageIndex * ItemsPerPage;
             int endIdx     = Math.Min(startIdx + ItemsPerPage, totalItems);
 
-            AddLabel(ColLeft, 60, 1152, "Felucca Dungeons — choose a destination");
+            AddLabel(ColLeft, 60, 1152, "Dungeons — choose a destination");
             AddLabel(ColLeft, 75, 1152, "You will select a ticket type on the next screen.");
 
             int btnId = BtnDestBase;
