@@ -728,6 +728,83 @@ namespace Server.Custom
             }
         }
 
+        // -- Public status query for ShadyFigure ----------------------
+
+        /// <summary>
+        /// Returns a natural-language summary of what the Iron Company is currently doing
+        /// with champion spawns — used by the ShadyFigure information NPC.
+        /// </summary>
+        public static string GetIronCompanyChampStatus()
+        {
+            if (_instance == null) return "unknown — I haven't seen them around lately.";
+
+            // Find any active Iron Company member and check their phase
+            IronCompanySimPlayer activeAtSpawn   = null;
+            IronCompanySimPlayer gathering       = null;
+            IronCompanySimPlayer earliest        = null;
+            DateTime             earliestTime    = DateTime.MaxValue;
+
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp.Deleted) continue;
+                if (sp.GuildName != FBGuilds.IronCompany) continue;
+                if (!(sp is IronCompanySimPlayer ic)) continue;
+
+                string detail = ic.GetStatusDetail();
+
+                if (detail.Contains("AtSpawn") && activeAtSpawn == null)
+                    activeAtSpawn = ic;
+                else if ((detail.Contains("GatherAtBank") || detail.Contains("WaitingAtBank")) && gathering == null)
+                    gathering = ic;
+                else if (detail.Contains("next run in"))
+                {
+                    // Parse the earliest scheduled run
+                    // Format: "ChampPhase: None — next run in 45m 30s"
+                    try
+                    {
+                        int mIdx = detail.IndexOf("next run in ");
+                        if (mIdx >= 0)
+                        {
+                            string rest = detail.Substring(mIdx + 12);
+                            int mPos = rest.IndexOf('m');
+                            if (mPos > 0 && int.TryParse(rest.Substring(0, mPos).Trim(), out int mins))
+                            {
+                                DateTime t = DateTime.UtcNow.AddMinutes(mins);
+                                if (t < earliestTime) { earliestTime = t; earliest = ic; }
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            if (activeAtSpawn != null)
+            {
+                string detail = activeAtSpawn.GetStatusDetail();
+                // Extract spawn name from "spawn=Despise"
+                string spawnName = "a dungeon";
+                int sIdx = detail.IndexOf("spawn=");
+                if (sIdx >= 0)
+                {
+                    string rest = detail.Substring(sIdx + 6);
+                    int end = rest.IndexOf(' ');
+                    spawnName = end > 0 ? rest.Substring(0, end) : rest;
+                }
+                return $"they're at {spawnName} right now, running a champion spawn.";
+            }
+
+            if (gathering != null)
+                return "they're gathering their forces — expect them at a spawn within the next 10 minutes.";
+
+            if (earliest != null && earliestTime < DateTime.MaxValue)
+            {
+                int mins = Math.Max(1, (int)(earliestTime - DateTime.UtcNow).TotalMinutes);
+                return $"they're resting. Next spawn run should start in about {mins} minutes.";
+            }
+
+            return "they've been quiet lately. Could be planning something.";
+        }
+
         // -- Lookup helpers -------------------------------------------
 
         private static SimPlayer FindSimPlayer(string filter)

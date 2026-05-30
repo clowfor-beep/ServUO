@@ -306,6 +306,12 @@ namespace Server.Custom
             Timer.DelayCall(TimeSpan.FromSeconds(30), SpawnNext);
         }
 
+        public static string GetCurrentMerchantLocation()
+        {
+            if (_current == null || _current.Deleted) return null;
+            return _current.TownName;
+        }
+
         public static void SpawnNext()
         {
             if (_current != null && !_current.Deleted)
@@ -341,6 +347,7 @@ namespace Server.Custom
     public class TravelingRareMerchant : BaseCreature
     {
         private readonly string             _townName;
+        public string TownName => _townName;
         private readonly List<RareMerchantSlot> _stock = new List<RareMerchantSlot>();
 
         [Constructable]
