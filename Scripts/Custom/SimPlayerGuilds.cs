@@ -217,6 +217,35 @@ namespace Server.Custom
         public override bool IsInvulnerable => _isDowned;
 
         /// <summary>
+        /// Controls who the AI considers an enemy at the champ spawn.
+        /// — Uncontrolled non-SimPlayer creatures (spawn monsters): always enemy.
+        /// — Innocent (blue) players and their pets: never enemy.
+        /// — Red players (murderers): enemy via base logic.
+        /// Outside the spawn phase falls back to base behaviour.
+        /// </summary>
+        public override bool IsEnemy(Mobile m)
+        {
+            if (_champPhase == ChampPhase.AtSpawn)
+            {
+                // Uncontrolled spawn monsters — fight them
+                if (m is BaseCreature bc && !bc.Controlled && !bc.Summoned && !(m is SimPlayer))
+                    return true;
+
+                // Innocent players — never fight them (even if base would say yes)
+                if (m is PlayerMobile pm && pm.Kills < 5 && !IsRetaliationTarget(pm))
+                    return false;
+
+                // Innocent player's pet — never fight it unless they attacked us
+                if (m is BaseCreature pet && pet.Controlled
+                    && pet.ControlMaster is PlayerMobile owner
+                    && owner.Kills < 5 && !IsRetaliationTarget(pet) && !IsRetaliationTarget(owner))
+                    return false;
+            }
+
+            return base.IsEnemy(m);
+        }
+
+        /// <summary>
         /// Intercept death: instead of dying, go downed. A guild member will
         /// resurrect us when they come within range.
         /// </summary>
@@ -553,7 +582,6 @@ namespace Server.Custom
         {
             _champPhase     = ChampPhase.AtSpawn;
             FightMode       = FightMode.Closest;
-            Team            = 1; // non-zero team so BaseCreature.IsEnemy returns true for spawn monsters (Team 0)
             _leaveSpawnAt   = DateTime.UtcNow + TimeSpan.FromHours(2); // hard cap
             _champAnnounced = false;
 
@@ -924,7 +952,6 @@ namespace Server.Custom
         {
             // Clean up phase immediately so no other code re-enters
             _champPhase   = ChampPhase.None;
-            Team          = 0; // back to neutral — stop being targeted by random creatures
             _targetSpawn  = null;
             FightMode     = FightMode.None;
             Combatant     = null;
