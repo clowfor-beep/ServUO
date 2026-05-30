@@ -93,8 +93,13 @@ namespace Server.Custom
         private int           _lastKnownLevel   = -1;
         private bool          _champAnnounced   = false;
 
-        // -- Combat healing (transient) -----------------------------------
-        private DateTime _nextHealAt = DateTime.MinValue;
+        // -- Combat healing + mobility (transient) ------------------------
+        private DateTime _nextHealAt           = DateTime.MinValue;
+        private Point3D  _spawnEntryPoint      = Point3D.Zero;   // where they landed at the spawn
+        private Serial   _lastCombatantSerial  = Serial.Zero;    // for stuck detection
+        private DateTime _combatantSince       = DateTime.MinValue; // when current combatant was acquired
+        private DateTime _nextTeleportAt       = DateTime.MinValue; // teleport cooldown
+        private DateTime _nextReturnAt         = DateTime.MinValue; // return-to-entry cooldown
 
         // Used when no Felucca ChampionSpawn is found in the world at all
         private static readonly Point3D[] FallbackDestinations =
@@ -323,6 +328,7 @@ namespace Server.Custom
                     landing = dest.Location;
 
                 MoveToWorld(landing, Map.Felucca);
+                _spawnEntryPoint = landing; // remember where we arrived
                 ForceIdle(); // reset SimState after teleport
                 ArriveAtSpawn();
             });
@@ -402,9 +408,43 @@ namespace Server.Custom
             if (Combatant is SimPlayer sp && !sp.AlwaysAttackable && !sp.AlwaysMurderer)
                 Combatant = null;
 
+            // Track how long we've had this specific combatant (for stuck detection)
+            if (Combatant == null)
+            {
+                _lastCombatantSerial = Serial.Zero;
+                _combatantSince      = DateTime.MinValue;
+            }
+            else if (Combatant.Serial != _lastCombatantSerial)
+            {
+                _lastCombatantSerial = Combatant.Serial;
+                _combatantSince      = DateTime.UtcNow;
+            }
+
             // Actively acquire a spawn target if not currently fighting
             if (Combatant == null || Combatant.Deleted || !Combatant.Alive)
+            {
                 AcquireSpawnTarget();
+
+                // Return to entry point if we drifted far away and have no target
+                if (Combatant == null && _spawnEntryPoint != Point3D.Zero
+                    && GetDistanceToSqrt(_spawnEntryPoint) > 8
+                    && DateTime.UtcNow >= _nextReturnAt)
+                {
+                    TeleportToEntryPoint();
+                }
+            }
+            else
+            {
+                // Stuck check: combatant alive but out of melee range for too long → teleport to them
+                double distToTarget = GetDistanceToSqrt(Combatant);
+                if (distToTarget > 6
+                    && _combatantSince != DateTime.MinValue
+                    && DateTime.UtcNow >= _combatantSince + TimeSpan.FromSeconds(6)
+                    && DateTime.UtcNow >= _nextTeleportAt)
+                {
+                    TeleportToCombatant(Combatant);
+                }
+            }
         }
 
         /// <summary>
@@ -441,6 +481,68 @@ namespace Server.Custom
             if (nearest != null)
                 Combatant = nearest;
         }
+
+        /// <summary>
+        /// Teleports to a stuck combatant that is out of melee reach.
+        /// Fires a chivalry visual, lands adjacent to the target, then re-engages.
+        /// </summary>
+        private void TeleportToCombatant(Mobile target)
+        {
+            _nextTeleportAt = DateTime.UtcNow + TimeSpan.FromSeconds(15); // 15s cooldown
+            _combatantSince = DateTime.MinValue; // reset stuck timer
+
+            FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
+            PlaySound(0x1F5);
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.0), () =>
+            {
+                if (Deleted || _champPhase != ChampPhase.AtSpawn) return;
+                if (target == null || target.Deleted || !target.Alive) return;
+
+                // Land 1-2 tiles from the target
+                Point3D landing = Point3D.Zero;
+                for (int i = 0; i < 12; i++)
+                {
+                    int ox = target.X + Utility.RandomMinMax(-2, 2);
+                    int oy = target.Y + Utility.RandomMinMax(-2, 2);
+                    int oz = Map.GetAverageZ(ox, oy);
+                    if (Map.CanSpawnMobile(ox, oy, oz)) { landing = new Point3D(ox, oy, oz); break; }
+                }
+                if (landing == Point3D.Zero) landing = target.Location;
+
+                MoveToWorld(landing, Map);
+                FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
+
+                // Re-engage immediately
+                if (!target.Deleted && target.Alive)
+                    Combatant = target;
+            });
+        }
+
+        /// <summary>
+        /// Sacred Journey back to the entry point of the champion spawn.
+        /// Called when combat ends and the member has drifted far from their position.
+        /// </summary>
+        private void TeleportToEntryPoint()
+        {
+            _nextReturnAt = DateTime.UtcNow + TimeSpan.FromSeconds(10); // 10s cooldown
+
+            FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
+            PlaySound(0x1F5);
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.0), () =>
+            {
+                if (Deleted || _champPhase != ChampPhase.AtSpawn) return;
+                if (_spawnEntryPoint == Point3D.Zero) return;
+
+                MoveToWorld(_spawnEntryPoint, Map.Felucca);
+                FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
+
+                // Immediately look for next target
+                AcquireSpawnTarget();
+            });
+        }
+
 
         private void BeginWithdraw(bool victory)
         {
