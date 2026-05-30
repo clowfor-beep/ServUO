@@ -536,6 +536,9 @@ namespace Server.Custom
         public override bool AlwaysAttackable => true;
         public override bool AlwaysMurderer   => true;
 
+        // Home is near Destard -- too far from Britain bank to make trips
+        protected override bool CanBank => false;
+
         protected override void ApplyTemplate()
         {
             SetStr(50, 50);
@@ -594,6 +597,9 @@ namespace Server.Custom
         public override bool AlwaysAttackable => true;
         public override bool AlwaysMurderer   => true;
 
+        // Home is near Deceit -- too far from Britain bank to make trips
+        protected override bool CanBank => false;
+
         protected override void ApplyTemplate()
         {
             SetStr(60, 60);
@@ -650,6 +656,9 @@ namespace Server.Custom
 
         // Grey -- attackable but not murderer
         public override bool AlwaysAttackable => true;
+
+        // Home is near Wrong -- too far from Britain bank to make trips
+        protected override bool CanBank => false;
 
         protected override void ApplyTemplate()
         {

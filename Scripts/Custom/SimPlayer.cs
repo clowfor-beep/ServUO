@@ -173,7 +173,7 @@ namespace Server.Custom
 
             // Trigger banking trip if due — return early so _idleUntil check
             // can't fire in the same tick and overwrite _travelIsBankTrip.
-            if (!_inBankingCycle && DateTime.UtcNow >= _nextBankingTime)
+            if (CanBank && !_inBankingCycle && DateTime.UtcNow >= _nextBankingTime)
             {
                 StartBankingTrip();
                 return;
@@ -359,6 +359,12 @@ namespace Server.Custom
         public override bool AlwaysAttackable => false;
         public override bool AlwaysInnocent   => true;
 
+        /// <summary>
+        /// Returns true if this SimPlayer should attempt banking trips.
+        /// Override to false in dungeon-based guilds whose home is too far from Britain bank.
+        /// </summary>
+        protected virtual bool CanBank => true;
+
         public override void GetProperties(ObjectPropertyList list)
         {
             base.GetProperties(list);
@@ -377,6 +383,12 @@ namespace Server.Custom
             if (guildName == FBGuilds.ArcaneBrotherhood) return ScheduleProfile.ArcaneBrotherhood(drift);
             if (guildName == FBGuilds.SilverWolves)      return ScheduleProfile.SilverWolves(drift);
             if (guildName == FBGuilds.ShadowHand)        return ScheduleProfile.ShadowHand(drift);
+            if (guildName == FBGuilds.PaladinOrder)      return ScheduleProfile.PaladinOrder(drift);
+            if (guildName == FBGuilds.DeadWatchers)      return ScheduleProfile.DeadWatchers(drift);
+            if (guildName == FBGuilds.DreadHunters)      return ScheduleProfile.DreadHunters(drift);
+            if (guildName == FBGuilds.BloodPact)         return ScheduleProfile.BloodPact(drift);
+            if (guildName == FBGuilds.TheVoid)           return ScheduleProfile.TheVoid(drift);
+            if (guildName == FBGuilds.Shadowblade)       return ScheduleProfile.Shadowblade(drift);
             return ScheduleProfile.Wanderers(drift); // default / Wanderers
         }
 
