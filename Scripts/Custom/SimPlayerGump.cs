@@ -38,21 +38,21 @@ namespace Server.Custom
         private const int RowH     = 26;
         private const int HeaderH  = 110;  // space above guild table
 
-        // Guild hues — colour by rough alignment
+        // Guild hues — colour by rough alignment, all bright enough for dark background
         private static readonly Dictionary<string, int> GuildHue = new Dictionary<string, int>
         {
-            { FBGuilds.Wanderers,         0    },   // white — neutral travellers
-            { FBGuilds.CraftsmenLeague,   0    },   // white — neutral craftsmen
-            { FBGuilds.ShadowHand,        2049 },   // grey  — thieves
-            { FBGuilds.IronCompany,       1153 },   // light blue — blue guild
-            { FBGuilds.ArcaneBrotherhood, 1152 },   // blue  — mages
-            { FBGuilds.SilverWolves,      0x40 },   // green — law/good
-            { FBGuilds.PaladinOrder,      1153 },   // light blue — good
-            { FBGuilds.DeadWatchers,      2049 },   // grey  — neutral dark
-            { FBGuilds.DreadHunters,      1153 },   // light blue — elite hunters
-            { FBGuilds.BloodPact,         0x22 },   // red   — murderers
-            { FBGuilds.TheVoid,           0x22 },   // red   — murderers
-            { FBGuilds.Shadowblade,       2049 },   // grey  — assassins
+            { FBGuilds.Wanderers,         0x481 },  // gold   — neutral travellers
+            { FBGuilds.CraftsmenLeague,   0x481 },  // gold   — craftsmen
+            { FBGuilds.ShadowHand,        1150  },  // silver — grey thieves
+            { FBGuilds.IronCompany,       1153  },  // light blue
+            { FBGuilds.ArcaneBrotherhood, 1152  },  // blue   — mages
+            { FBGuilds.SilverWolves,      0x40  },  // green  — law/good
+            { FBGuilds.PaladinOrder,      1153  },  // light blue — good
+            { FBGuilds.DeadWatchers,      1150  },  // silver — dark neutral
+            { FBGuilds.DreadHunters,      1153  },  // light blue — elite hunters
+            { FBGuilds.BloodPact,         0x22  },  // red    — murderers
+            { FBGuilds.TheVoid,           0x22  },  // red    — murderers
+            { FBGuilds.Shadowblade,       1150  },  // silver — assassins
         };
 
         public SimPlayerGump(Mobile from) : base(40, 40)
@@ -139,7 +139,7 @@ namespace Server.Custom
                     AddImageTiled(PadX, gy, W - PadX * 2, RowH - 2, 9274);
 
                 // Guild name
-                int nameHue = GuildHue.ContainsKey(guild) ? GuildHue[guild] : 0;
+                int nameHue = GuildHue.ContainsKey(guild) ? GuildHue[guild] : 1153;
                 AddLabel(PadX, gy + 4, nameHue, guild);
 
                 // Active / total

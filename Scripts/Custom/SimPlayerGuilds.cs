@@ -391,7 +391,7 @@ namespace Server.Custom
             _nextChampRun = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
 
             if (!victory)
-                Say(WithdrawSpeech[Utility.Random(1, WithdrawSpeech.Length)]);
+                Say(WithdrawSpeech[Utility.Random(1, WithdrawSpeech.Length - 1)]);
 
             // Sacred Journey back home after a short pause
             Timer.DelayCall(TimeSpan.FromSeconds(3.0), () =>
