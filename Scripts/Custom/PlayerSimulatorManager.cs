@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using Server;
 using Server.Commands;
 using Server.Custom;
+using Server.Engines.CannedEvil;
 using Server.Mobiles;
 
 namespace Server.Custom
@@ -45,6 +46,7 @@ namespace Server.Custom
             CommandSystem.Register("simgoto",    AccessLevel.GameMaster, e => SimGoto(e.Mobile, e.ArgString?.Trim()));
             CommandSystem.Register("simtrigger", AccessLevel.GameMaster, e => SimTrigger(e.Mobile, e.ArgString?.Trim()));
             CommandSystem.Register("siminfo",    AccessLevel.GameMaster, e => SimInfo(e.Mobile, e.ArgString?.Trim()));
+            CommandSystem.Register("simchamp",   AccessLevel.GameMaster, e => SimChamp(e.Mobile));
 
             // Find existing singleton in world
             if (_instance == null)
@@ -610,6 +612,66 @@ namespace Server.Custom
                 string result = sp.TriggerNextEvent();
                 from.SendMessage(0x35, $"  {result}");
             }
+        }
+
+        /// <summary>
+        /// [simchamp -- picks a random surface Felucca ChampionSpawn, activates it if needed,
+        /// then force-marches ALL Iron Company SimPlayers (active or not) to that spawn.
+        /// Usage: [simchamp
+        /// </summary>
+        public static void SimChamp(Mobile from)
+        {
+            if (_instance == null)
+            {
+                from.SendMessage(0x22, "[SimPlayer] No manager instance found.");
+                return;
+            }
+
+            // Collect eligible surface Felucca champion spawns
+            var candidates = new List<ChampionSpawn>();
+            foreach (ChampionSpawn cs in ChampionSystem.AllSpawns)
+            {
+                if (cs == null || cs.Deleted) continue;
+                if (cs.Map != Map.Felucca)    continue;
+                if (cs.Location.Z < -5)       continue; // skip underground altars
+                candidates.Add(cs);
+            }
+
+            if (candidates.Count == 0)
+            {
+                from.SendMessage(0x22, "[SimPlayer] No surface Felucca ChampionSpawns found. Check spawn files.");
+                return;
+            }
+
+            // Pick one at random
+            ChampionSpawn target = candidates[Utility.Random(candidates.Count)];
+
+            // Activate the spawn if it isn't already running
+            bool wasActive = target.Active;
+            if (!target.Active)
+                target.Active = true;
+
+            string spawnName = target.SpawnName ?? $"({target.X},{target.Y})";
+            from.SendMessage(0x4AA,
+                $"[SimPlayer] Spawn selected: {spawnName} at ({target.X},{target.Y}) " +
+                $"— was {(wasActive ? "already active" : "activated now")}.");
+
+            // Mobilize every Iron Company SimPlayer
+            int sent = 0;
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp.Deleted) continue;
+                if (sp.GuildName != FBGuilds.IronCompany) continue;
+                if (sp is IronCompanySimPlayer ic)
+                {
+                    string result = ic.ForceChampRunAt(target);
+                    from.SendMessage(0x35, $"  {result}");
+                    sent++;
+                }
+            }
+
+            from.SendMessage(0x35, $"[SimPlayer] {sent} Iron Company member(s) mobilized.");
+            from.SendMessage(0x35,  "[SimPlayer] Use [simgoto iron to follow them.");
         }
 
         // -- Lookup helpers -------------------------------------------

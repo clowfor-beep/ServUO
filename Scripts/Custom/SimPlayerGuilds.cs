@@ -360,6 +360,40 @@ namespace Server.Custom
             return $"{MemberName}: champ run queued — will depart on the next Idle tick.";
         }
 
+        /// <summary>
+        /// Force-starts a champ run to a specific spawn immediately.
+        /// Used by the [simchamp GM command.
+        /// Aborts any current run, activates the SimPlayer if not in world,
+        /// and begins travelling to the spawn.
+        /// </summary>
+        public string ForceChampRunAt(ChampionSpawn spawn)
+        {
+            // Cleanly abort any current run
+            if (_champPhase != ChampPhase.None)
+            {
+                _champPhase = ChampPhase.None;
+                FightMode   = FightMode.None;
+                Combatant   = null;
+            }
+
+            // Bring into world if currently inactive
+            if (Map == Map.Internal)
+                Activate();
+
+            _targetSpawn      = spawn;
+            _champPhase       = ChampPhase.TravelToSpawn;
+            _champScheduleSet = true;
+            _champAnnounced   = false;
+            _lastKnownLevel   = spawn.Level;
+            FightMode         = FightMode.None; // peaceful during travel
+
+            StartTravelTo(spawn.Location, TimeSpan.FromMinutes(15));
+            Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
+
+            string spawnName = spawn.SpawnName ?? $"({spawn.X},{spawn.Y})";
+            return $"{MemberName}: marching to {spawnName}.";
+        }
+
         // -- Template --------------------------------------------------
         protected override void ApplyTemplate()
         {
