@@ -100,6 +100,15 @@ namespace Server.Custom
         private DateTime _combatantSince      = DateTime.MinValue;
         private DateTime _nextReturnAt        = DateTime.MinValue;
 
+        // -- Retaliation tracking (transient) --------------------------------
+        // If a blue (innocent) player attacks us, we fight back for 30 seconds.
+        // Outside that window we never auto-acquire innocent players as targets.
+        private Serial   _retaliateSerial  = Serial.Zero;
+        private DateTime _retaliateExpires = DateTime.MinValue;
+
+        private bool IsRetaliationTarget(Mobile m)
+            => m != null && m.Serial == _retaliateSerial && DateTime.UtcNow < _retaliateExpires;
+
         // -- Stuck resolution (3-phase) -----------------------------------
         // None → Teleported (6s stuck) → CrossbowOut (5s after teleport still stuck)
         // → give up after 15s with crossbow → return to entry + re-equip melee
@@ -179,6 +188,22 @@ namespace Server.Custom
                 TrySelfHeal();
 
             base.OnThink();
+        }
+
+        /// <summary>
+        /// If anyone damages us while at the spawn, register them as a
+        /// retaliation target for 30 seconds — even blue innocent players.
+        /// This is the only way an innocent player can become our combatant.
+        /// </summary>
+        public override void OnDamage(int amount, Mobile from, bool willKill)
+        {
+            base.OnDamage(amount, from, willKill);
+
+            if (_champPhase == ChampPhase.AtSpawn && from != null && from.Alive && from != this)
+            {
+                _retaliateSerial  = from.Serial;
+                _retaliateExpires = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+            }
         }
 
         /// <summary>
@@ -412,6 +437,11 @@ namespace Server.Custom
             // Never fight friendly SimPlayers — clear if the AI auto-acquired one.
             // Hostile SimPlayers (AlwaysAttackable or AlwaysMurderer) are fair game.
             if (Combatant is SimPlayer sp && !sp.AlwaysAttackable && !sp.AlwaysMurderer)
+                Combatant = null;
+
+            // Never auto-attack innocent (blue) real players.
+            // Only engage them if they damaged us first (retaliation window = 30s).
+            if (Combatant is PlayerMobile bluePm && bluePm.Kills < 5 && !IsRetaliationTarget(bluePm))
                 Combatant = null;
 
             // Track how long we've had this specific combatant
