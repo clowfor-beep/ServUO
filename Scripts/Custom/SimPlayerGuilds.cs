@@ -218,12 +218,20 @@ namespace Server.Custom
             StartTravelTo(_bankLocation, TimeSpan.FromMinutes(5));
             Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
 
-            // Fallback: guarantee transition to WaitingAtBank after 90 seconds
-            // even if the Idle-state check never fires (e.g. state machine overrides it).
+            // 90 s: bank speech (wherever they are — even if stuck in a building)
             Timer.DelayCall(TimeSpan.FromSeconds(90), () =>
             {
                 if (!Deleted && _champPhase == ChampPhase.GatherAtBank)
                     ArriveAtBank();
+            });
+
+            // 2 min: Sacred Journey fires unconditionally from wherever they stand.
+            // This guarantees departure even if the state-machine WaitingAtBank
+            // check never triggers (e.g. stuck inside a building, can't path to bank).
+            Timer.DelayCall(TimeSpan.FromMinutes(2), () =>
+            {
+                if (!Deleted && (_champPhase == ChampPhase.GatherAtBank || _champPhase == ChampPhase.WaitingAtBank))
+                    SacredJourneyToSpawn();
             });
         }
 
@@ -533,11 +541,18 @@ namespace Server.Custom
             StartTravelTo(_bankLocation, TimeSpan.FromMinutes(5));
             Say(DepartureSpeech[Utility.Random(DepartureSpeech.Length)]);
 
-            // Fallback: guarantee transition after 90 seconds
+            // 90 s: bank speech (wherever they are)
             Timer.DelayCall(TimeSpan.FromSeconds(90), () =>
             {
                 if (!Deleted && _champPhase == ChampPhase.GatherAtBank)
                     ArriveAtBank();
+            });
+
+            // 2 min: unconditional Sacred Journey — fires from wherever they stand
+            Timer.DelayCall(TimeSpan.FromMinutes(2), () =>
+            {
+                if (!Deleted && (_champPhase == ChampPhase.GatherAtBank || _champPhase == ChampPhase.WaitingAtBank))
+                    SacredJourneyToSpawn();
             });
 
             string spawnName = spawn.SpawnName ?? $"({spawn.X},{spawn.Y})";
