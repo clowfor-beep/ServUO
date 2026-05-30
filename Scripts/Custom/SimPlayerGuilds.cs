@@ -247,20 +247,24 @@ namespace Server.Custom
         /// </summary>
         public override bool IsEnemy(Mobile m)
         {
+            // Never attack innocent player pets regardless of phase or location.
+            // A pet owned by a blue player is only fair game if it or its owner
+            // attacked us first (retaliation window).
+            if (m is BaseCreature petCheck && petCheck.Controlled
+                && petCheck.ControlMaster is PlayerMobile petOwner
+                && petOwner.Kills < 5
+                && !IsRetaliationTarget(petCheck)
+                && !IsRetaliationTarget(petOwner))
+                return false;
+
             if (_champPhase == ChampPhase.AtSpawn)
             {
-                // Uncontrolled spawn monsters — fight them
+                // At spawn: target uncontrolled non-SimPlayer creatures (spawn monsters)
                 if (m is BaseCreature bc && !bc.Controlled && !bc.Summoned && !(m is SimPlayer))
                     return true;
 
-                // Innocent players — never fight them (even if base would say yes)
+                // At spawn: never auto-attack innocent (blue) players
                 if (m is PlayerMobile pm && pm.Kills < 5 && !IsRetaliationTarget(pm))
-                    return false;
-
-                // Innocent player's pet — never fight it unless they attacked us
-                if (m is BaseCreature pet && pet.Controlled
-                    && pet.ControlMaster is PlayerMobile owner
-                    && owner.Kills < 5 && !IsRetaliationTarget(pet) && !IsRetaliationTarget(owner))
                     return false;
             }
 
@@ -308,6 +312,15 @@ namespace Server.Custom
             // Living member: scan for downed or injured colleagues within 10 tiles
             CheckRezNearby();
             CheckHealNearby();
+
+            // Clear any innocent pet that the base AI acquired as combatant —
+            // applies in ALL phases, not just AtSpawn.
+            if (Combatant is BaseCreature combatPet && combatPet.Controlled
+                && combatPet.ControlMaster is PlayerMobile combatOwner
+                && combatOwner.Kills < 5
+                && !IsRetaliationTarget(combatPet)
+                && !IsRetaliationTarget(combatOwner))
+                Combatant = null;
 
             // Champ state machine always runs — even during combat / SkipStateTick
             ManageChampPhase();
