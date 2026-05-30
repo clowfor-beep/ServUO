@@ -211,6 +211,28 @@ namespace Server.Custom
 
         public IronCompanySimPlayer(Serial serial) : base(serial) { }
 
+        // -- Serialization ---------------------------------------------
+
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.Write(0); // version — IronCompany has no extra persistent fields
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            reader.ReadInt(); // version
+
+            // Transient combat state must not persist across restarts.
+            // If the world was saved mid-champ-run, FightMode could be
+            // Closest and Team could be 1, causing the base AI to run in
+            // combat mode while _champPhase is reset to None — breaking patrol.
+            FightMode = FightMode.None;
+            Combatant = null;
+            Team      = 0;
+        }
+
         // -- Overrides -------------------------------------------------
 
         // While downed we are invulnerable — prevents the killing blow repeating
