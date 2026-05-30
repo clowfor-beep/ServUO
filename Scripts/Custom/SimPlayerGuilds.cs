@@ -93,6 +93,9 @@ namespace Server.Custom
         private int           _lastKnownLevel   = -1;
         private bool          _champAnnounced   = false;
 
+        // -- Combat healing (transient) -----------------------------------
+        private DateTime _nextHealAt = DateTime.MinValue;
+
         // Used when no Felucca ChampionSpawn is found in the world at all
         private static readonly Point3D[] FallbackDestinations =
         {
@@ -159,7 +162,32 @@ namespace Server.Custom
         {
             // Champ state machine always runs — even during combat / SkipStateTick
             ManageChampPhase();
+
+            // Self-heal when fighting at the spawn
+            if (_champPhase == ChampPhase.AtSpawn && Alive)
+                TrySelfHeal();
+
             base.OnThink();
+        }
+
+        /// <summary>
+        /// Simulates bandage + chivalry healing. Fires every ~12 seconds when
+        /// HP drops below 75%. Amount is based on Healing + Anatomy skills.
+        /// </summary>
+        private void TrySelfHeal()
+        {
+            if (DateTime.UtcNow < _nextHealAt) return;
+            if (Hits >= (int)(HitsMax * 0.75))  return;
+
+            double healSkill = Skills[SkillName.Healing].Value;
+            double anatSkill = Skills[SkillName.Anatomy].Value;
+            int amount = (int)((healSkill + anatSkill) * 0.3 + Utility.RandomMinMax(5, 15));
+
+            Hits = Math.Min(HitsMax, Hits + amount);
+            PlaySound(0x57);
+            FixedEffect(0x375A, 10, 15);
+
+            _nextHealAt = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(10, 14));
         }
 
         // -- Champion run state machine --------------------------------
@@ -569,22 +597,23 @@ namespace Server.Custom
         // -- Template --------------------------------------------------
         protected override void ApplyTemplate()
         {
-            SetStr(85, 85);
-            SetDex(65, 65);
-            SetInt(30, 30);
-            SetHits(120, 120);
-            SetSkill(SkillName.Swords,      100.0, 100.0);
-            SetSkill(SkillName.Tactics,     100.0, 100.0);
-            SetSkill(SkillName.Anatomy,      90.0,  90.0);
-            SetSkill(SkillName.Healing,      90.0,  90.0);
-            SetSkill(SkillName.Parry,       100.0, 100.0);
-            SetSkill(SkillName.MagicResist,  80.0,  80.0);
-            SetSkill(SkillName.Chivalry,     80.0,  80.0);
-            VirtualArmor = 40;
+            SetStr(150, 150);
+            SetDex(100, 100);
+            SetInt(40,  40);
+            SetHits(350, 350);
+            SetSkill(SkillName.Swords,      115.0, 115.0);
+            SetSkill(SkillName.Tactics,     115.0, 115.0);
+            SetSkill(SkillName.Anatomy,     110.0, 110.0);
+            SetSkill(SkillName.Healing,     110.0, 110.0);
+            SetSkill(SkillName.Parry,       110.0, 110.0);
+            SetSkill(SkillName.MagicResist, 100.0, 100.0);
+            SetSkill(SkillName.Chivalry,    100.0, 100.0);
+            VirtualArmor = 65;
             Fame  = 2000;
             Karma = 2000;
             Kills = 0;
 
+            // Full plate
             AddItem(new PlateChest());
             AddItem(new PlateLegs());
             AddItem(new PlateArms());
@@ -592,8 +621,15 @@ namespace Server.Custom
             AddItem(new PlateGorget());
             AddItem(new PlateHelm());
             AddItem(new Boots());
-            AddItem(new Longsword());
             AddItem(new HeaterShield());
+
+            // Longsword with 25% hit fire area — bypasses physical resists on champion spawn creatures
+            var sword = new Longsword();
+            sword.WeaponAttributes.HitFireArea = 25;
+            sword.Attributes.WeaponDamage      = 50; // +50% damage bonus
+            sword.Attributes.AttackChance      = 15; // +15 HCI
+            AddItem(sword);
+
             PackItem(new BookOfChivalry()); // always PackItem
         }
 
