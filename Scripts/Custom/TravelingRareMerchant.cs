@@ -384,6 +384,9 @@ namespace Server.Custom
 
         public IReadOnlyList<RareMerchantSlot> Stock => _stock;
 
+        // Global price multiplier — change this to adjust all stock prices.
+        private const double PriceMultiplier = 0.5;
+
         private void GenerateStock()
         {
             ClearStock();
@@ -391,7 +394,8 @@ namespace Server.Custom
             {
                 Item display = e.Create();
                 display.MoveToWorld(new Point3D(0, 0, 0), Map.Internal);
-                _stock.Add(new RareMerchantSlot(display, e.Cost, e.Name, e.Create));
+                int cost = Math.Max(1, (int)Math.Round(e.Cost * PriceMultiplier));
+                _stock.Add(new RareMerchantSlot(display, cost, e.Name, e.Create));
             }
         }
 
