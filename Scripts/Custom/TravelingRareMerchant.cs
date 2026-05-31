@@ -334,7 +334,7 @@ namespace Server.Custom
             _current.MoveToWorld(new Point3D(x, y, z), entry.map);
             _current.SayArrival();
 
-            World.Broadcast(0x8A5, true,
+            World.Broadcast(0x8C4, true,
                 $"[Rumour] A mysterious merchant has appeared at the {entry.town} bank. " +
                 "He accepts only Merchant Coins and stays just 30 minutes.");
 

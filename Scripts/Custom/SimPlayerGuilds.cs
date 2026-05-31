@@ -561,7 +561,7 @@ namespace Server.Custom
                     ? $"({_targetSpawn.X}, {_targetSpawn.Y})"
                     : _targetSpawn.SpawnName;
 
-                World.Broadcast(0x4AA, true,
+                World.Broadcast(0x8C4, true,
                     $"[Iron Company] Sergeant Vale: \"Iron Company, move out! " +
                     $"We march on {dest}. All members rally at once!\"");
             }
