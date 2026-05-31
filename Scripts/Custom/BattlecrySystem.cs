@@ -174,7 +174,7 @@ namespace Server.Custom
             }
         }
 
-        private static string GetBuffDescription(BattlecryType type)
+        public static string GetBuffDescription(BattlecryType type)
         {
             switch (type)
             {
@@ -203,8 +203,24 @@ namespace Server.Custom
         private Timer               _expireTimer;
         private RegenTimer          _regenTimer;
         private BattlecryLuckCharm  _luckCharm;
+        private BuffInfo            _buffInfo;
         // Stored so we can remove by reference (RemoveResistanceMod takes the object)
         private ResistanceMod       _modPhys, _modFire, _modCold, _modPois, _modNrgy;
+
+        private static BuffIcon GetBuffIcon(BattlecryType type)
+        {
+            switch (type)
+            {
+                case BattlecryType.DamageBonus: return BuffIcon.Strength;
+                case BattlecryType.HpRegen:     return BuffIcon.GiftOfRenewal;
+                case BattlecryType.SkillGain:   return BuffIcon.ArcaneEmpowerment;
+                case BattlecryType.Luck:        return BuffIcon.DivineFury;
+                case BattlecryType.ManaRegen:   return BuffIcon.ActiveMeditation;
+                case BattlecryType.AllResists:  return BuffIcon.ReactiveArmor;
+                case BattlecryType.SpeedBoost:  return BuffIcon.Agility;
+                default:                        return BuffIcon.Bless;
+            }
+        }
 
         public BattlecryEntry(Mobile m, BattlecryType type, TimeSpan duration)
         {
@@ -262,6 +278,18 @@ namespace Server.Custom
                     break;
             }
 
+            // Add buff bar icon for players
+            if (_mobile is PlayerMobile buffPm)
+            {
+                string args = "Battlecry: " + BattlecrySystem.GetBuffName(Type)
+                              + "\n" + BattlecrySystem.GetBuffDescription(Type)
+                              + " (2 min)";
+                _buffInfo = new BuffInfo(GetBuffIcon(Type),
+                    BuffInfo.Blank, BuffInfo.Blank,
+                    _duration, buffPm, args);
+                BuffInfo.AddBuff(buffPm, _buffInfo);
+            }
+
             _expireTimer = Timer.DelayCall(_duration, OnExpired);
         }
 
@@ -269,6 +297,12 @@ namespace Server.Custom
         {
             _expireTimer?.Stop();
             _regenTimer?.Stop();
+
+            if (_buffInfo != null && _mobile is PlayerMobile removePm)
+            {
+                BuffInfo.RemoveBuff(removePm, _buffInfo);
+                _buffInfo = null;
+            }
 
             switch (Type)
             {
