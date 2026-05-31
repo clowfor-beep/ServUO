@@ -32,6 +32,13 @@ namespace Server.Engines.Craft
             return 0.0; // 0%
         }
 
+        // Roll LRC once per inscription attempt — same mechanic as Spell.ConsumeReagents.
+        // If the roll passes, all reagents for this scroll are free.
+        public override bool CheckSkipResourceConsumption(Mobile from, CraftItem item)
+        {
+            return AosAttributes.GetValue(from, AosAttribute.LowerRegCost) > Utility.Random(100);
+        }
+
         private DefInscription()
             : base(1, 1, 1.25)// base( 1, 1, 3.0 )
         {
