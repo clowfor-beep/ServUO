@@ -93,6 +93,7 @@ namespace Server.Custom
         private ChampionSpawn _targetSpawn      = null;
         private int           _lastKnownLevel   = -1;
         private bool          _champAnnounced   = false;
+        private Timer         _bossBattlecryTimer = null;
 
         // -- Combat healing + mobility (transient) ------------------------
         private DateTime _nextHealAt          = DateTime.MinValue;
@@ -284,6 +285,7 @@ namespace Server.Custom
             Combatant  = null;
             FightMode  = FightMode.None;
             _stuckPhase = StuckPhase.None;
+            StopBossBattlecryTimer();
 
             Animate(22, 5, 1, true, false, 0); // fall animation
             Say(DownedLines[Utility.Random(DownedLines.Length)]);
@@ -653,10 +655,10 @@ namespace Server.Custom
 
         private void ArriveAtSpawn()
         {
-            _champPhase     = ChampPhase.AtSpawn;
-            FightMode       = FightMode.Closest;
-            _leaveSpawnAt   = DateTime.UtcNow + TimeSpan.FromHours(2); // hard cap
-            _champAnnounced = false;
+            _champPhase       = ChampPhase.AtSpawn;
+            FightMode         = FightMode.Closest;
+            _leaveSpawnAt     = DateTime.UtcNow + TimeSpan.FromHours(2); // hard cap
+            _champAnnounced   = false;
 
             if (_targetSpawn != null && !_targetSpawn.Deleted)
             {
@@ -703,6 +705,10 @@ namespace Server.Custom
             {
                 _champAnnounced = true;
                 Combatant = _targetSpawn.Champion;
+
+                // Start repeating battlecry every 2 minutes while champion is alive
+                if (MemberName == "Sergeant Vale")
+                    StartBossBattlecryTimer();
             }
 
             // Detect champion killed → victory
@@ -1026,6 +1032,9 @@ namespace Server.Custom
 
         private void BeginWithdraw(bool victory)
         {
+            // Stop boss battlecry timer if running
+            StopBossBattlecryTimer();
+
             // Clean up phase immediately so no other code re-enters
             _champPhase   = ChampPhase.None;
             _targetSpawn  = null;
@@ -1090,6 +1099,49 @@ namespace Server.Custom
         /// Underground spawns (Z &lt; -5) are skipped — Iron Company walks, not teleports.
         /// Returns null if the shard has no Felucca champion spawns configured.
         /// </summary>
+        // ── Boss battlecry timer ──────────────────────────────────────────────
+
+        private void StartBossBattlecryTimer()
+        {
+            StopBossBattlecryTimer();
+            _bossBattlecryTimer = new BossBattlecryTimer(this);
+            _bossBattlecryTimer.Start();
+        }
+
+        private void StopBossBattlecryTimer()
+        {
+            _bossBattlecryTimer?.Stop();
+            _bossBattlecryTimer = null;
+        }
+
+        private class BossBattlecryTimer : Timer
+        {
+            private readonly IronCompanySimPlayer _vale;
+
+            public BossBattlecryTimer(IronCompanySimPlayer vale)
+                : base(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(2))
+            {
+                _vale    = vale;
+                Priority = TimerPriority.OneMinute;
+            }
+
+            protected override void OnTick()
+            {
+                if (_vale == null || _vale.Deleted || !_vale.Alive)
+                {
+                    Stop();
+                    return;
+                }
+                // Stop if champion is gone (already handled by BeginWithdraw, but be safe)
+                if (_vale._champPhase != ChampPhase.AtSpawn)
+                {
+                    Stop();
+                    return;
+                }
+                BattlecrySystem.ApplyBattlecry(_vale);
+            }
+        }
+
         private ChampionSpawn FindBestFeluccaSpawn()
         {
             // Build weighted candidate list — all valid Felucca spawns are eligible.
