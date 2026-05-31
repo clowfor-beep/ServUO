@@ -390,19 +390,21 @@ namespace Server.Custom
 
             if (_champPhase == ChampPhase.AtSpawn && from != null && from.Alive && from != this)
             {
-                // Register the attacker for retaliation.
-                // If the attacker is a controlled pet, register both the pet and its owner
-                // so the TickAtSpawn check allows fighting back against either.
+                // Never retaliate against innocent player pets at a champion spawn.
+                // Pets in Guard mode frequently hit us by mistake while we fight spawn
+                // monsters — retaliating starts an unintended fight loop with the player.
+                if (from is BaseCreature aggPet && aggPet.Controlled
+                    && aggPet.ControlMaster is PlayerMobile aggOwner
+                    && aggOwner.Kills < 5)
+                    return;
+
+                // Also ignore if the damage came from a blue player directly
+                if (from is PlayerMobile attPm && attPm.Kills < 5)
+                    return;
+
+                // Red player or actual enemy — register for retaliation
                 _retaliateSerial  = from.Serial;
                 _retaliateExpires = DateTime.UtcNow + TimeSpan.FromSeconds(30);
-
-                if (from is BaseCreature aggPet && aggPet.Controlled
-                    && aggPet.ControlMaster is PlayerMobile aggOwner)
-                {
-                    // Owner set their pet on us — owner is also fair game for retaliation
-                    // (we fight the pet directly since that's what hit us)
-                    _retaliateSerial = aggPet.Serial;
-                }
             }
         }
 
