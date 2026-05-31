@@ -42,12 +42,12 @@ namespace Server.Items
         }
 
         // Equipping auto-activates the crook for this player
-        public override void OnEquip(Mobile from)
+        public override bool OnEquip(Mobile from)
         {
-            base.OnEquip(from);
-
             if (from is PlayerMobile pm)
                 SkillSynergies.ActivateCrook(pm, this);
+
+            return base.OnEquip(from);
         }
 
         // Double-click activates the crook (must be equipped or in backpack)
