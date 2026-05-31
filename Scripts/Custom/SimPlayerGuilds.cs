@@ -1076,6 +1076,7 @@ namespace Server.Custom
                 if (cs == null || cs.Deleted)   continue;
                 if (cs.Map != Map.Felucca)       continue;
                 if (cs.Location.Z < -5)          continue; // skip underground altars
+                if (IsAbyssSpawn(cs))            continue; // Iron Company never runs the Abyss
 
                 int tickets = cs.Active ? 3 : 1;
                 for (int i = 0; i < tickets; i++)
@@ -1086,6 +1087,14 @@ namespace Server.Custom
                 return null;
 
             return candidates[Utility.Random(candidates.Count)];
+        }
+
+        /// <summary>Returns true if this spawn is the Abyss — Iron Company never runs it.</summary>
+        public static bool IsAbyssSpawn(ChampionSpawn cs)
+        {
+            if (cs == null) return false;
+            string typeName = cs.Type.ToString();
+            return typeName.IndexOf("Abyss", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static double DistanceTo(Point3D a, Point3D b)

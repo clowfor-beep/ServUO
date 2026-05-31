@@ -668,6 +668,7 @@ namespace Server.Custom
                 if (cs == null || cs.Deleted) continue;
                 if (cs.Map != Map.Felucca)    continue;
                 if (cs.Location.Z < -5)       continue; // skip underground altars
+                if (IronCompanySimPlayer.IsAbyssSpawn(cs)) continue; // Iron Company never runs the Abyss
                 candidates.Add(cs);
             }
 
