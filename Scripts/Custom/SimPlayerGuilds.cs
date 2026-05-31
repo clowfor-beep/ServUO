@@ -98,6 +98,7 @@ namespace Server.Custom
         // -- Combat healing + mobility (transient) ------------------------
         private DateTime _nextHealAt          = DateTime.MinValue;
         private Point3D  _spawnEntryPoint     = Point3D.Zero;
+        private double   _baseActiveSpeed     = 0.0; // saved so we can restore after spawn
         private Serial   _lastCombatantSerial = Serial.Zero;
         private DateTime _combatantSince      = DateTime.MinValue;
         private DateTime _nextReturnAt        = DateTime.MinValue;
@@ -315,15 +316,6 @@ namespace Server.Custom
             CheckRezNearby();
             CheckHealNearby();
 
-            // Clear any innocent pet that the base AI acquired as combatant —
-            // applies in ALL phases, not just AtSpawn.
-            if (Combatant is BaseCreature combatPet && combatPet.Controlled
-                && combatPet.ControlMaster is PlayerMobile combatOwner
-                && combatOwner.Kills < 5
-                && !IsRetaliationTarget(combatPet)
-                && !IsRetaliationTarget(combatOwner))
-                Combatant = null;
-
             // Champ state machine always runs — even during combat / SkipStateTick
             ManageChampPhase();
 
@@ -332,6 +324,16 @@ namespace Server.Custom
                 TrySelfHeal();
 
             base.OnThink();
+
+            // AFTER base AI: immediately clear any innocent player pet it may have
+            // re-acquired as combatant. Must run after base.OnThink() so the base
+            // AI can't re-acquire it again this tick.
+            if (Combatant is BaseCreature combatPet && combatPet.Controlled
+                && combatPet.ControlMaster is PlayerMobile combatOwner
+                && combatOwner.Kills < 5
+                && !IsRetaliationTarget(combatPet)
+                && !IsRetaliationTarget(combatOwner))
+                Combatant = null;
         }
 
         /// <summary>
@@ -672,6 +674,14 @@ namespace Server.Custom
             {
                 _lastKnownLevel = 0;
             }
+
+            // 50% faster movement at the champion spawn
+            if (_baseActiveSpeed <= 0.0) _baseActiveSpeed = ActiveSpeed;
+            ActiveSpeed  = Math.Max(0.05, _baseActiveSpeed * 0.5);
+            CurrentSpeed = ActiveSpeed;
+
+            // Non-zero team so spawn monsters recognise us as enemies and retaliate
+            Team = 1;
 
             Say(ArrivalSpeech[Utility.Random(ArrivalSpeech.Length)]);
         }
@@ -1044,6 +1054,15 @@ namespace Server.Custom
             _isDowned   = false;    // ensure clean state
             FightMode   = FightMode.None; // in case we were downed mid-fight
             _nextChampRun = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
+
+            // Restore normal movement speed and team
+            if (_baseActiveSpeed > 0.0)
+            {
+                ActiveSpeed      = _baseActiveSpeed;
+                CurrentSpeed     = ActiveSpeed;
+                _baseActiveSpeed = 0.0;
+            }
+            Team = 0;
 
             if (victory)
             {
