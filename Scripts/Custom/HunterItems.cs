@@ -575,19 +575,53 @@ namespace Server.Custom
         protected BaseBagOfHolding(Serial serial) : base(serial) { }
 
         // ── Weight reduction ──────────────────────────────────────────────
-        // Intercept weight updates and propagate only the reduced delta upward
-        // so the player's carry weight reflects the reduction.
+        //
+        // Two entry-points modify a container's weight total:
+        //   UpdateTotal(delta)  – incremental, called at runtime when items move
+        //   UpdateTotals()      – full recalc from scratch, called on every world load
+        //
+        // m_TotalWeight is private in Container so we can't touch it directly from
+        // a script subclass.  Instead we keep our own _reducedWeight field and
+        // override GetTotal(Weight) to return it, so all callers (including the
+        // parent backpack's UpdateTotals loop) always see the discounted total.
+
+        private int _reducedWeight;
+
+        // Runtime path — item added/removed.  Reduce the delta before passing it
+        // up so the parent accumulates only the discounted share.
         public override void UpdateTotal(Item sender, TotalType type, int delta)
         {
             if (type == TotalType.Weight && sender != this)
             {
                 int reducedDelta = (int)Math.Round(delta * (100 - WeightReductionPct) / 100.0);
+                _reducedWeight += reducedDelta;
                 base.UpdateTotal(sender, type, reducedDelta);
             }
             else
             {
                 base.UpdateTotal(sender, type, delta);
             }
+        }
+
+        // World-load path — Container.UpdateTotals() resets m_TotalWeight to zero
+        // and sums children directly, bypassing UpdateTotal entirely.
+        // After the base recalculates the full weight we re-derive _reducedWeight
+        // from it.  The parent's UpdateTotals loop then reads TotalWeight via
+        // GetTotal() below, which returns the corrected value.
+        public override void UpdateTotals()
+        {
+            base.UpdateTotals(); // m_TotalWeight (private) = full weight of all contents
+            int fullWeight = base.GetTotal(TotalType.Weight);
+            _reducedWeight = (int)Math.Round(fullWeight * (100 - WeightReductionPct) / 100.0);
+        }
+
+        // All external reads of TotalWeight (parent containers, player stats) go
+        // through GetTotal, so returning _reducedWeight here is sufficient.
+        public override int GetTotal(TotalType type)
+        {
+            if (type == TotalType.Weight)
+                return _reducedWeight;
+            return base.GetTotal(type);
         }
 
         // ── CheckHold override ────────────────────────────────────────────

@@ -4258,7 +4258,7 @@ namespace Server.Mobiles
             switch (version)
             {
                 case 43: // activated shepherd's crook serial (Herding system)
-                    Server.Custom.SkillSynergies.RestoreActivatedCrook(this, new Serial(reader.ReadInt()));
+                    Server.Custom.SkillSynergies.RestoreActivatedCrook(this, (Serial)reader.ReadInt());
                     goto case 42;
                 case 42: // upgraded quest serialization
                 case 41: // removed PeacedUntil - no need to serialize this

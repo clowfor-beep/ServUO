@@ -384,15 +384,15 @@ namespace Server.Custom
         /// or Serial(-1) if none.</summary>
         public static Serial GetActivatedCrookSerial(PlayerMobile pm)
         {
-            if (pm == null) return new Serial(-1);
-            return _activatedCrooks.TryGetValue(pm.Serial, out Serial s) ? s : new Serial(-1);
+            if (pm == null) return Serial.MinusOne;
+            return _activatedCrooks.TryGetValue(pm.Serial, out Serial s) ? s : Serial.MinusOne;
         }
 
         /// <summary>Restores the activated-crook mapping from a saved Serial without
         /// performing accessibility checks (those happen lazily on first use).</summary>
         public static void RestoreActivatedCrook(PlayerMobile pm, Serial crookSerial)
         {
-            if (pm == null || (int)crookSerial == -1) return;
+            if (pm == null || crookSerial == Serial.MinusOne) return;
             _activatedCrooks[pm.Serial] = crookSerial;
         }
 
