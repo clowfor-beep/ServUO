@@ -1,8 +1,6 @@
-using Server.Engines.CannedEvil;
+using Server.Custom;
 using Server.Mobiles;
 using Server.Network;
-using Server.Targeting;
-using System;
 
 namespace Server.Items
 {
@@ -43,133 +41,45 @@ namespace Server.Items
             int version = reader.ReadInt();
         }
 
-        public override void OnDoubleClick(Mobile from)
+        // Equipping auto-activates the crook for this player
+        public override void OnEquip(Mobile from)
         {
-            from.SendLocalizedMessage(502464); // Target the animal you wish to herd.
-            from.Target = new HerdingTarget(this);
+            base.OnEquip(from);
+
+            if (from is PlayerMobile pm)
+                SkillSynergies.ActivateCrook(pm, this);
         }
 
-        private class HerdingTarget : Target
+        // Double-click activates the crook (must be equipped or in backpack)
+        public override void OnDoubleClick(Mobile from)
         {
-            private static readonly Type[] m_ChampTamables = new Type[]
-            {
-                typeof(StrongMongbat), typeof(Imp), typeof(Scorpion), typeof(GiantSpider),
-                typeof(Snake), typeof(LavaLizard), typeof(Drake), typeof(Dragon),
-                typeof(Kirin), typeof(Unicorn), typeof(GiantRat), typeof(Slime),
-                typeof(DireWolf), typeof(HellHound), typeof(DeathwatchBeetle),
-                typeof(LesserHiryu), typeof(Hiryu)
-            };
+            if (!(from is PlayerMobile pm))
+                return;
 
-            private readonly ShepherdsCrook m_Crook;
+            bool inPack     = IsChildOf(pm.Backpack);
+            bool isEquipped = pm.FindItemOnLayer(Layer.TwoHanded) == this;
 
-            public HerdingTarget(ShepherdsCrook crook)
-                : base(10, false, TargetFlags.None)
+            if (!inPack && !isEquipped)
             {
-                m_Crook = crook;
+                pm.SendMessage("The crook must be equipped or in your backpack to activate it.");
+                return;
             }
 
-            protected override void OnTarget(Mobile from, object targ)
-            {
-                if (targ is BaseCreature)
-                {
-                    BaseCreature bc = (BaseCreature)targ;
+            bool wasNew = SkillSynergies.ActivateCrook(pm, this);
 
-                    if (IsHerdable(bc))
-                    {
-                        if (bc.Controlled)
-                        {
-                            bc.PrivateOverheadMessage(MessageType.Regular, 0x3B2, 502467, from.NetState); // That animal looks tame already.
-                        }
-                        else
-                        {
-                            from.SendLocalizedMessage(502475); // Click where you wish the animal to go.
-                            from.Target = new InternalTarget(bc, m_Crook);
-                        }
-                    }
-                    else
-                    {
-                        from.SendLocalizedMessage(502468); // That is not a herdable animal.
-                    }
-                }
-                else
-                {
-                    from.SendLocalizedMessage(502472); // You don't seem to be able to persuade that to move.
-                }
-            }
+            if (wasNew)
+                pm.SendMessage(0x35, "You activate the shepherd's crook. Your followers will benefit from your Herding skill.");
+            else
+                pm.SendMessage(0x59, "This shepherd's crook is already your active crook.");
+        }
 
-            private bool IsHerdable(BaseCreature bc)
-            {
-                if (bc.IsParagon)
-                    return false;
+        // Show activation status in item tooltip
+        public override void GetProperties(ObjectPropertyList list)
+        {
+            base.GetProperties(list);
 
-                if (bc.Tamable)
-                    return true;
-
-                Map map = bc.Map;
-
-                ChampionSpawnRegion region = Region.Find(bc.Home, map) as ChampionSpawnRegion;
-
-                if (region != null)
-                {
-                    ChampionSpawn spawn = region.ChampionSpawn;
-
-                    if (spawn != null && spawn.IsChampionSpawn(bc))
-                    {
-                        Type t = bc.GetType();
-
-                        foreach (Type type in m_ChampTamables)
-                            if (type == t)
-                                return true;
-                    }
-                }
-
-                return false;
-            }
-
-            private class InternalTarget : Target
-            {
-                private readonly BaseCreature m_Creature;
-                private readonly ShepherdsCrook m_Crook;
-
-                public InternalTarget(BaseCreature c, ShepherdsCrook crook)
-                    : base(10, true, TargetFlags.None)
-                {
-                    m_Creature = c;
-                    m_Crook = crook;
-                }
-
-                protected override void OnTarget(Mobile from, object targ)
-                {
-                    if (targ is IPoint2D)
-                    {
-                        double min = m_Creature.CurrentTameSkill - 30;
-                        double max = m_Creature.CurrentTameSkill + 30 + Utility.Random(10);
-
-                        if (max <= from.Skills[SkillName.Herding].Value)
-                            m_Creature.PrivateOverheadMessage(MessageType.Regular, 0x3B2, 502471, from.NetState); // That wasn't even challenging.
-
-                        if (from.CheckTargetSkill(SkillName.Herding, m_Creature, min, max))
-                        {
-                            IPoint2D p = (IPoint2D)targ;
-
-                            if (targ != from)
-                                p = new Point2D(p.X, p.Y);
-
-                            m_Creature.TargetLocation = p;
-                            from.SendLocalizedMessage(502479); // The animal walks where it was instructed to.
-
-                            if (Siege.SiegeShard && m_Crook is IUsesRemaining)
-                            {
-                                Siege.CheckUsesRemaining(from, m_Crook);
-                            }
-                        }
-                        else
-                        {
-                            from.SendLocalizedMessage(502472); // You don't seem to be able to persuade that to move.
-                        }
-                    }
-                }
-            }
+            if (RootParent is PlayerMobile pm && SkillSynergies.IsActivated(pm, this))
+                list.Add("Active Shepherd's Crook");
         }
     }
 }

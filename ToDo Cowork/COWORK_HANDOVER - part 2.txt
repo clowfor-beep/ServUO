@@ -1,0 +1,364 @@
+================================================================
+COWORK HANDOVER DOCUMENT
+Project: Forsaken Britannia (UO Private Shard)
+Updated: 2026-05-24
+Purpose: Full context for continuing development in Cowork
+================================================================
+
+
+================================================================
+ENVIRONMENT
+================================================================
+
+Server software : ServUO (.NET, Windows)
+Client          : ClassicUO connecting to localhost:2593
+Expansion       : EJ (Endless Journey) — all expansions included
+Shard name      : "Forsaken Britannia" (update Config/Server.cfg)
+
+Server path     : C:\UO\SERVUO\
+Google Drive    : G:\Mit drev\ (syncs to C:\UO\SERVUO\)
+GitHub          : https://github.com/clowfor-beep/ServUO (read-only)
+Hetzner server  : Ubuntu server installed — website planned
+
+Compile command : Run Compile.WIN - Debug.bat from C:\UO\SERVUO\
+PowerShell      : ExecutionPolicy RemoteSigned (already set)
+
+
+================================================================
+WORKFLOW
+================================================================
+
+File modifications : Cowork edits directly in C:\UO\SERVUO\
+Patch scripts      : Naming: Patch_[Description]_YYYYMMDD_HHMM.ps1
+                     Run from VS Code terminal: .\Patch_Name.ps1
+
+Google Drive folder IDs:
+  SERVUO root        : 15Yt7Xik5IyHoM_B83B_Mza2UDGhxNspb
+  Scripts/Custom     : 1brxrmE-g28zHhmBH8VljL9XcHIe1-tX-
+  Scripts/Skills     : 1q2qYTyuQXkvffJV6C-5c1YA2Oi3lb5aQ
+  Scripts/Items/Weapons : 1wR8WW0VrTZJok0lW-eve1ZMMPIzUKTU1
+  Server folder      : 1pHrFgUUIUHVRGIkwvoq38Q2qnjFu2AQH
+  Config folder      : 1drX2xxsSSSN_QCx1NWHore0rtKoTpRQX
+
+
+================================================================
+READ THESE DESIGN DOCUMENTS FIRST
+================================================================
+
+SystemArchitecture_DesignDoc.txt  ← START HERE EVERY SESSION
+  The authoritative architecture reference. Module specs,
+  dependency graph, build order, known issues, all gotchas.
+
+GuildSystem_FullDesignDoc.txt     ← PRIMARY GUILD REFERENCE
+  All 12 guilds, templates, activities, stat caps.
+
+SkillSynergies_DesignDoc.txt      Offensive + defensive synergies
+QuestSystem_DesignDoc.txt         Quest types, UX gaps, approaches
+PKNPCTemplates_AllArchetypes.txt  7 PK templates × 3 tiers
+PlayerSimulator_DesignDoc.txt     SimPlayer architecture detail
+PlayerSimulator_ActivitySpec.txt  20 player activities mapped
+
+
+================================================================
+COMPLETED WORK
+================================================================
+
+1. SKILL SYNERGY SYSTEM — OFFENSIVE
+   File: Scripts/Custom/SkillSynergies.cs
+   Status: COMPLETE and compiling
+   Universal: Camping +10%, Forensic Eval +10%, Tracking +10%
+   Metal weapons: Blacksmithy +10%
+   Wooden weapons: Carpentry +10%
+   Bashing: Mining +10%
+   Axes: Lumberjacking +10% (stacks with native ServUO bonus)
+   Backstab: +200% PvM only, requires 80+ Hiding AND Stealth
+   Hooked into: BaseWeapon.cs (ScaleDamageAOS, ComputeDamageAOS, OnSwing)
+   NOT YET HOOKED: GetHealBonus(), GetBardingBonus()
+
+2. COOLDOWN HUD SYSTEM
+   File: Scripts/Custom/CooldownSystem.cs
+   Status: COMPLETE and compiling
+   CooldownSystem.Start(mobile, skillName, seconds)
+   Known issue: Begging and ItemID bypass the hook (PENDING FIX)
+
+3. WORLD ATLAS
+   File: Scripts/Custom/WorldAtlas.cs
+   Status: COMPLETE and compiling
+   Item: 0x14ED graphic, hue 2213, blessed
+   Book-style gump: Towns / Dungeons / Moongates
+   Gem click = 3-second freeze + portal VFX + teleport
+   Added to new character starting backpack (CharacterCreation.cs)
+   PENDING: In-game Z coordinate verification
+   Suspect: Luna z=-50, Umbra z=-85, Zento z=30
+
+4. PLAYER KILLER NPC SYSTEM
+   Files: Scripts/Custom/NovicePlayerKiller.cs
+          Scripts/Custom/GraveyardPKEncounter.cs
+   Status: ONE COMPILE ERROR — FIX THIS FIRST
+
+   !! FIX REQUIRED BEFORE ANYTHING ELSE !!
+   File: Scripts/Custom/NovicePlayerKiller.cs
+   Change: 'protected override void OnDeath'
+   To:     'public override void OnDeath'
+   Then compile and verify no errors.
+
+   After fix, this system is COMPLETE:
+   - NovicePlayerKiller: StatCap 150, SkillCap 450, Karma -1500
+   - GraveyardPKEncounter: movement trigger on Britain graveyard
+   - Portal VFX + 1.2s delay + PK portals in + hunts player
+   - 3-min cooldown, 1 active PK per player, 5-min auto-delete
+
+
+================================================================
+IMMEDIATE TASKS (in order)
+================================================================
+
+STEP 0 — Fix compile error (DO THIS FIRST)
+  File: Scripts/Custom/NovicePlayerKiller.cs
+  Change protected → public on OnDeath
+  Compile. Verify zero errors before continuing.
+
+STEP 1 — Create FBZones.cs
+  Location: Scripts/Custom/FBZones.cs
+  Start with: Britain + Despise + Covetous coordinates
+  Pattern: Static class, no dependencies, pure data
+  See SystemArchitecture_DesignDoc.txt for spec
+
+STEP 2 — Create FBEventBus.cs
+  Location: Scripts/Custom/FBEventBus.cs
+  Declare all events as nullable Action delegates
+  No logic — just event declarations
+  See SystemArchitecture_DesignDoc.txt for full event list
+
+STEP 3 — Create BaseFBCombatNPC.cs
+  Location: Scripts/Custom/BaseFBCombatNPC.cs
+  Implement 7 combat template methods
+  CRITICAL EQUIPMENT RULE (from LayerConflict.log):
+    Weapons  → SetWearable() with explicit layer
+    Books    → AddToBackpack() — NEVER SetWearable for books
+  Refactor NovicePlayerKiller.cs to extend BaseFBCombatNPC
+
+STEP 4 — Create FBPKSpawner.cs
+  Location: Scripts/Custom/FBPKSpawner.cs
+  Model directly from: Scripts/Engines/Quests/BountyQuestSpawner.cs
+  Start with Tier 1 only (roads near Britain)
+
+STEP 5 — Create ForsakenBritannia.xml
+  Location: Data/Spawns/ForsakenBritannia.xml
+  Start with Britain bank bulletin board only
+  Test [xmlload / [xmlsave round-trip before adding more
+  Naming convention: FB_[Guild]_[ObjectType]_[Location]
+
+STEP 6 — Create ReputationSystem.cs
+  Location: Scripts/Custom/ReputationSystem.cs
+  Hook FBEventBus events for kill tracking
+  ~200 lines. See QuestSystem_DesignDoc.txt for standing tiers
+
+STEP 7 — SimGuild Phase 1 (Wanderers only)
+  Create SimPlayer.cs base class
+  Create PlayerSimulatorManager.cs
+  Implement Wanderer guild ONLY (12 members, no combat)
+  Verify performance before expanding to more guilds
+
+STEP 8 — QuestTrackerHUD.cs (standalone, any time)
+  Location: Scripts/Custom/QuestTrackerHUD.cs
+  Same architecture as CooldownSystem.cs
+  Always-visible gump showing active quest + objective counters
+  No dependencies on other FB systems
+
+STEP 9 — Defensive skill synergies
+  Hook into PlayerMobile.cs and BaseWeapon.cs
+  Reference SkillSynergies_DesignDoc.txt for all hook locations
+
+STEP 10 — SimGuild Phase 2 (all 12 guilds)
+  Only after Phase 1 stable and performance verified
+
+LATER — Phase 3
+  CrossClassSkillSystem.cs (Epic quest rewards)
+  Full QuestFactory.cs (dynamic quest generation)
+
+
+================================================================
+SHORT TERM PENDING
+================================================================
+
+  [ ] Hook GetHealBonus() into bandage/healing logic
+  [ ] Hook GetBardingBonus() into Discordance, Peacemaking, Provocation
+  [ ] Fix cooldown HUD for Begging and ItemID skills
+  [ ] Update shard name in Config/Server.cfg to "Forsaken Britannia"
+  [ ] Verify WorldAtlas Z coordinates in-game
+  [ ] Build website on Hetzner Ubuntu server (Nginx + Certbot)
+  [ ] Register on server listing sites (uoservers.com, topg.org etc.)
+  [ ] Set up Discord server before launch
+
+
+================================================================
+SHARD DESIGN SUMMARY
+================================================================
+
+Name        : Forsaken Britannia
+Concept     : A living world powered by AI characters — populated
+              24/7 regardless of real player count
+Tagline     : "Never log in to an empty server"
+
+Three zone tiers:
+  Tier 1 — Safe Lands    (PvE, quests, crafting)
+  Tier 2 — Contested     (PvP, champion spawns, risk/reward)
+  Tier 3 — Cursed Lands  (full loot, world bosses, elite guilds)
+
+
+================================================================
+SIMGUILD QUICK REFERENCE
+================================================================
+
+TIER 1:
+  The Wanderers         Blue    ~450 skills   Gate follow 25%
+  Craftsmen's League    Blue    ~380 skills   No gate follow
+  Shadow Hand           Grey    ~500 skills   Gate follow 15%
+
+TIER 2 (7x100 = 700 skills, StatCap 180):
+  Iron Company          Blue    Coordinated champion spawn runners
+  Arcane Brotherhood    Blue    Deep dungeon mage scholars
+  Silver Wolves         Blue    Anti-PK hunters, always groups of 3
+
+TIER 3 GOOD (7x100 = 700 skills, StatCap 225):
+  Paladin Order         Blue    Holy warriors, never retreat
+  Dead Watchers         P.Grey  Random 1-4 teams, unpredictable
+
+TIER 3 ELITE:
+  Dread Hunters         B/Grey  880 skills, StatCap 300
+  Blood Pact            Red     800 skills, StatCap 250 — calculating
+  The Void              Red     850 skills, StatCap 270 — solo, insane
+  Shadowblade           R/Grey  800 skills, StatCap 250 — assassins
+
+Key facts:
+  Roster exhaustion — kill enough members, guild goes quiet
+  Blood Pact evaluates every fight before engaging
+  Reds instant die in cities from town guards
+  SimPlayer cooldown ≠ respawn (SimPlayers re-activate)
+  Dead Watchers blue-testing mechanic SAVED for Phase 3
+
+
+================================================================
+AI CHARACTER TYPE REFERENCE (CRITICAL)
+================================================================
+
+TYPE A — SimPlayers (persistent, 144 total)
+  Class: SimPlayer : BaseFBCombatNPC
+  Managed by: PlayerSimulatorManager
+  On death: cooldown timer, re-activates at HomeLocation
+  Max active: ~30 simultaneously
+  Examples: All 12 SimGuild named members
+
+TYPE B — Pool PKs (respawnable, unnamed)
+  Class: PoolPK : BaseFBCombatNPC
+  Managed by: FBPKSpawner
+  On death: true respawn after timer (new instance)
+  Examples: "a brigand", "a ruffian", dungeon grunts
+
+TYPE C — Encounter PKs (triggered, temporary)
+  Class: NovicePlayerKiller : BaseFBCombatNPC (existing)
+  Managed by: GraveyardPKEncounter / FBEncounterSystem
+  On death: despawn (5-min auto-delete)
+  Examples: Britain graveyard PK, dungeon ambushes
+
+DO NOT confuse these. Different lifecycles, different managers.
+
+
+================================================================
+EQUIPMENT LAYER RULE (DO NOT SKIP)
+================================================================
+
+Evidence: LayerConflict.log shows production bugs from 18-05-2026
+  SampireNewbie: NecromancerSpellbook + Katana = layer conflict
+  PaladinNewbie: BookOfChivalry + Broadsword = layer conflict
+
+THE RULE:
+  Weapons:        SetWearable(new Katana())         explicit layer
+  Shields:        SetWearable(new HeaterShield())   explicit layer
+  Armour:         SetWearable(new PlateChest())     explicit layer
+  Spellbooks:     AddToBackpack(new Spellbook())    BACKPACK ONLY
+  NecroSpellbook: AddToBackpack(new NecroBook())    BACKPACK ONLY
+  BookOfChivalry: AddToBackpack(new BookOfChiv())   BACKPACK ONLY
+
+ServUO NPC AI can cast from backpack — this is safe.
+Never use FirstValid layer for books. Always AddToBackpack.
+This affects: NecroMage, Sampire, Paladin, Pure Mage templates
+
+
+================================================================
+KNOWN ISSUES AND GOTCHAS
+================================================================
+
+Skills.cs assembly boundary:
+  Server/Skills.cs compiles BEFORE Scripts/Custom/
+  Cannot reference Server.Custom directly
+  Solution: static delegate OnSkillUsed — already implemented
+
+PowerShell on Windows (Danish locale):
+  Unicode characters in Write-Host strings cause errors
+  Always use plain ASCII in PS scripts
+
+ServUO gump limitations:
+  AddImageTiledPart does NOT exist in this build
+  Use two AddImageTiled calls instead
+
+Patch scripts:
+  Always timestamp: Patch_Description_YYYYMMDD_HHMM.ps1
+  Google Drive creates (1)(2) duplicates without timestamps
+
+Blood Pact + reds in cities:
+  Instant death from town guards — never gate reds into cities
+
+Bad spawn in Ter Mur (pre-existing, non-blocking):
+  badspawn.log: 946, 3858, -40, TerMur
+  Clean up when convenient
+
+WorldAtlas Z coordinates:
+  Luna z=-50, Umbra z=-85, Zento z=30 — UNVERIFIED
+  Test in-game before launch
+
+
+================================================================
+FILE INVENTORY (custom files)
+================================================================
+
+Scripts/Custom/
+  SkillSynergies.cs          COMPLETE — offensive synergies
+  CooldownSystem.cs          COMPLETE — cooldown HUD
+  WorldAtlas.cs              COMPLETE — teleport book
+  NovicePlayerKiller.cs      COMPILE ERROR — fix OnDeath first
+  GraveyardPKEncounter.cs    COMPLETE — graveyard encounter
+  FBZones.cs                 TO BUILD (Step 1)
+  FBEventBus.cs              TO BUILD (Step 2)
+  BaseFBCombatNPC.cs         TO BUILD (Step 3)
+  FBPKSpawner.cs             TO BUILD (Step 4)
+  ReputationSystem.cs        TO BUILD (Step 6)
+  SimPlayer.cs               TO BUILD (Step 7)
+  PlayerSimulatorManager.cs  TO BUILD (Step 7)
+  QuestTrackerHUD.cs         TO BUILD (Step 8, standalone)
+
+Server/ (patched):
+  Skills.cs                  PATCHED — OnSkillUsed delegate added
+
+Scripts/Misc/ (patched):
+  CharacterCreation.cs       PATCHED — WorldAtlas in starting pack
+
+Scripts/Items/Equipment/Weapons/ (patched):
+  BaseWeapon.cs              PATCHED — synergy + backstab hooks
+
+Data/Spawns/:
+  ForsakenBritannia.xml      TO BUILD (Step 5)
+
+Design docs in C:\UO\SERVUO\:
+  SystemArchitecture_DesignDoc.txt  ← READ FIRST EVERY SESSION
+  GuildSystem_FullDesignDoc.txt     ← PRIMARY GUILD REFERENCE
+  SkillSynergies_DesignDoc.txt
+  QuestSystem_DesignDoc.txt
+  PKNPCTemplates_AllArchetypes.txt
+  PKNPCDesignDoc.txt
+  PlayerSimulator_DesignDoc.txt
+  PlayerSimulator_ActivitySpec.txt
+  CHANGELOG.md
+  COWORK_HANDOVER.txt               ← THIS FILE
+================================================================

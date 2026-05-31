@@ -1,0 +1,350 @@
+================================================================
+SKILL SYNERGIES — FULL DESIGN DOCUMENT
+Shard: Forsaken Britannia | ServUO + ClassicUO
+Created: 2026-05-23 | Updated: 2026-05-24
+Status: Design Complete — Ready for Implementation
+================================================================
+
+OVERVIEW
+--------
+Two categories of synergy bonuses:
+
+OFFENSIVE — weapon damage bonuses already implemented
+            in SkillSynergies.cs (GetWeaponDamageBonus)
+
+DEFENSIVE — new system covering resist bonuses, resist cap
+            raises, DCI bonuses, HP bonuses, bandage heal
+            bonuses, and HP regen bonuses
+
+DESIGN PRINCIPLES
+-----------------
+1. Rarely used skills get BOTH offensive AND defensive bonuses
+   to incentivise their inclusion in templates.
+2. Commonly used combat skills keep only their existing bonus.
+3. All DEFENSIVE bonuses scale from skill 80+:
+     Below 80: zero bonus
+     At 80:    bonus begins scaling
+     At 100:   full bonus
+     At 120:   full bonus (powerscrolls — same cap as 100)
+4. Resist-granting skills affect MULTIPLE resist types
+   (primary stronger, secondary smaller).
+5. Single skills independently raise resist caps.
+   No combination unlock required — simpler and more accessible.
+
+SCALING FORMULA
+---------------
+SynergyScale(skillValue):
+  if skillValue < 80.0: return 0.0
+  return Min(1.0, (skillValue - 80.0) / 20.0)
+
+Applied as: bonus = SynergyScale(skill) * maxBonus
+  0% at 80, 50% at 90, 100% at 100+
+
+Cap raise formula for 100-120:
+  capRaise = 5 + ((skill - 100) / 20.0) * 3
+  Gives +5 at 100, +8 at 120
+
+================================================================
+PART 1 — OFFENSIVE SYNERGIES (existing, unchanged)
+================================================================
+
+Already implemented in SkillSynergies.cs.
+Scale proportionally from 0 (no 80+ threshold).
+No changes to existing values.
+
+UNIVERSAL (all weapon types):
+  Camping        +10% weapon damage
+  Forensic Eval  +10% weapon damage
+  Tracking       +10% weapon damage
+
+METAL WEAPONS (Axe, Slashing, Bashing, Piercing, Polearm):
+  Blacksmithy    +10% weapon damage
+
+WOODEN WEAPONS (Staff, Ranged):
+  Carpentry      +10% weapon damage
+
+BASHING WEAPONS only:
+  Mining         +10% weapon damage
+
+AXE WEAPONS only:
+  Lumberjacking  +10% weapon damage
+  (stacks with native ServUO lumberjacking damage bonus)
+
+BACKSTAB (PvM only, requires 80+ Hiding AND Stealth):
+  Stealth        +200% damage multiplier (x3.0 total)
+  Applied on first hit from hidden state
+
+NOT YET HOOKED (pending implementation):
+  GetHealBonus()    — Anatomy + Healing combined bonus
+  GetBardingBonus() — Forensic + Tracking + Carpentry bard bonus
+
+================================================================
+PART 2 — DEFENSIVE SYNERGIES (new system)
+================================================================
+
+----------------------------------------------------------------
+SECTION A: RESIST BONUSES
+----------------------------------------------------------------
+
+Bonuses are ADDITIVE with armour resistance.
+Hard resist caps still apply (raised by Section B).
+All scale from 80+ using SynergyScale formula.
+
+BLACKSMITHY:
+  Physical +10%, Fire +5%
+  Rationale: You forged the armour — you know how to wear it.
+
+MINING:
+  Physical +5%, Fire +5%
+  Rationale: Hardened body. Underground heat exposure.
+
+LUMBERJACKING:
+  Cold +8%, Physical +5%
+  Rationale: Outdoor work in all weather.
+
+CARPENTRY:
+  Cold +5%, Physical +3%
+  Rationale: Also outdoor — smaller bonuses than Lumberjacking.
+
+CAMPING:
+  Cold +8%, Physical +5%
+  ALSO gives +10% offensive damage (dual purpose).
+  Rationale: Survival in harsh outdoor conditions.
+
+ALCHEMY:
+  Fire +12%, Poison +5%
+  Rationale: Working with volatile substances daily.
+
+TASTE ID:
+  Poison +12%, Fire +5%
+  Rationale: Recognise toxins before they fully affect you.
+
+HERDING:
+  Poison +8%, Cold +5%
+  Rationale: Livestock disease exposure + outdoor life.
+
+ANIMAL TAMING:
+  Physical +5%, Poison +5%
+  Rationale: Handling dangerous creatures — bites and venom.
+
+FISHING:
+  Cold +5%, Energy +3%
+  Rationale: Water and storm exposure.
+
+INSCRIPTION:
+  Energy +12%, Cold +5%
+  Rationale: Deep understanding of magical energy patterns.
+
+WRESTLING:
+  Physical +8%
+  Rationale: Toughened body from sustained combat training.
+
+----------------------------------------------------------------
+SECTION B: RESIST CAP RAISES
+----------------------------------------------------------------
+
+Default resist cap: 70% for all types.
+
+PRIMARY CAP RAISERS:
+  At skill 100: cap +5% (70% to 75%)
+  At skill 120: cap +8% (70% to 78%)
+
+  Blacksmithy  → Physical resist cap
+  Alchemy      → Fire resist cap
+  Taste ID     → Poison resist cap
+  Inscription  → Energy resist cap
+  Camping      → Cold resist cap
+
+SECONDARY CAP RAISERS (+2% at 100, +3% at 120):
+  Blacksmithy  → Fire cap
+  Mining       → Fire cap
+  Lumberjacking→ Physical cap, Cold cap
+  Carpentry    → Physical cap
+  Camping      → Physical cap
+  Alchemy      → Poison cap
+  Taste ID     → Fire cap
+  Herding      → Cold cap, Poison cap
+  Animal Taming→ Poison cap
+  Fishing      → Energy cap
+  Inscription  → Cold cap
+
+REALISTIC MAXIMUMS (within 700 skill template):
+  Physical: ~78-80%
+  Fire:     ~75-78%
+  Cold:     ~75-78%
+  Poison:   ~75-78%
+  Energy:   ~75-78%
+
+----------------------------------------------------------------
+SECTION C: DCI BONUSES
+----------------------------------------------------------------
+
+Skill DCI does NOT count against the item DCI cap (45%).
+Applied separately in CheckHit() after item DCI.
+
+  Tracking       → +8% DCI
+    Already gives +10% offensive damage (dual purpose).
+
+  Detect Hidden  → +10% DCI
+    No offensive bonus — pure defensive.
+
+Max skill DCI: +18% (above item cap)
+Effective max DCI: 45% (items) + 18% (skills) = 63%
+
+----------------------------------------------------------------
+SECTION D: HP BONUSES
+----------------------------------------------------------------
+
+Added to HitsMax AFTER item BonusHits cap (+25).
+Do NOT count against the item cap.
+
+  Herding        → +20 HP
+  Animal Taming  → +15 HP
+  Fishing        → +10 HP
+
+Max skill HP bonus: +45 HP
+Base (Str 125): 112 + items 25 + skills 45 = 182 HP max
+With Toughness/Invigorate + Animal Form: ~230 HP
+
+IMPORTANT: Defensive skill HP bonuses apply to real players
+(PlayerMobile) only. SimPlayers use fixed SetResistance()
+values in their constructors — synergy system does not apply.
+
+----------------------------------------------------------------
+SECTION E: BANDAGE HEAL BONUSES
+----------------------------------------------------------------
+
+Multiplies final heal amount of each bandage application.
+Applied in Healing skill handler.
+
+  Forensic Eval  → +25% bandage heal
+    Already gives +10% offensive damage (dual purpose).
+
+  Veterinary     → +20% bandage heal
+    No offensive bonus — pure defensive.
+
+Maximum: +45% bandage heal
+Base 30 HP bandage → 43 HP at both skills 100
+
+----------------------------------------------------------------
+SECTION F: HP REGEN BONUS
+----------------------------------------------------------------
+
+  Camping  → HP regen rate x2.0 at skill 100
+    Also gives +10% offence AND cold resist AND cold cap.
+    Triple-purpose for a rarely used skill.
+
+----------------------------------------------------------------
+SECTION G: DEBUFF DURATION REDUCTION
+----------------------------------------------------------------
+
+  Detect Hidden  → -25% debuff duration at skill 100
+    Also gives +10% DCI (dual purpose).
+    Affects: Evil Omen, Curse, Strangle, Pain Spike.
+    Applied as: duration = duration * (1.0 - reduction)
+
+================================================================
+COMPLETE SKILL REFERENCE TABLE
+================================================================
+
+Skill           | Off   | Phys  | Fire  | Cold  | Pois  | Enrg  | DCI  | HP  | Heal | Regen | Debuf | Cap Raises
+Camping         | +10%  | +5%   | —     | +8%   | —     | —     | —    | —   | —    | x2.0  | —     | Cold+5/8, Phys+2/3
+Forensic Eval   | +10%  | —     | —     | —     | —     | —     | —    | —   | +25% | —     | —     | —
+Tracking        | +10%  | —     | —     | —     | —     | —     | +8%  | —   | —    | —     | —     | —
+Blacksmithy     | +10%  | +10%  | +5%   | —     | —     | —     | —    | —   | —    | —     | —     | Phys+5/8, Fire+2/3
+Carpentry       | +10%  | +3%   | —     | +5%   | —     | —     | —    | —   | —    | —     | —     | Phys+2/3
+Mining          | +10%  | +5%   | +5%   | —     | —     | —     | —    | —   | —    | —     | —     | Fire+2/3
+Lumberjacking   | +10%  | +5%   | —     | +8%   | —     | —     | —    | —   | —    | —     | —     | Cold+2/3, Phys+2/3
+Taste ID        | —     | —     | +5%   | —     | +12%  | —     | —    | —   | —    | —     | —     | Pois+5/8, Fire+2/3
+Herding         | —     | —     | —     | +5%   | +8%   | —     | —    | +20 | —    | —     | —     | Cold+2/3, Pois+2/3
+Veterinary      | —     | —     | —     | —     | —     | —     | —    | —   | +20% | —     | —     | —
+Fishing         | —     | —     | —     | +5%   | —     | +3%   | —    | +10 | —    | —     | —     | Enrg+2/3
+Animal Taming   | —     | +5%   | —     | —     | +5%   | —     | —    | +15 | —    | —     | —     | Pois+2/3
+Inscription     | —     | —     | —     | +5%   | —     | +12%  | —    | —   | —    | —     | —     | Enrg+5/8, Cold+2/3
+Alchemy         | —     | —     | +12%  | —     | +5%   | —     | —    | —   | —    | —     | —     | Fire+5/8, Pois+2/3
+Detect Hidden   | —     | —     | —     | —     | —     | —     | +10% | —   | —    | —     | -25%  | —
+Wrestling       | —     | +8%   | —     | —     | —     | —     | —    | —   | —    | —     | —     | —
+
+================================================================
+IMPLEMENTATION NOTES
+================================================================
+
+Methods to ADD to SkillSynergies.cs:
+
+  Private helpers:
+    double SynergyScale(double skillValue)
+    int CapScale(double skillValue, int bonusAt100, int bonusAt120)
+
+  Resist bonuses (return int — % points):
+    GetPhysicalResistBonus(Mobile)
+    GetFireResistBonus(Mobile)
+    GetColdResistBonus(Mobile)
+    GetPoisonResistBonus(Mobile)
+    GetEnergyResistBonus(Mobile)
+
+  Resist cap raises (return int — additional % cap):
+    GetPhysicalResistCap(Mobile)
+    GetFireResistCap(Mobile)
+    GetColdResistCap(Mobile)
+    GetPoisonResistCap(Mobile)
+    GetEnergyResistCap(Mobile)
+
+  Other defensive:
+    GetDCIBonus(Mobile)                  → double
+    GetBonusHP(Mobile)                   → int
+    GetBandageHealBonus(Mobile)          → double
+    GetHPRegenMultiplier(Mobile)         → double
+    GetDebuffDurationMultiplier(Mobile)  → double
+
+HOOK LOCATIONS:
+
+  Resist bonuses   → PlayerMobile.ComputeResistances()
+  Resist caps      → PlayerMobile.GetMaxResistance()
+  DCI bonus        → BaseWeapon.CheckHit() theirValue calc
+  HP bonus         → PlayerMobile.HitsMax getter
+  Bandage heal     → Bandage.cs heal amount calculation
+  HP regen         → PlayerMobile.GetHitsRegenRate()
+  Debuff duration  → Individual spell timer setup
+
+APPLIES TO: PlayerMobile only
+DOES NOT apply to SimPlayers (BaseCreature — fixed stats)
+
+================================================================
+EXAMPLE BUILD IMPACTS
+================================================================
+
+PURE TANK BUILD (7x100):
+  Swords 100        — weapon skill
+  Tactics 100       — +81.25% dmg
+  Healing 100       — bandages
+  Parry 100         — 30% block chance
+  Blacksmithy 100   — +10% metal dmg, Physical +10%, Fire +5%
+                      Physical cap 75%
+  Herding 100       — Poison +8%, Cold +5%, HP +20
+  Animal Taming 100 — Physical +5%, Poison +5%, HP +15
+  HP: 112+25+35 = 172 | Physical resist: up to 75% cap
+
+MAGE DEFENDER BUILD (7x100):
+  Magery 100, Eval Int 100, Magic Resist 100, Meditation 100
+  Inscription 100   — Energy +12%, Cold +5%, Energy cap 75%
+  Alchemy 100       — Fire +12%, Poison +5%, Fire cap 75%
+  Detect Hidden 100 — DCI +10%, debuff -25%
+  DCI: 45% items + 10% skill = 55% effective
+
+SURVIVAL DEXXER BUILD (7x100) — same damage, better survival:
+  Swords 100, Tactics 100, Anatomy 100, Healing 100
+  Camping 100       — +10% dmg, Cold +8%, Phys +5%, regen x2
+  Forensic 100      — +10% dmg, bandage +25%
+  Tracking 100      — +10% dmg, DCI +8%
+  Offensive: identical to standard dexxer
+  Defensive: Cold/Physical resist, DCI +8%, better bandages
+
+================================================================
+RELATED FILES
+================================================================
+
+SkillSynergies.cs               Existing implementation (offensive)
+GuildSystem_FullDesignDoc.txt   Guild template skill loadouts
+SystemArchitecture_DesignDoc.txt Architecture + hook locations
+COWORK_HANDOVER.txt             Full project context
+================================================================

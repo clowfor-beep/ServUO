@@ -4257,6 +4257,9 @@ namespace Server.Mobiles
 
             switch (version)
             {
+                case 43: // activated shepherd's crook serial (Herding system)
+                    Server.Custom.SkillSynergies.RestoreActivatedCrook(this, new Serial(reader.ReadInt()));
+                    goto case 42;
                 case 42: // upgraded quest serialization
                 case 41: // removed PeacedUntil - no need to serialize this
                 case 40: // Version 40, moved gauntlet points, virtua artys and TOT convert to PointsSystem
@@ -4725,7 +4728,10 @@ namespace Server.Mobiles
 
             base.Serialize(writer);
 
-            writer.Write(42); // version
+            writer.Write(43); // version
+
+            // Version 43 – activated shepherd's crook serial (Herding system)
+            writer.Write((int)Server.Custom.SkillSynergies.GetActivatedCrookSerial(this));
 
             writer.Write(NextGemOfSalvationUse);
 

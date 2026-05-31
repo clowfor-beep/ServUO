@@ -222,6 +222,53 @@ This means the vendor owner earns gold exactly as if a player had bought the ite
 
 ---
 
+---
+
+## Merchant 3 — The Traveling Rare Merchant
+
+### Concept
+A single mysterious merchant who drifts between town banks across Britannia, staying 30 minutes before vanishing and reappearing elsewhere. He only accepts Merchant Coins and carries high-value items no regular vendor would stock.
+
+### NPC Behaviour
+- One global instance managed by `TravelingRareMerchantSystem`.
+- Every 30 minutes: despawns with farewell speech + effect, then reappears at a randomly chosen town bank (Felucca or Trammel).
+- A server-wide gold broadcast announces which bank he arrived at.
+- `CantWalk = true` — stays put while at the bank.
+- On double-click: opens the shop gump.
+- GM command `[respawnmerchant` forces an immediate move (for testing).
+
+### Appearance
+- Black robe (hue 1), black wizard's hat
+- Gold bracelet + gold necklace (gold trim effect)
+- Gold sandals (hue 0x8A5)
+- Random human body + skin + hair
+
+### Shop
+- 10 items randomly drawn from the stock pool each visit — no duplicates within a single visit.
+- Items refresh every time he moves to a new location.
+- **Payment: Merchant Coins only** — deducted directly from backpack.
+- Gump shows the player's current coin balance alongside each item's cost.
+
+### Stock Pool
+| Category | Examples | Cost (Merchant Coins) |
+|---|---|---|
+| Power Scrolls +115 (combat) | Swords, Archery, Magery, Healing | 60c |
+| Power Scrolls +120 (combat) | Swords, Archery, Magery, Tactics | 100c |
+| Power Scroll: Taming 110/115/120 | — | 40 / 80 / 150c |
+| Power Scrolls +120 (crafting) | Blacksmithy, Tailoring, Fishing, etc. | 80c |
+| Major Artifacts | Hat of the Magi, Crystalline Ring, Rune Beetle Carapace, etc. | 100–200c |
+| Special Resources | Gold 50k/100k, Valorite Ingots 500, Frostwood/Heartwood Boards 500 | 20–35c |
+
+### Key Implementation Notes
+- `TravelingRareMerchantSystem.Initialize()` — auto-called at startup, starts 30-min cycle.
+- `RareMerchantStock.GetRandomStock(10)` — picks 10 without replacement from pool.
+- `TravelingRareMerchant : BaseCreature` — `IsInvulnerable = true`, `CantWalk = true`.
+- `TravelingRareMerchantGump` — shows 10 items, buy button per row, updates coin count.
+- Merchant deletes on server restart (transient) — system spawns fresh on next startup.
+- File: `Scripts/Custom/TravelingRareMerchant.cs`
+
+---
+
 ## Decisions Log
 
 | Decision | Answer |

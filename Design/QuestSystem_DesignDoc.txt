@@ -1,0 +1,363 @@
+# ================================================================
+# Quest System — High Level Design Document
+# Shard: Forsaken Britannia | ServUO + ClassicUO
+# Created: 2026-05-23
+# Status: Design Phase — Implementation Pending
+# ================================================================
+
+# ================================================================
+# OVERVIEW
+# ================================================================
+
+# Quest system built on 6 types, informed by EverQuest, Diablo,
+# Path of Exile, Lost Ark, and Last Epoch.
+#
+# Core philosophy:
+#   - Quests emerge naturally from the living world
+#   - SimGuild activity generates and shapes quest content
+#   - No quest should feel disconnected from the world state
+#   - Epic quests are lore-driven — players discover optimal builds
+#   - Rewards add depth and unique utility, not raw stat inflation
+
+
+# ================================================================
+# THE 6 QUEST TYPES
+# ================================================================
+
+# ----------------------------------------------------------------
+# TYPE 1 — HUNT
+# ----------------------------------------------------------------
+# Definition:
+#   Kill a specific named target. A single clearly defined
+#   objective with a clearly defined enemy.
+#
+# Examples in reference games:
+#   EverQuest  : Kill tasks, epic boss requirements
+#   Diablo     : Bounties, boss encounters
+#   Path of Exile: Map boss kills, Atlas objectives
+#   Lost Ark   : Guardian raids, world boss hunts
+#   Last Epoch : Monolith boss targets, dungeon bosses
+#
+# Forsaken Britannia applications:
+#   - Bounty board: hunt a named Blood Pact member
+#   - Kill a specific dungeon boss (named creature in deep Tier 3)
+#   - Eliminate a specific Void member haunting a dungeon
+#   - SimGuild-generated: Silver Wolves post bounty on red players
+#   - Player-posted: real player puts a bounty on a PK who killed them
+#
+# Core feeling: I am the predator pursuing a specific threat
+#
+# Repeatable: Yes (bounties refresh daily/weekly)
+# Solo viable: Yes
+# Tier range: All tiers (scaled difficulty)
+
+
+# ----------------------------------------------------------------
+# TYPE 2 — GATHER
+# ----------------------------------------------------------------
+# Definition:
+#   Collect, retrieve, or deliver items, resources, or information.
+#   The objective is an item or set of items, not a kill.
+#
+# Examples in reference games:
+#   EverQuest  : Collection quests, fedex delivery, tradeskill quests
+#   Diablo     : Item retrieval, document recovery
+#   Path of Exile: Fragment collection, recipe gathering
+#   Lost Ark   : Rapport gifts, island tokens, adventure tome
+#   Last Epoch : Material farming, prophecy targets
+#
+# Forsaken Britannia applications:
+#   - Craftsmen's League requests specific resources
+#   - Collect creature components from dungeon monsters
+#   - Retrieve a lost item from a specific dungeon level
+#   - Deliver supplies to a SimPlayer character
+#   - Information gathering — find out what Blood Pact is planning
+#     (talk to NPCs, search locations, return with intel)
+#
+# Core feeling: The world has something I need to find
+#
+# Repeatable: Yes (resource quests especially)
+# Solo viable: Yes
+# Tier range: All tiers
+
+
+# ----------------------------------------------------------------
+# TYPE 3 — CLEAR
+# ----------------------------------------------------------------
+# Definition:
+#   Purge an area, dungeon, or event. The goal is completion
+#   of a space or event, not a single specific target.
+#   Distinct from Hunt because there is no single named enemy.
+#
+# Examples in reference games:
+#   EverQuest  : Zone clearing for faction, dungeon completion
+#   Diablo     : Area clears, event completion, rift clearing
+#   Path of Exile: Map clearing, league mechanic completion
+#   Lost Ark   : Chaos dungeons, cube dungeons
+#   Last Epoch : Monolith echoes, dungeon runs
+#
+# Forsaken Britannia applications:
+#   - Champion spawn activation and completion (primary home here)
+#   - Clear a dungeon level of all named spawns
+#   - Defend an area from a wave event
+#   - Iron Company posts a job: we need help clearing Despise level 2
+#   - Event-triggered: Void is overwhelming a dungeon, players clear it
+#
+# Core feeling: This place needs to be cleansed
+#
+# Repeatable: Yes (champion spawns especially)
+# Solo viable: Difficult — designed for groups
+# Tier range: Tier 2 and 3 primarily
+
+
+# ----------------------------------------------------------------
+# TYPE 4 — EXPLORE
+# ----------------------------------------------------------------
+# Definition:
+#   Discover locations, interact with the world, uncover lore.
+#   The objective is knowledge or discovery, not combat or items.
+#
+# Examples in reference games:
+#   EverQuest  : Quest dialogue chains, zone discovery, lore items
+#   Diablo     : Story cutscenes, environment storytelling
+#   Path of Exile: Atlas exploration, league lore, divination cards
+#   Lost Ark   : Island quests, adventure tome, story quests
+#   Last Epoch : Lore scrolls, NPC conversations, area secrets
+#
+# Forsaken Britannia applications:
+#   - Use the World Atlas to discover and visit all locations
+#   - Find a hidden location referenced in a lore scroll
+#   - Talk to specific SimGuild NPCs to piece together world history
+#   - Discover what happened to Britannia (why is it "Forsaken"?)
+#   - Unlock access to Tier 2 and Tier 3 zones through discovery quests
+#   - Find ancient ruins or hidden areas not marked on the Atlas
+#
+# Core feeling: The world is larger than I know
+#
+# Repeatable: No (discovery is a one-time event)
+# Solo viable: Yes — designed for solo or small groups
+# Tier range: All tiers
+# Note: Explore quests are the primary vehicle for world lore
+
+
+# ----------------------------------------------------------------
+# TYPE 5 — REPUTATION
+# ----------------------------------------------------------------
+# Definition:
+#   Repeated engagement with a SimGuild or faction that builds
+#   standing over time and unlocks access to better quests,
+#   areas, or services. The relationship IS the quest.
+#
+# Examples in reference games:
+#   EverQuest  : Faction grinding, kill faction, merchant faction
+#   Diablo     : Seasonal reputation, endgame faction systems
+#   Path of Exile: Syndicate reputation, league faction standing
+#   Lost Ark   : Rapport system (NPC relationship building over time)
+#   Last Epoch : Forgotten Knights faction, Circle of Fortune faction
+#
+# Forsaken Britannia applications:
+#   - Iron Company reputation: help with champion spawns, earn trust
+#     Unlocks: Iron Company will assist you in Tier 2 encounters
+#   - Silver Wolves reputation: kill enough reds in Tier 2
+#     Unlocks: Silver Wolves patrol near you in contested areas
+#   - Craftsmen's League reputation: bring resources, buy from them
+#     Unlocks: Access to crafted items not available at vendors
+#   - Blood Pact infamy: killing their members raises your bounty
+#     Blood Pact begins sending higher-tier members after you
+#   - Dead Watchers standing: prove yourself worthy
+#     Unlocks: The blue-testing mechanic (saved for Phase 3)
+#   - Paladin Order standing: hunt reds in Tier 3 alongside them
+#     Unlocks: Paladin Order actively defends you in Tier 3
+#
+# Core feeling: I am becoming part of something larger
+#
+# Repeatable: Yes — ongoing, long-term engagement
+# Solo viable: Yes — individual actions accumulate
+# Tier range: All tiers (different guilds per tier)
+# Note: Reputation is the social layer connecting all other types
+
+
+# ----------------------------------------------------------------
+# TYPE 6 — EPIC
+# ----------------------------------------------------------------
+# Definition:
+#   Long multi-stage lore-driven quest chain. 20-40 steps spanning
+#   all three tiers and multiple systems. Reward unlocks a unique
+#   cross-class skill at 80 outside the normal 700 skill cap.
+#
+# Inspired by:
+#   EverQuest  : Class epic weapons (1999) — multi-month quest chains,
+#                unique class-defining rewards, social requirements,
+#                rare drops, contested spawns, prestige recognition
+#
+# Key design decisions:
+#   NOT template-specific — epics are built around world lore, not
+#   character archetypes. Players discover which templates best
+#   exploit the reward. Community discovery is part of the content.
+#
+#   Reward philosophy:
+#   - Epic weapon has better base stats than any craftable equivalent
+#   - Completing the chain unlocks ONE cross-class skill at 80,
+#     not counting against the 700 skill cap
+#   - The skill is fixed by the epic lore, not player choice
+#   - 80 cap on cross-class skill prevents full exploitation
+#   - Creates unique hybrid builds impossible without the epic
+#   - Raw damage numbers are NOT inflated — depth over magnitude
+#
+# Forsaken Britannia applications:
+#   - Each epic is anchored in the lore of a SimGuild or world event
+#   - The quest chain touches all 6 types: Hunt, Gather, Clear,
+#     Explore, Reputation — the epic is the complete game
+#   - Final step requires Tier 3 engagement
+#   - The weapon is visually unique — recognisable to other players
+#   - The cross-class skill creates hybrid builds players theorise about
+#   - Number of epics = number of compelling lore stories, not fixed
+#
+# Core feeling: I have mastered this world and earned something
+#               no one else has
+#
+# Repeatable: No — once per character
+# Solo viable: Designed so skilled solo players CAN complete it
+#              but noticeably faster with partners
+# Tier range: Starts in Tier 1, ends in Tier 3
+# Note: Epic lore design is a separate document
+
+
+# ================================================================
+# QUEST MODEL DECISIONS
+# ================================================================
+
+# ORIGIN MODEL: Hybrid (static foundation + dynamic layer)
+#   Static: Fixed quest NPCs in towns for Gather, Explore, Reputation
+#   Dynamic: World state generates Hunt and Clear quests automatically
+#            SimGuild activity creates bounties and event quests
+#
+# QUEST GIVERS:
+#   NPC quest givers in towns — Tier 1 quests
+#   Guild bulletin boards — Tier 2 Hunt and Reputation quests
+#   World events — auto-generate Clear quests when triggered
+#   Epic: multi-NPC chain across the world
+#
+# PROGRESSION MODEL: Tier-gated + Reputation-gated
+#   Tier 1 quests: always available, safe zones only
+#   Tier 2 quests: require stepping into contested territory
+#   Tier 3 quests: require completing Tier 2 content first
+#   Guild quests: require minimum reputation with that guild
+#
+# REPEATABLE vs ONE-SHOT:
+#   Hunt (bounties):     daily/weekly refresh
+#   Gather (resources):  daily refresh
+#   Clear (events):      event-triggered, not on timer
+#   Explore:             one-time only (discovery)
+#   Reputation:          ongoing — no end state
+#   Epic:                one-time only per character
+
+
+# ================================================================
+# INTEGRATION WITH SIMGUILD SYSTEM
+# ================================================================
+
+# SimGuild activity drives dynamic quest content:
+#
+# Blood Pact kills 3+ real players this week
+#   → Bounty board generates HUNT quests with increased gold reward
+#   → Silver Wolves reputation: assist them in hunting Blood Pact
+#
+# Iron Company activates a champion spawn
+#   → CLEAR quest auto-generates: help Iron Company finish the spawn
+#   → Reward scales with how many waves assisted
+#
+# Craftsmen's League members are being killed by Blood Pact
+#   → HUNT quest: protect the routes (escort variant)
+#   → REPUTATION: Craftsmen's League appreciates your protection
+#
+# Dead Watchers are active in a dungeon
+#   → EXPLORE quest: investigate their presence, uncover their history
+#   → Opens lore chain that feeds into an EPIC quest
+#
+# Shadow Hand is active in a town
+#   → HUNT variant: track and catch a specific thief
+#   → Links to Shadow Hand REPUTATION (or infamy if you help them)
+
+
+# ================================================================
+# REWARD PHILOSOPHY
+# ================================================================
+
+# General quest rewards (Hunt, Gather, Clear, Explore):
+#   Gold — primary currency reward
+#   Fame and Karma — appropriate to quest type
+#   Reputation points with relevant guild
+#   Consumables (bandages, potions, reagents)
+#   Occasional magic item (minor, never game-changing)
+#
+# Reputation quest rewards (milestone thresholds):
+#   Access to guild services (crafting, information, assistance)
+#   Guild will assist you in the field
+#   Better quest quality available
+#   Unique cosmetic items (guild colours, insignia)
+#
+# Epic quest reward:
+#   Unique weapon — better base stats than any normal equivalent
+#   Cross-class skill unlocked at 80 outside the 700 cap
+#   Unique visual appearance — recognisable to other players
+#   NO raw damage multiplier inflation
+#   NO resist cap breaking
+#   Depth over magnitude — creates unique tactical options
+
+
+# ================================================================
+# WHAT NEEDS INVESTIGATING IN SERVUO
+# ================================================================
+
+# Before implementation, verify ServUO's quest system supports:
+#
+# 1. Multi-stage quests (20-40 steps for Epics)
+# 2. Conditional steps (step B only available after step A)
+# 3. Kill objective tracking (Hunt type)
+# 4. Item collection/delivery tracking (Gather type)
+# 5. Area/event completion tracking (Clear type)
+# 6. NPC dialogue integration (Explore type)
+# 7. Persistent reputation tracking per guild per player (Reputation)
+# 8. Dynamic quest generation from world events
+# 9. Unique item rewards (weapons with specific properties)
+# 10. Cross-class skill unlock as a permanent player buff
+# 11. Quest journal visible to player in ClassicUO client
+# 12. Daily/weekly quest refresh timers
+
+
+# ================================================================
+# IMPLEMENTATION PHASES
+# ================================================================
+
+# PHASE 1 — Foundation
+#   Simple Hunt quests (bounty board in Britain)
+#   Simple Gather quests (Craftsmen's League requests)
+#   Basic Reputation tracking for 2-3 guilds
+#   Verify ServUO quest infrastructure handles the basics
+#
+# PHASE 2 — Living World
+#   Dynamic quest generation from SimGuild activity
+#   Clear quests tied to champion spawn events
+#   Explore quests unlocking world lore
+#   Full Reputation system for all 12 guilds
+#
+# PHASE 3 — Epic
+#   Design epic lore (separate document)
+#   Implement cross-class skill unlock mechanic
+#   Build first epic quest chain
+#   Community discovery period — do not advertise rewards
+#
+# NOTE: Epic implementation requires Phase 1 and 2 to be stable
+# The cross-class skill unlock at 80 requires custom code in
+# PlayerMobile.cs to handle the extra skill outside the 700 cap
+
+
+# ================================================================
+# RELATED DOCUMENTS
+# ================================================================
+
+# GuildSystem_FullDesignDoc.txt     SimGuild activities that drive quests
+# PlayerSimulator_DesignDoc.txt     SimPlayer world activity
+# SkillSynergies_DesignDoc.txt      Cross-class skill context for Epic rewards
+# COWORK_HANDOVER.txt               Full project context

@@ -317,54 +317,144 @@ namespace Server.Custom
         // ============================================================
         // HERDING SYNERGIES -- follower damage and resistance bonuses
         // ============================================================
+        //
+        // Outlands design:
+        //   PvM damage bonus  = 22% × (effectiveSkill / 100)
+        //   PvP damage bonus  = 11% × (effectiveSkill / 100)
+        //   PvM resist bonus  = 11% × (effectiveSkill / 100)
+        //   PvP resist bonus  =  5.5% × (effectiveSkill / 100)
+        //
+        //   effectiveSkill = herdingSkill + crookBonus
+        //   crookBonus     = crook.Attributes.AttackChance + crook.Attributes.WeaponDamage
+        //
+        // Requires the player to have an ACTIVATED shepherd's crook
+        // (equipped or in backpack, set via double-click or equipping).
+        // ============================================================
 
-        // +22% damage per (Herding/100) while controller has a Shepherd's Crook
-        private const double HerdingDamageBonusPerPoint = 0.22;
-        // +11% resistance per (Herding/100)
-        private const double HerdingResistBonusPerPoint = 0.11;
+        // ── Activated crook registry ──────────────────────────────────────────
+        // Maps player Serial → activated ShepherdsCrook Serial
+        private static readonly System.Collections.Generic.Dictionary<Serial, Serial>
+            _activatedCrooks = new System.Collections.Generic.Dictionary<Serial, Serial>();
 
-        /// <summary>
-        /// Call from BaseCreature.AlterMeleeDamageTo when the creature is a follower attacking.
-        /// Multiplies outgoing melee damage by the Herding bonus.
-        /// </summary>
-        public static void ApplyHerdingDamageBonus(Mobile master, ref int damage)
+        /// <summary>Registers <paramref name="crook"/> as the active crook for <paramref name="pm"/>.
+        /// Returns true if newly activated, false if it was already active.</summary>
+        public static bool ActivateCrook(PlayerMobile pm, ShepherdsCrook crook)
         {
-            if (master == null || !master.Alive) return;
+            if (pm == null || crook == null || crook.Deleted) return false;
 
+            // Check it's accessible (equipped or in backpack)
+            bool accessible = crook.IsChildOf(pm.Backpack)
+                || (pm.FindItemOnLayer(Layer.TwoHanded) == crook);
+            if (!accessible) return false;
+
+            bool alreadyActive = _activatedCrooks.TryGetValue(pm.Serial, out Serial cur)
+                                  && cur == crook.Serial;
+            _activatedCrooks[pm.Serial] = crook.Serial;
+            return !alreadyActive;
+        }
+
+        /// <summary>Returns the activated ShepherdsCrook for <paramref name="pm"/>,
+        /// or null if none is set / the crook is no longer accessible.</summary>
+        public static ShepherdsCrook GetActivatedCrook(PlayerMobile pm)
+        {
+            if (pm == null) return null;
+            if (!_activatedCrooks.TryGetValue(pm.Serial, out Serial crookSerial)) return null;
+
+            Item item = World.FindItem(crookSerial);
+            if (!(item is ShepherdsCrook crook) || crook.Deleted) return null;
+
+            // Still must be equipped or in backpack
+            if (!crook.IsChildOf(pm.Backpack) && pm.FindItemOnLayer(Layer.TwoHanded) != crook)
+            {
+                _activatedCrooks.Remove(pm.Serial);
+                return null;
+            }
+            return crook;
+        }
+
+        public static bool IsActivated(PlayerMobile pm, ShepherdsCrook crook)
+        {
+            if (pm == null || crook == null) return false;
+            return _activatedCrooks.TryGetValue(pm.Serial, out Serial s) && s == crook.Serial;
+        }
+
+        // ── Persistence helpers (called from PlayerMobile Serialize/Deserialize) ─
+
+        /// <summary>Returns the raw Serial stored for this player's activated crook,
+        /// or Serial(-1) if none.</summary>
+        public static Serial GetActivatedCrookSerial(PlayerMobile pm)
+        {
+            if (pm == null) return new Serial(-1);
+            return _activatedCrooks.TryGetValue(pm.Serial, out Serial s) ? s : new Serial(-1);
+        }
+
+        /// <summary>Restores the activated-crook mapping from a saved Serial without
+        /// performing accessibility checks (those happen lazily on first use).</summary>
+        public static void RestoreActivatedCrook(PlayerMobile pm, Serial crookSerial)
+        {
+            if (pm == null || (int)crookSerial == -1) return;
+            _activatedCrooks[pm.Serial] = crookSerial;
+        }
+
+        // ── Effective skill calculation ───────────────────────────────────────
+
+        private static double GetEffectiveHerding(Mobile master)
+        {
             double herding = master.Skills[SkillName.Herding].Value;
-            if (herding < 30.0) return;
-            if (!HasShepherdsCrook(master)) return;
+            if (!(master is PlayerMobile pm)) return herding;
 
-            double bonus = HerdingDamageBonusPerPoint * (herding / 100.0);
+            ShepherdsCrook crook = GetActivatedCrook(pm);
+            if (crook == null) return -1; // no activated crook
+
+            // Crook bonus = HCI + DI on the weapon (as raw percentage points)
+            double crookBonus = crook.Attributes.AttackChance + crook.Attributes.WeaponDamage;
+            return herding + crookBonus;
+        }
+
+        // ── Damage bonus applied when follower ATTACKS ────────────────────────
+
+        /// <summary>Call from BaseCreature.AlterMeleeDamageTo / AlterSpellDamageTo
+        /// when the creature is a player-controlled follower attacking.</summary>
+        public static void ApplyHerdingDamageBonus(Mobile master, Mobile target, ref int damage)
+        {
+            if (master == null || !master.Alive || damage <= 0) return;
+
+            double effectiveSkill = GetEffectiveHerding(master);
+            if (effectiveSkill < 30.0) return;
+
+            // PvP vs PvM multiplier
+            double pct = (target is PlayerMobile) ? 0.11 : 0.22;
+            double bonus = pct * (effectiveSkill / 100.0);
             damage = (int)(damage * (1.0 + bonus));
 
-            // Passive Herding skill gain: 5% chance per successful follower hit
+            // Passive skill gain while fighting with followers (50–120 range)
             if (Utility.RandomDouble() < 0.05)
                 master.CheckSkill(SkillName.Herding, 50.0, 120.0);
         }
 
-        /// <summary>
-        /// Call from BaseCreature.AlterMeleeDamageFrom when the creature is a follower being hit.
-        /// Reduces incoming melee damage by the Herding resist bonus.
-        /// </summary>
-        public static void ApplyHerdingResistBonus(Mobile master, ref int damage)
+        // Legacy overload — called from BaseCreature without a target reference
+        public static void ApplyHerdingDamageBonus(Mobile master, ref int damage)
+            => ApplyHerdingDamageBonus(master, null, ref damage);
+
+        // ── Resist bonus applied when follower RECEIVES damage ────────────────
+
+        /// <summary>Call from BaseCreature.AlterMeleeDamageFrom / AlterSpellDamageFrom
+        /// when the creature is a player-controlled follower being hit.</summary>
+        public static void ApplyHerdingResistBonus(Mobile master, Mobile attacker, ref int damage)
         {
-            if (master == null || !master.Alive) return;
+            if (master == null || !master.Alive || damage <= 0) return;
 
-            double herding = master.Skills[SkillName.Herding].Value;
-            if (herding < 30.0) return;
-            if (!HasShepherdsCrook(master)) return;
+            double effectiveSkill = GetEffectiveHerding(master);
+            if (effectiveSkill < 30.0) return;
 
-            double reduction = HerdingResistBonusPerPoint * (herding / 100.0);
+            // PvP vs PvM multiplier
+            double pct = (attacker is PlayerMobile) ? 0.055 : 0.11;
+            double reduction = pct * (effectiveSkill / 100.0);
             damage = (int)(damage * (1.0 - reduction));
         }
 
-        /// <summary>Returns true if the mobile has a Shepherd's Crook equipped or in backpack.</summary>
-        private static bool HasShepherdsCrook(Mobile m)
-        {
-            if (m.FindItemOnLayer(Layer.TwoHanded) is ShepherdsCrook) return true;
-            if (m.Backpack != null && m.Backpack.FindItemByType(typeof(ShepherdsCrook)) != null) return true;
-            return false;
-        }
+        // Legacy overload
+        public static void ApplyHerdingResistBonus(Mobile master, ref int damage)
+            => ApplyHerdingResistBonus(master, null, ref damage);
     }
 }
