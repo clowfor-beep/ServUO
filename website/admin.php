@@ -10,7 +10,7 @@ session_set_cookie_params([
 session_start();
 
 // ── Change this password ──────────────────────────────────────────────────────
-define('ADMIN_PASSWORD', 'CHANGE_ME_NOW');   // ← replace before deploying
+define('ADMIN_PASSWORD', 'TesterEster!11');
 // ─────────────────────────────────────────────────────────────────────────────
 
 $error = '';
