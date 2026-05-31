@@ -113,6 +113,14 @@ namespace Server.Custom
                 return;
             }
 
+            // Pre-send OPL for all items so hover tooltips work in the gump
+            if (from is PlayerMobile pmOpl && pmOpl.NetState != null)
+            {
+                foreach (var si in items)
+                    if (si.Item != null && !si.Item.Deleted)
+                        pmOpl.Send(si.Item.PropertyList);
+            }
+
             from.SendGump(new CurioCollectorGump(from, this, items));
         }
 
@@ -178,12 +186,12 @@ namespace Server.Custom
             else if (score < 100)
             {
                 si.Tier      = ItemTier.GoldMinor;
-                si.BasePrice = 500 + (int)((score - 40) / 60.0 * 5750);
+                si.BasePrice = 250 + (int)((score - 40) / 60.0 * 2875);
             }
             else if (score < 180)
             {
                 si.Tier      = ItemTier.GoldNotable;
-                si.BasePrice = 6250 + (int)((score - 100) / 80.0 * 18750);
+                si.BasePrice = 3125 + (int)((score - 100) / 80.0 * 9375);
             }
             else if (score < 280)
             {
@@ -429,7 +437,7 @@ namespace Server.Custom
                     double mult = GetMultiplier(i);
 
                     // Checkbox (checked by default)
-                    AddCheck(38, y + 6, 0xD2, 0xD3, true, i);
+                    AddCheck(38, y + 6, 0xD2, 0xD3, false, i);
 
                     // Item icon — hover shows full property tooltip
                     AddItem(63, y + 2, si.Item.ItemID, si.Item.Hue);
@@ -546,10 +554,15 @@ namespace Server.Custom
                     return;
                 }
 
-                // Pay gold
+                // Pay gold — amounts over 25,000 go straight to the bank
                 if (goldTotal > 0)
                 {
-                    if (_from.Backpack != null && !_from.Backpack.Deleted)
+                    if (goldTotal > 25000)
+                    {
+                        Banker.Deposit(_from, goldTotal);
+                        _npc.Say($"That's a fine haul. {goldTotal:N0} gold deposited directly to your bank — too much to carry.");
+                    }
+                    else if (_from.Backpack != null && !_from.Backpack.Deleted)
                         _from.AddToBackpack(new Gold(goldTotal));
                     else
                         Banker.Deposit(_from, goldTotal);
