@@ -877,6 +877,14 @@ namespace Server.Engines.Craft
             ref object message,
             bool isFailure)
         {
+            // Allow craft systems (e.g. Inscription) to skip resource consumption
+            // entirely for this attempt — e.g. via a Lower Reagent Cost roll.
+            // Only fires on actual consumption passes, not the pre-check (None).
+            if (consumeType != ConsumeType.None && craftSystem.CheckSkipResourceConsumption(from, this))
+            {
+                return true;
+            }
+
             Container ourPack = from.Backpack;
 
             if (ourPack == null)

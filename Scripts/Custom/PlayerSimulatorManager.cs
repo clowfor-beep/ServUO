@@ -116,7 +116,7 @@ namespace Server.Custom
             _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Woodcutter Bram",
                 craftHome, SpawnZone.Britain_Roads, ScheduleProfile.CraftsmensLeague(-15)));
 
-            // IRON COMPANY -- 3 members
+            // IRON COMPANY -- 6 members (Britain chapter)
             Point3D ironHome = FBZones.IronCompany_Home;
             _allSimPlayers.Add(new IronCompanySimPlayer("Sergeant Vale",
                 ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(0)));
@@ -124,6 +124,12 @@ namespace Server.Custom
                 ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(10)));
             _allSimPlayers.Add(new IronCompanySimPlayer("Ironhide",
                 ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(-10)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Stonewall Brec",
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(5)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Shield Maiden Rova",
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(-5)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Grim the Veteran",
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(20)));
 
             // ARCANE BROTHERHOOD -- 3 members
             Point3D arcaneHome = FBZones.ArcaneBrotherhood_Home;
@@ -232,13 +238,19 @@ namespace Server.Custom
             CreateSimPlayer(FBGuilds.Wanderers, "Old Saul",         wandTrinsic, SpawnZone.Trinsic_City, -15);
             CreateSimPlayer(FBGuilds.Wanderers, "Traveller Wyn",    wandTrinsic, SpawnZone.Trinsic_City,  10);
 
-            // Iron Company (3) -- Trinsic chapter, still runs champ spawns
+            // Iron Company (6) -- Trinsic chapter, still runs champ spawns
             _allSimPlayers.Add(new IronCompanySimPlayer("Vanguard Petra",
                 ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(0)));
             _allSimPlayers.Add(new IronCompanySimPlayer("Shield Wall Dorn",
                 ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(15)));
             _allSimPlayers.Add(new IronCompanySimPlayer("Tactician Yeln",
                 ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(-10)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Bladewarden Cass",
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(5)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Hardened Oryn",
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(-20)));
+            _allSimPlayers.Add(new IronCompanySimPlayer("Forgeborn Thane",
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(25)));
 
             // Silver Wolves (3) -- patrols the Trinsic streets
             _allSimPlayers.Add(new SilverWolvesSimPlayer("Constable Daven",
@@ -423,7 +435,7 @@ namespace Server.Custom
             _allSimPlayers.Add(new TheVoidSimPlayer("Void Remnant",
                 voidHythloth, SpawnZone.WantedZone_NearHythloth, ScheduleProfile.TheVoid(-20)));
 
-            Console.WriteLine($"[SimPlayer] Roster created: {_allSimPlayers.Count} SimPlayers (100 across 12 guilds, 7 cities).");
+            Console.WriteLine($"[SimPlayer] Roster created: {_allSimPlayers.Count} SimPlayers across 12 guilds, 7 cities.");
         }
 
         private void CreateSimPlayer(string guild, string memberName, Point3D home,
@@ -656,6 +668,7 @@ namespace Server.Custom
                 if (cs == null || cs.Deleted) continue;
                 if (cs.Map != Map.Felucca)    continue;
                 if (cs.Location.Z < -5)       continue; // skip underground altars
+                if (IronCompanySimPlayer.IsAbyssSpawn(cs)) continue; // Iron Company never runs the Abyss
                 candidates.Add(cs);
             }
 
@@ -694,6 +707,170 @@ namespace Server.Custom
 
             from.SendMessage(0x35, $"[SimPlayer] {sent} Iron Company member(s) mobilized.");
             from.SendMessage(0x35,  "[SimPlayer] Use [simgoto iron to follow them.");
+        }
+
+        // -- Iron Company coordination --------------------------------
+
+        /// <summary>
+        /// Called by any IronCompanySimPlayer when they start a champ run.
+        /// Mobilises every other Iron Company member to the same spawn so
+        /// all 18 participate together.
+        /// </summary>
+        public static void BroadcastChampRun(ChampionSpawn spawn, IronCompanySimPlayer initiator)
+        {
+            if (_instance == null || spawn == null || spawn.Deleted) return;
+
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp.Deleted || sp == initiator) continue;
+                if (sp.GuildName != FBGuilds.IronCompany) continue;
+                if (sp is IronCompanySimPlayer ic)
+                    ic.ForceChampRunAt(spawn);
+            }
+        }
+
+        // -- Iron Company spawn helpers --------------------------------
+
+        /// <summary>Returns the ChampionSpawn the Iron Company is currently
+        /// heading to or fighting, or null if they are idle/resting.</summary>
+        public static ChampionSpawn GetIronCompanyActiveSpawn()
+        {
+            if (_instance == null) return null;
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp.Deleted) continue;
+                if (sp.GuildName != FBGuilds.IronCompany) continue;
+                if (sp is IronCompanySimPlayer ic && ic.ActiveTargetSpawn != null)
+                    return ic.ActiveTargetSpawn;
+            }
+            return null;
+        }
+
+        /// <summary>Silently triggers an Iron Company champion run if they are
+        /// currently idle (no cooldown, not already running). Returns true if
+        /// a run was successfully initiated.</summary>
+        public static bool TriggerIronCompanyChamp()
+        {
+            if (_instance == null) return false;
+
+            // Don't trigger if already active or gathering
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp.Deleted) continue;
+                if (sp.GuildName != FBGuilds.IronCompany) continue;
+                if (sp is IronCompanySimPlayer ic)
+                {
+                    string detail = ic.GetStatusDetail();
+                    // On cooldown or already running — do not trigger
+                    if (detail.Contains("next run in") || detail.Contains("AtSpawn")
+                        || detail.Contains("GatherAtBank") || detail.Contains("WaitingAtBank"))
+                        return false;
+                }
+            }
+
+            // Find eligible surface Felucca spawns
+            var candidates = new List<ChampionSpawn>();
+            foreach (ChampionSpawn cs in ChampionSystem.AllSpawns)
+            {
+                if (cs == null || cs.Deleted) continue;
+                if (cs.Map != Map.Felucca)    continue;
+                if (cs.Location.Z < -5)       continue;
+                candidates.Add(cs);
+            }
+            if (candidates.Count == 0) return false;
+
+            ChampionSpawn target = candidates[Utility.Random(candidates.Count)];
+            if (!target.Active) target.Active = true;
+
+            int sent = 0;
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp.Deleted) continue;
+                if (sp.GuildName != FBGuilds.IronCompany) continue;
+                if (sp is IronCompanySimPlayer ic)
+                {
+                    ic.ForceChampRunAt(target);
+                    sent++;
+                }
+            }
+            return sent > 0;
+        }
+
+        // -- Public status query for ShadyFigure ----------------------
+
+        /// <summary>
+        /// Returns a natural-language summary of what the Iron Company is currently doing
+        /// with champion spawns — used by the ShadyFigure information NPC.
+        /// </summary>
+        public static string GetIronCompanyChampStatus()
+        {
+            if (_instance == null) return "unknown — I haven't seen them around lately.";
+
+            // Find any active Iron Company member and check their phase
+            IronCompanySimPlayer activeAtSpawn   = null;
+            IronCompanySimPlayer gathering       = null;
+            IronCompanySimPlayer earliest        = null;
+            DateTime             earliestTime    = DateTime.MaxValue;
+
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp.Deleted) continue;
+                if (sp.GuildName != FBGuilds.IronCompany) continue;
+                if (!(sp is IronCompanySimPlayer ic)) continue;
+
+                string detail = ic.GetStatusDetail();
+
+                if (detail.Contains("AtSpawn") && activeAtSpawn == null)
+                    activeAtSpawn = ic;
+                else if ((detail.Contains("GatherAtBank") || detail.Contains("WaitingAtBank")) && gathering == null)
+                    gathering = ic;
+                else if (detail.Contains("next run in"))
+                {
+                    // Parse the earliest scheduled run
+                    // Format: "ChampPhase: None — next run in 45m 30s"
+                    try
+                    {
+                        int mIdx = detail.IndexOf("next run in ");
+                        if (mIdx >= 0)
+                        {
+                            string rest = detail.Substring(mIdx + 12);
+                            int mPos = rest.IndexOf('m');
+                            if (mPos > 0 && int.TryParse(rest.Substring(0, mPos).Trim(), out int mins))
+                            {
+                                DateTime t = DateTime.UtcNow.AddMinutes(mins);
+                                if (t < earliestTime) { earliestTime = t; earliest = ic; }
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            if (activeAtSpawn != null)
+            {
+                string detail = activeAtSpawn.GetStatusDetail();
+                // Extract spawn name from "spawn=Despise"
+                string spawnName = "a dungeon";
+                int sIdx = detail.IndexOf("spawn=");
+                if (sIdx >= 0)
+                {
+                    string rest = detail.Substring(sIdx + 6);
+                    int end = rest.IndexOf(' ');
+                    spawnName = end > 0 ? rest.Substring(0, end) : rest;
+                }
+                return $"they're at {spawnName} right now, running a champion spawn.";
+            }
+
+            if (gathering != null)
+                return "they're gathering their forces — expect them at a spawn within the next 10 minutes.";
+
+            if (earliest != null && earliestTime < DateTime.MaxValue)
+            {
+                int mins = Math.Max(1, (int)(earliestTime - DateTime.UtcNow).TotalMinutes);
+                return $"they're resting. Next spawn run should start in about {mins} minutes.";
+            }
+
+            return "they've been quiet lately. Could be planning something.";
         }
 
         // -- Lookup helpers -------------------------------------------

@@ -136,6 +136,16 @@ namespace Server.Engines.Craft
         #endregion
 
         #region Virtual
+
+        /// <summary>
+        /// Called once per craft attempt before resources are consumed.
+        /// Return true to skip resource consumption entirely (e.g. LRC for Inscription).
+        /// </summary>
+        public virtual bool CheckSkipResourceConsumption(Mobile from, CraftItem item)
+        {
+            return false;
+        }
+
         public virtual int GumpTitleNumber => 0;
 
         public virtual string GumpTitleString => "";

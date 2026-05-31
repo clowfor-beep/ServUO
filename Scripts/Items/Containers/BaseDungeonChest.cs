@@ -1,10 +1,17 @@
 using System;
+using Server.Items;
+using Server.Mobiles;
 
 namespace Server.Items
 {
     public abstract class BaseDungeonChest : LockableContainer
     {
         public static readonly string m_DeleteTimerID = "DungeonChest";
+
+        // True once the opener's luck has been applied to equipment inside.
+        // Items are added plain at spawn; properties are rolled on first open
+        // so that the opener's Luck stat actually influences the roll.
+        private bool _lootRolled;
 
         public override int DefaultGumpID => 0x42;
         public override int DefaultDropSound => 0x42;
@@ -32,8 +39,9 @@ namespace Server.Items
         {
             base.Serialize(writer);
 
-            writer.Write(1);
+            writer.Write(2); // version
 
+            writer.Write(_lootRolled);
             writer.Write(TimerRegistry.HasTimer(m_DeleteTimerID, this));
         }
 
@@ -43,10 +51,43 @@ namespace Server.Items
 
             int version = reader.ReadInt();
 
-            if (version == 1 && reader.ReadBool())
+            if (version >= 2)
+            {
+                _lootRolled = reader.ReadBool();
+            }
+            else
+            {
+                // Old chests loaded from save already had luck=0 items — treat as rolled
+                _lootRolled = true;
+            }
+
+            if ((version == 1 || version >= 2) && reader.ReadBool())
             {
                 StartDeleteTimer();
             }
+        }
+
+        private void ApplyLuckToLoot(Mobile from)
+        {
+            if (_lootRolled || !RandomItemGenerator.Enabled)
+            {
+                _lootRolled = true;
+                return;
+            }
+
+            int luck = from is PlayerMobile pm ? pm.RealLuck : from.Luck;
+
+            foreach (Item item in Items)
+            {
+                if (item is BaseWeapon || item is BaseArmor || item is BaseJewel || item is BaseHat)
+                {
+                    int min, max;
+                    TreasureMapChest.GetRandomItemStat(out min, out max);
+                    RunicReforging.GenerateRandomItem(item, luck, min, max);
+                }
+            }
+
+            _lootRolled = true;
         }
 
         public override void OnTelekinesis(Mobile from)
@@ -58,6 +99,7 @@ namespace Server.Items
                 return;
             }
 
+            ApplyLuckToLoot(from);
             base.OnTelekinesis(from);
             Name = "a treasure chest";
             StartDeleteTimer();
@@ -68,23 +110,18 @@ namespace Server.Items
             if (CheckLocked(from))
                 return;
 
+            ApplyLuckToLoot(from);
             base.OnDoubleClick(from);
             Name = "a treasure chest";
             StartDeleteTimer();
         }
 
+        // Items are added plain at spawn — properties are deferred to first open
+        // so the opener's Luck influences the roll rather than using luck=0.
         protected void AddLoot(Item item)
         {
             if (item == null)
                 return;
-
-            if (RandomItemGenerator.Enabled)
-            {
-                int min, max;
-                TreasureMapChest.GetRandomItemStat(out min, out max);
-
-                RunicReforging.GenerateRandomItem(item, 0, min, max);
-            }
 
             DropItem(item);
         }

@@ -1,0 +1,380 @@
+================================================================
+PLAYER SIMULATOR — ARCHITECTURE DESIGN DOCUMENT
+Shard: Forsaken Britannia | ServUO + ClassicUO
+Created: 2026-05-23 | Updated: 2026-05-24
+Status: Design Phase — Implementation Pending
+================================================================
+
+OVERVIEW
+--------
+The Player Simulator system creates 144 persistent AI characters
+across 12 SimGuilds that populate the world 24/7. The core
+promise of Forsaken Britannia is "never log in to an empty
+server" — this system delivers that promise.
+
+Key numbers:
+  Total SimPlayers:      144 (12 guilds × 12 members)
+  Max active at once:    ~30
+  Prime time bonus:      +2 active (18:00-23:00)
+  Off-peak reduction:    -1 active (00:00-08:00)
+
+
+================================================================
+CRITICAL DISTINCTION
+================================================================
+
+SimPlayers (this system) are NOT the same as Pool PKs.
+These are different AI character types with different lifecycles.
+
+SimPlayers  : Persistent, named, stateful, re-activate on cooldown
+Pool PKs    : Respawnable, unnamed, managed by FBPKSpawner
+Encounter PKs: Triggered, temporary, GraveyardPKEncounter pattern
+
+See SystemArchitecture_DesignDoc.txt for full type reference.
+
+
+================================================================
+CLASS HIERARCHY
+================================================================
+
+BaseFBCombatNPC : BaseCreature
+  └── SimPlayer : BaseFBCombatNPC
+        ├── Properties: GuildName, PersonalityType, StateMachine,
+        │               Schedule, ChatBrain, HomeLocation,
+        │               ActiveCooldownUntil
+        └── (Guild-specific subclasses if needed)
+
+SimPlayer extends BaseFBCombatNPC (not NovicePlayerKiller).
+BaseFBCombatNPC contains the 7 shared combat templates.
+SimPlayer adds persistent state and AI behaviour layers.
+
+
+================================================================
+6 CORE COMPONENTS
+================================================================
+
+----------------------------------------------------------------
+COMPONENT 1: PlayerSimulatorManager
+----------------------------------------------------------------
+File: Scripts/Custom/PlayerSimulatorManager.cs
+Pattern: Singleton Item at fixed world location.
+         Models BountyQuestSpawner.cs pattern.
+
+Responsibilities:
+  - Creates all 144 SimPlayers on first world load
+  - Maintains active/idle pool (~30 max active)
+  - Manages re-activation cooldown timers
+  - Routes SimGuild inter-guild interactions
+  - Provides SimPlayer lookup by guild / by zone
+  - Subscribes to FBEventBus for world events
+
+Active pool management:
+  On SimPlayer death → mark inactive, start cooldown timer
+  Cooldown expires → re-activate at HomeLocation
+  Never exceed MaxActiveSimultaneous = 30
+
+Serialisation: Must persist SimPlayer instances across restarts.
+All 144 SimPlayers exist in world save at all times
+(inactive ones are moved to internal map, not visible).
+
+----------------------------------------------------------------
+COMPONENT 2: SimPlayer
+----------------------------------------------------------------
+File: Scripts/Custom/SimPlayer.cs
+Extends: BaseFBCombatNPC : BaseCreature
+
+Key properties:
+  string          GuildName
+  string          MemberName        (unique name per character)
+  SimPersonality  PersonalityType
+  SimStateMachine StateMachine
+  ScheduleProfile Schedule
+  SimChatBrain    ChatBrain
+  Point3D         HomeLocation
+  SpawnZone       HomeZone
+  DateTime        ActiveCooldownUntil
+  bool            IsOnCooldown => DateTime.UtcNow < ActiveCooldownUntil
+
+On death:
+  1. Fire FBEventBus.SimPlayerKilledBy(killer, this)
+  2. Set ActiveCooldownUntil = UtcNow + CooldownDuration
+  3. PlayerSimulatorManager.OnSimPlayerDied(this)
+  4. Move to internal (invisible) map location
+  5. After cooldown: MoveToWorld(HomeLocation) and re-activate
+
+Re-activation cooldowns by guild tier:
+  Tier 1 guilds  :  5 minutes
+  Tier 2 guilds  : 10 minutes
+  Tier 3 good    : 15 minutes
+  Blood Pact     : 20 minutes
+  The Void       : 20 minutes
+  Shadowblade    : 15 minutes
+  Dread Hunters  : 15 minutes
+
+----------------------------------------------------------------
+COMPONENT 3: SimPersonality
+----------------------------------------------------------------
+File: Scripts/Custom/SimPersonality.cs (enum + data)
+
+Personality types:
+  Wanderer    — friendly, curious, follows gates
+  Crafter     — industrious, non-combat, resource-focused
+  Merchant    — trade-oriented, town-based
+  Warrior     — combat-focused, dungeons, champion spawns
+  Mage        — scholarly, specific dungeon preference
+  Rogue       — stealth-focused, town operations, theft
+  PK          — hostile, calculating or reckless (guild-defined)
+
+Each personality has:
+  - Activity preference weights
+  - Speech style pool selection
+  - Decision-making bias for state transitions
+  - Social interaction radius and frequency
+
+----------------------------------------------------------------
+COMPONENT 4: SimStateMachine
+----------------------------------------------------------------
+File: Scripts/Custom/SimStateMachine.cs
+
+States:
+  Idle          — standing, looking around, brief speech
+  Travelling    — gating or walking to next location
+  Working       — mining, fishing, crafting (crafter types)
+  Hunting       — actively seeking monsters in a zone
+  Combat        — engaged in melee/magic combat
+  Looting       — looting a corpse after kill
+  Banking       — at a bank, depositing/withdrawing
+  Shopping      — at a vendor, buying supplies
+  Fleeing       — running from a threat
+  Waiting       — Blood Pact evaluation mode
+  Dead          — cooldown before re-activation
+  OnCooldown    — inactive, not visible in world
+
+State transition rules:
+  Idle      → Travelling (schedule triggers location change)
+  Idle      → Working (crafter arrives at resource node)
+  Idle      → Hunting (warrior arrives in combat zone)
+  Travelling→ Idle (arrived at destination)
+  Hunting   → Combat (enemy within aggro range)
+  Combat    → Looting (enemy died)
+  Combat    → Fleeing (HP < flee threshold)
+  Looting   → Banking (inventory full or timer)
+  Fleeing   → Travelling (escaped, gate to safety)
+  Dead      → OnCooldown (automatic after death)
+  OnCooldown→ Travelling (cooldown expired, return to HomeLocation)
+
+----------------------------------------------------------------
+COMPONENT 5: ScheduleProfile
+----------------------------------------------------------------
+File: Scripts/Custom/ScheduleProfile.cs
+
+Defines a SimPlayer's daily routine with ±30 min random drift.
+Prevents all members of a guild being active at identical times.
+
+Example — Wanderer schedule:
+  00:00-08:00: 20% chance active (low)
+  08:00-12:00: 60% chance active
+  12:00-18:00: 70% chance active
+  18:00-23:00: 90% chance active (prime time)
+  23:00-00:00: 40% chance active
+
+Example — Blood Pact schedule (randomised daily roster):
+  Random 2-7 members active each day
+  Active times distributed randomly across day
+  No predictable pattern — this is intentional
+
+Each guild has its own ScheduleProfile template.
+Individual members get ±30 min drift on all time boundaries.
+
+----------------------------------------------------------------
+COMPONENT 6: SimChatBrain
+----------------------------------------------------------------
+File: Scripts/Custom/SimChatBrain.cs
+
+Manages ambient speech, reactions, and social interaction.
+SimPlayers should feel like real players at a glance.
+
+Speech categories:
+  Ambient   — unprompted speech near other mobiles/players
+  Reactive  — response to events (killed something, took damage)
+  Combat    — taunts, battle cries during combat
+  Social    — greetings to nearby players/SimPlayers
+  Vendor    — speech when shopping
+  Banking   — speech when at bank
+
+Examples by guild:
+
+  Wanderer ambient:
+    "Quite a journey getting here..."
+    "Anyone know where I can find a good healer?"
+    "This shard has been busy lately."
+
+  Blood Pact combat:
+    "You should have stayed in the cities."
+    "Your loot is mine now."
+    (silence — 50% chance, they're professional)
+
+  The Void:
+    (silence — 80% chance, The Void doesn't speak)
+    "You are not worthy of this dungeon."
+
+  Iron Company:
+    "Hold the line!"
+    "Support on my position!"
+    "Blood Pact incoming — everyone to me!"
+
+Speech is triggered by:
+  - Entering a new zone
+  - Killing a monster or player
+  - Being attacked
+  - Arriving at bank
+  - Being near a real player
+  - Guild rivalries nearby (Blood Pact spots Silver Wolves)
+
+
+================================================================
+20 PLAYER ACTIVITIES (implementation priority)
+================================================================
+
+PHASE 1 (core — build these first):
+  1. Hunting — seek and kill monsters in zone
+  2. Looting — search and take items from corpse
+  3. Banking — deposit gold and items at bank
+  4. Bank socialising — idle speech near bank
+  5. Self-healing — bandages when HP < threshold
+
+PHASE 2 (world presence):
+  6. Skinning — use knife on animal corpse for resources
+  7. Crafting — use tools at craft station
+  8. Mining/Lumberjacking — harvest resources at locations
+  9. Shopping — buy supplies from vendors
+  10. Moongates — use moongate to travel between facets
+  11. Recalling — cast Recall to teleport with spellbook
+
+PHASE 3 (guild identity):
+  12. PvP/PKing — engage real players or rival SimPlayers
+  13. Stealing — Shadow Hand pickpocket from NPCs
+  14. Champion spawns — Iron Company coordinated runs
+  15. Guild activities — patrol routes, coordination
+
+PHASE 4 (depth):
+  16. Treasure hunting — use treasure maps
+  17. Skill training — use skill trainers in towns
+  18. Fishing — at dock/water locations
+  19. Taming — Animal Taming members tame creatures
+  20. House visiting — visit player houses in housing areas
+
+
+================================================================
+LAUNCH ROSTER — PHASE 1 (15 SimPlayers)
+================================================================
+
+Implement these 15 first to test the foundation before
+expanding to all 144. Covers 5 guilds, no evil factions.
+
+THE WANDERERS (4 members):
+  Erik the Wanderer        — Warrior Wanderer template
+  Mira of the Road         — Mage Wanderer template
+  Old Thomas               — Ranger Wanderer template
+  Lena Farwalker           — Warrior Wanderer template
+
+CRAFTSMEN'S LEAGUE (3 members):
+  Garrett the Smith        — Blacksmith template
+  Fisherman Pete           — Tailor/Fisher template
+  Woodcutter Bram          — Carpenter template
+
+IRON COMPANY (3 members):
+  Sergeant Vale            — Heavy Warrior (Tank role)
+  Brother Kael             — Battle Mage (Support role)
+  Ironhide                 — Combat Specialist (DPS role)
+
+ARCANE BROTHERHOOD (3 members):
+  Scholar Aldric           — War Mage template
+  Mistress Verna           — Arcane Scholar template
+  The Recluse              — War Mage template
+
+SILVER WOLVES (2 members):
+  Captain Rowena           — Wolf Captain template
+  Scout Finn               — Wolf Scout template
+
+
+================================================================
+PERFORMANCE CONSIDERATIONS
+================================================================
+
+144 SimPlayers is significant. Key safeguards:
+
+1. Active/Idle pool — only ~30 active simultaneously.
+   Inactive SimPlayers are moved to an internal map (invisible).
+   No AI processing for inactive SimPlayers.
+
+2. State machine ticks — only active SimPlayers tick.
+   Tick rate: every 1-2 seconds per SimPlayer (not every frame).
+   Stagger ticks across SimPlayers to avoid spike processing.
+
+3. Pathfinding — use gate/teleport for long distances.
+   Walking pathfinding only within local zone (short range).
+   Never pathfind across map — always gate.
+
+4. Combat AI — inherit from existing ServUO BaseAI types.
+   AI_Melee and AI_Mage already handle combat efficiently.
+   SimPlayer adds decision layer ON TOP of existing AI.
+
+5. Phase 1 test — verify server performance with 15 SimPlayers
+   before expanding to 144. Monitor CPU and memory.
+   Target: no measurable impact on normal server operation.
+
+
+================================================================
+INTEGRATION WITH OTHER SYSTEMS
+================================================================
+
+FBEventBus — PlayerSimulatorManager subscribes to:
+  ChampionSpawnActivated → send Iron Company to the spawn
+  ReputationChanged     → update SimGuild response to player
+
+FBZones — SimPlayers use zone definitions for:
+  HomeLocation per member
+  Territory boundaries per guild
+  Patrol waypoints per zone
+
+ReputationSystem — SimPlayers trigger reputation events via:
+  FBEventBus.SimPlayerKilledPlayer
+  FBEventBus.PlayerKilledSimPlayer
+  (ReputationSystem subscribes and updates player standing)
+
+Quest system — SimGuild activity drives dynamic quests:
+  Blood Pact kills real players → Hunt bounties generated
+  Iron Company at spawn → Clear assist quests generated
+  SimPlayer killed → optional revenge Hunt quest offered
+
+
+================================================================
+IMPLEMENTATION ORDER
+================================================================
+
+1. BaseFBCombatNPC.cs (shared combat foundation — Step 3 overall)
+2. SimPlayer.cs (base class, no guild behaviour yet)
+3. PlayerSimulatorManager.cs (lifecycle, active pool)
+4. SimStateMachine.cs (idle + travelling states only at first)
+5. ScheduleProfile.cs (basic schedule, no drift yet)
+6. SimChatBrain.cs (ambient speech only at first)
+7. Test with Wanderers (4 members — Phase 1 launch roster)
+8. Add SimPersonality.cs
+9. Expand to full Phase 1 launch roster (15 members)
+10. Verify performance — then expand to all 12 guilds
+
+DO NOT implement combat AI (Phase 3 activities) until
+Phase 1 activities (Hunting, Looting, Banking) are stable.
+
+
+================================================================
+RELATED DOCUMENTS
+================================================================
+
+SystemArchitecture_DesignDoc.txt  Architecture + build order
+GuildSystem_FullDesignDoc.txt     All 12 guilds, templates
+PlayerSimulator_ActivitySpec.txt  20 activities detailed spec
+SkillSynergies_DesignDoc.txt      Skills (note: not for SimPlayers)
+COWORK_HANDOVER.txt               Full project context
+================================================================

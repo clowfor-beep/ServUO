@@ -1,0 +1,379 @@
+# ================================================================
+# PlayerSimulator — Activity Behaviour Spec
+# Shard: Forsaken Britannia | ServUO + ClassicUO
+# Created: 2026-05-18
+# Companion to: PlayerSimulator_DesignDoc.txt
+# ================================================================
+#
+# Maps the top 20 real player activities to SimPlayer
+# implementation requirements. Each activity has:
+#   - Which personalities perform it
+#   - What state it maps to
+#   - What it looks like in-game
+#   - ServUO implementation notes
+#
+# ================================================================
+
+# ── ACTIVITY 1: HUNTING MONSTERS ────────────────────────────────
+# Personalities : Warrior, Mage, Wanderer (weak targets only)
+# State         : HUNTING → COMBAT → HUNTING loop
+# Looks like    : SimPlayer moves through dungeon/wilderness,
+#                 engages monsters, uses weapons and spells
+# Implementation: Standard BaseCreature combat AI with added
+#                 dungeon navigation waypoints. Warrior enters
+#                 Despise, moves to level 1 spawn, kills, loots,
+#                 moves to level 2 after clearing level 1.
+# Notes         : Hunting timer (15-30 min) prevents infinite loop.
+#                 SimPlayer chooses dungeon appropriate to their
+#                 skill level — Wanderer hunts graveyards/roads,
+#                 Warrior hunts Despise/Covetous,
+#                 Mage hunts Deceit/Shame.
+
+# ── ACTIVITY 2: LOOTING CORPSES ─────────────────────────────────
+# Personalities : All combat personalities + Rogue
+# State         : LOOTING (sub-state of COMBAT exit)
+# Looks like    : SimPlayer opens corpse container, takes gold,
+#                 magic items, and reagents
+# Implementation: After OnKilled(), add LootCorpse(corpse) call.
+#                 Checks corpse.Items for gold (always take),
+#                 magic items (take if slot available),
+#                 reagents (take if Mage).
+#                 Play container open sound + brief pause (2s)
+#                 before continuing movement. Feels authentic.
+# Notes         : SimPlayer inventory has weight limit.
+#                 Drops cheapest items if overweight.
+#                 Occasionally say: "Not bad." after looting.
+
+# ── ACTIVITY 3: SKINNING AND CARVING ────────────────────────────
+# Personalities : Wanderer, Warrior, Crafter
+# State         : LOOTING (sub-state, same as above)
+# Looks like    : After killing animal/creature, uses skinning
+#                 knife animation on corpse, gains hides/meat
+# Implementation: Check monster type in OnKilled(). If animal
+#                 (deer, bear, mongbat etc.) and SimPlayer has
+#                 a skinning knife in backpack, call Butcher()
+#                 equivalent — add hides/meat to inventory.
+#                 Play carving animation (item use on corpse).
+# Notes         : Crafter skins everything (sells hides).
+#                 Warrior only skins if not in a hurry.
+#                 Wanderer skins bears and deer.
+
+# ── ACTIVITY 4: CRAFTING ─────────────────────────────────────────
+# Personalities : Crafter primarily, Wanderer occasionally
+# State         : WORKING
+# Looks like    : SimPlayer stands at forge/anvil/loom playing
+#                 crafting animation for 3-10 minutes
+# Implementation: WORKING state plays UseAnimation() matching
+#                 the craft type. Crafter checks what resources
+#                 are in inventory and "crafts" appropriate item.
+#                 No actual item creation needed — just consume
+#                 some ingots/cloth from inventory and play the
+#                 animation. Optional: create actual item and
+#                 deposit in backpack (adds realism to vendors).
+# Locations     : Forge (smithing), loom (tailoring),
+#                 carpenter's bench (carpentry), tinker's bench
+# Notes         : Schedule-driven. Crafter goes to forge at 06:00,
+#                 mines at 09:00, returns to forge at 11:00.
+
+# ── ACTIVITY 5: MINING AND LUMBERJACKING ────────────────────────
+# Personalities : Crafter, Wanderer occasionally
+# State         : WORKING (at resource node)
+# Looks like    : SimPlayer stands at mountain face swinging
+#                 pickaxe, or at tree swinging hatchet
+# Implementation: WORKING state at designated mine/forest locations.
+#                 Play swing animation every 2 seconds.
+#                 Add ore/logs to inventory every 5-10 swings.
+#                 Move to next node when "depleted" (random timer).
+# Locations     : Mountain nodes near Minoc, Britain mines.
+#                 Forest nodes near Yew, Skara Brae.
+# Notes         : Crafter carries pickaxe (mining) and hatchet
+#                 (lumberjacking) in backpack visibly.
+
+# ── ACTIVITY 6: CHAMPION SPAWNS ──────────────────────────────────
+# Personalities : Warrior, Mage, Player Killer
+# State         : HUNTING (extended, at champion spawn location)
+# Looks like    : Multiple SimPlayers converge on champion spawn
+#                 area and fight together through the waves.
+#                 Looks exactly like a real player group event.
+# Implementation: Manager-level event trigger. When champion spawn
+#                 activates in Tier 2, Manager sends 2-4 SimPlayers
+#                 (Warrior + Mage types) to that location.
+#                 They fight the champion waves using normal combat.
+#                 PK SimPlayers may arrive to kill the SimPlayers
+#                 fighting the champ (griefing — very authentic).
+# Notes         : Phase 3 feature. Requires champion spawn detection
+#                 hook. High visibility — real players will notice.
+
+# ── ACTIVITY 7: TREASURE HUNTING ─────────────────────────────────
+# Personalities : Wanderer, Warrior
+# State         : TREASURE_HUNT (new state needed)
+# Looks like    : SimPlayer walks to a location, stops, pulls out
+#                 a shovel, digs (animation), fights guardian spawn,
+#                 loots chest, walks away
+# Implementation: Give Wanderer/Warrior SimPlayers a treasure map
+#                 item in inventory (visual only, Level 1-3 maps).
+#                 TREASURE_HUNT state:
+#                   1. Travel to map coordinates
+#                   2. Play dig animation (10 seconds)
+#                   3. Spawn guardian creatures (use existing
+#                      TreasureMap guardian spawning code)
+#                   4. Fight guardians (COMBAT state)
+#                   5. Open chest, take loot (LOOTING)
+#                   6. Return to TRAVELLING
+# Notes         : Moderate complexity. Phase 2/3 feature.
+#                 Requires treasure map coordinate system.
+
+# ── ACTIVITY 8: STEALING IN TOWNS ────────────────────────────────
+# Personalities : Rogue exclusively
+# State         : STEALING (new state needed)
+# Looks like    : Rogue SimPlayer stands near a player or NPC,
+#                 plays stealing animation, either succeeds (item
+#                 floats briefly) or fails (guard called animation)
+# Implementation: STEALING state triggers near NPCs (not real
+#                 players — never steal from real players).
+#                 Play Stealing skill use animation.
+#                 Randomly succeed or fail based on Stealing skill.
+#                 On failure: guard yell, Rogue flees to HIDING.
+#                 On success: add small item/gold to inventory.
+# Notes         : Do NOT steal from real players — only NPC targets.
+#                 Rogue does this 2-3 times per session in town.
+#                 Adds huge flavour to town atmosphere.
+
+# ── ACTIVITY 9: PVP AND PKING ────────────────────────────────────
+# Personalities : Player Killer, Rogue (occasionally)
+# State         : COMBAT_PVP
+# Looks like    : PK SimPlayer hunts real players in Tier 2/3.
+#                 Also hunts Warrior/Mage SimPlayers (visible PvP).
+#                 Uses authentic PK templates (per PKNPCTemplates doc).
+# Implementation: PK personality has FightMode.Closest in Tier 2+.
+#                 In Tier 1 safe zones: FightMode.Aggressor only.
+#                 Will pursue fleeing targets, use specials,
+#                 recall when losing (cast Recall spell animation
+#                 + MoveToWorld to home — simulate recall).
+# Notes         : Core feature. Tier 2 should always have 1-2 PK
+#                 SimPlayers active. Makes the zone feel dangerous.
+#                 PK says taunts on kill (from PK speech pools).
+
+# ── ACTIVITY 10: BANKING ─────────────────────────────────────────
+# Personalities : All
+# State         : BANKING (sub-state of SHOPPING/IDLE)
+# Looks like    : SimPlayer walks to banker NPC, says "bank",
+#                 banker opens (animation), SimPlayer "deposits"
+#                 gold (removes excess gold from inventory),
+#                 walks away
+# Implementation: When inventory gold > threshold (500gp),
+#                 add BANKING to schedule. Travel to nearest bank.
+#                 Say "bank" (triggers banker response).
+#                 Remove excess gold from inventory (simulate deposit).
+#                 Brief pause, then continue schedule.
+# Notes         : Britain bank is the social hub. SimPlayers
+#                 spending time here makes it look populated.
+#                 BANKING state also triggers SOCIALISING if
+#                 real players are nearby at the bank.
+
+# ── ACTIVITY 11: SHOPPING AT VENDORS ─────────────────────────────
+# Personalities : All (different vendor types per personality)
+# State         : SHOPPING
+# Looks like    : SimPlayer walks to vendor, browses (open vendor
+#                 animation), "buys" items (consume gold, add item)
+# Implementation: Personality determines vendor type:
+#                 Mage → reagent vendor (buys reagents)
+#                 Warrior → weaponsmith/armourer (repairs gear)
+#                 Crafter → raw materials vendor
+#                 All → any vendor occasionally
+#                 Play vendor interaction animation. Remove gold.
+#                 Add purchased item to inventory.
+# Notes         : Makes vendor areas look busy. Simple to implement.
+
+# ── ACTIVITY 12: TRAINING SKILLS ─────────────────────────────────
+# Personalities : Wanderer, young Crafter, new Warrior
+# State         : TRAINING (sub-state of WORKING/IDLE)
+# Looks like    : SimPlayer uses a skill repeatedly in a safe area.
+#                 Anatomy: examines a nearby NPC.
+#                 Arms Lore: inspects weapon in backpack.
+#                 Hiding: goes hidden, comes out, repeats.
+# Implementation: Play skill use animation on timer.
+#                 No actual skill gain needed — it's visual only.
+#                 Duration: 5-15 minutes before moving on.
+# Notes         : Mostly early-game flavour. Wanderers do this
+#                 near Britain. Makes the world feel like real
+#                 players are progressing.
+
+# ── ACTIVITY 13: FISHING ──────────────────────────────────────────
+# Personalities : Wanderer, Merchant (for MiBs)
+# State         : FISHING (sub-state of WORKING)
+# Looks like    : SimPlayer stands at water edge, casts fishing
+#                 rod animation every 8 seconds, occasionally
+#                 pulls up a fish or item
+# Implementation: WORKING state at water-adjacent tiles.
+#                 Play fishing animation (equip fishing pole,
+#                 cast animation). Every 5-8 casts: add a fish
+#                 to inventory. Rarely: add a Message in a Bottle.
+#                 Duration: 10-30 minutes.
+# Locations     : Britain docks, Trinsic docks, fishing villages,
+#                 ocean tiles (Merchant uses a boat eventually)
+# Notes         : Very visible and atmospheric. Adds life to docks.
+
+# ── ACTIVITY 14: TAMING ANIMALS ──────────────────────────────────
+# Personalities : Wanderer (tamer variant)
+# State         : TAMING (new state)
+# Looks like    : SimPlayer approaches a wild animal, crouches
+#                 (tame animation), animal follows them
+# Implementation: Tamer Wanderer variant has Animal Taming skill.
+#                 In wilderness, finds a tameable creature,
+#                 plays tame animation (kneel + gesture).
+#                 If "successful" (random + skill check):
+#                 creature follows SimPlayer as a pet.
+#                 SimPlayer walks with pet to town, then releases
+#                 it (or stables it — walk to stable NPC).
+# Notes         : Phase 2+ feature. Visible and memorable.
+#                 A Wanderer walking into Britain with a tamed
+#                 horse or bear is very convincing.
+
+# ── ACTIVITY 15: USING MOONGATES ─────────────────────────────────
+# Personalities : All (for long-distance travel)
+# State         : TRAVELLING (via moongate)
+# Looks like    : SimPlayer walks to moongate, pauses at the
+#                 gate graphic, steps through (moongate VFX),
+#                 appears at destination gate
+# Implementation: Long-distance travel uses moongate waypoints.
+#                 When destination > 200 tiles away, route via
+#                 nearest moongate.
+#                 At gate: brief pause (2s), play step-in VFX,
+#                 MoveToWorld to destination gate (only valid use
+#                 of teleport in the system — moongate travel),
+#                 play step-out VFX at destination.
+# Notes         : Makes SimPlayers feel like they actually use
+#                 the game's fast travel systems. Authentic.
+
+# ── ACTIVITY 16: HEALING AND REZZING ─────────────────────────────
+# Personalities : All (self-healing), Wanderer/Warrior (group heal)
+# State         : COMBAT (self-heal) / HEALING (rezz nearby)
+# Looks like    : SimPlayer stops, pulls out bandages, heals self.
+#                 Or: stands over dead SimPlayer, uses bandages,
+#                 rezzes them (they stand up with VFX).
+# Implementation: Self-heal: during COMBAT, if HP < 50% and not
+#                 actively swinging, use bandages (play animation,
+#                 restore HP after 5s delay like real bandage use).
+#                 Rezz: if nearby SimPlayer is in DEAD state and
+#                 this SimPlayer is not in combat, walk to corpse,
+#                 play bandage animation, trigger resurrection.
+# Notes         : Rezzing other SimPlayers is extremely convincing.
+#                 Looks exactly like a player helping a teammate.
+
+# ── ACTIVITY 17: VISITING HOUSES ─────────────────────────────────
+# Personalities : Wanderer, Merchant
+# State         : EXPLORING (sub-state of TRAVELLING)
+# Looks like    : SimPlayer walks toward a player house, enters
+#                 through the front door, browses, exits
+# Implementation: Low priority Phase 3+ feature.
+#                 Wanderer has a small chance (5%) per travel
+#                 segment to detour into a nearby player house
+#                 if one exists along their path.
+#                 Simply walks in, pauses 30-60s (browsing),
+#                 walks out. No interaction with house contents.
+# Notes         : Merchant variant browses vendor houses specifically.
+#                 Very authentic — real players do this constantly.
+
+# ── ACTIVITY 18: GUILD ACTIVITIES ────────────────────────────────
+# Personalities : All guilded SimPlayers (Iron Company, Blood Pact etc.)
+# State         : COMBAT_PVP / HUNTING / SOCIALISING
+# Looks like    : Multiple SimPlayers of the same guild travel
+#                 together, fight together, or meet at guild HQ
+# Implementation: Guild system adds group behaviour.
+#                 Iron Company Warriors occasionally move together
+#                 (within 5 tiles) when schedules align at Despise.
+#                 Blood Pact PKs coordinate — if one attacks a
+#                 player in Tier 2, nearby Blood Pact SimPlayer
+#                 joins the fight.
+#                 Guild members socialise at a "guild hall" location.
+# Notes         : Phase 4 feature. Dramatically increases realism.
+#                 Creates faction dynamics that real players notice
+#                 and engage with.
+
+# ── ACTIVITY 19: RECALLING (FLEEING) ─────────────────────────────
+# Personalities : Mage, NecroMage PK, any SimPlayer fleeing
+# State         : FLEEING → RECALL
+# Looks like    : SimPlayer stops running, begins casting
+#                 (Recall spell animation — blue sparkle),
+#                 2-second cast, disappears with moongate VFX,
+#                 reappears at their rune/home location
+# Implementation: FLEEING state checks if SimPlayer has Magery
+#                 skill and HP < 20%. If yes: play Recall cast
+#                 animation (2s channel), then MoveToWorld to
+#                 HomeLocation with gate VFX both ends.
+#                 Non-mage SimPlayers just run (no recall).
+# Notes         : This is the biggest authenticity moment.
+#                 A PK recalling out when losing feels EXACTLY
+#                 like a real player. High priority to implement.
+
+# ── ACTIVITY 20: CHATTING AT THE BANK ────────────────────────────
+# Personalities : All (when at bank location)
+# State         : SOCIALISING (at Britain bank)
+# Looks like    : SimPlayers standing around Britain bank
+#                 making conversation, occasionally responding
+#                 to real players, doing classic bank chat
+# Implementation: SOCIALISING state near bank triggers bank-specific
+#                 chat pool. SimPlayers say things like:
+#                   "WTS 10k ingots 2gp each"
+#                   "LFG Hythloth"
+#                   "Anyone selling a GM katana?"
+#                   "Heard there's a PK near Despise"
+#                   "Nice suit. What hue is that armour?"
+#                 Reactive: if real player speaks at bank,
+#                 nearby SimPlayer responds with contextual reply.
+# Notes         : Britain bank chat is the heartbeat of UO.
+#                 Even 3-4 SimPlayers chatting here makes the
+#                 server feel alive to a new player logging in.
+#                 HIGHEST PRIORITY ambient feature for first impression.
+
+# ================================================================
+# IMPLEMENTATION PRIORITY ORDER
+# ================================================================
+#
+# Phase 1 (core believability):
+#   1.  Hunting monsters        — Combat AI foundation
+#   2.  Looting corpses         — Immediate post-combat behaviour
+#   10. Banking                 — Creates bank scene
+#   20. Chatting at bank        — First impression for new players
+#   16. Self-healing            — Combat authenticity
+#
+# Phase 2 (world comes alive):
+#   3.  Skinning/carving        — Post-combat resource gathering
+#   4.  Crafting                — Town atmosphere
+#   5.  Mining/lumberjacking    — Resource gathering visible
+#   11. Shopping at vendors     — Vendor area atmosphere
+#   15. Using moongates         — Long travel authenticity
+#   19. Recalling               — Mage flee authenticity
+#
+# Phase 3 (conflict and drama):
+#   9.  PvP and PKing           — Core danger feature
+#   8.  Stealing in towns       — Rogue atmosphere
+#   6.  Champion spawns         — Group event participation
+#   18. Guild activities        — Faction dynamics
+#
+# Phase 4 (deep immersion):
+#   7.  Treasure hunting        — Adventure loop
+#   12. Training skills         — New player flavour
+#   13. Fishing                 — Dock atmosphere
+#   14. Taming animals          — Memorable encounters
+#   17. Visiting houses         — Exploration flavour
+#
+# ================================================================
+# NOTES ON AUTHENTICITY
+# ================================================================
+#
+# The most convincing SimPlayer moments in order:
+#
+# 1. A SimPlayer recalling out of a fight they are losing
+# 2. Two SimPlayers rezzing each other after a tough dungeon fight
+# 3. A PK SimPlayer killing a Warrior SimPlayer and looting the corpse
+# 4. Multiple SimPlayers converging on a champion spawn
+# 5. A Crafter at the Britain forge with ingots in their pack
+# 6. Bank chat SimPlayers responding to a real player's question
+# 7. A Rogue going invisible near the bank and reappearing elsewhere
+# 8. A Merchant walking the Trinsic road with a pack horse
+#
+# These 8 moments cost different amounts to implement but each
+# one creates a "wait, was that a real player?" reaction.
+# That reaction is the design goal.

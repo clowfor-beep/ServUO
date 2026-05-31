@@ -1,0 +1,645 @@
+================================================================
+FORSAKEN BRITANNIA — SIMGUILD SYSTEM
+Full Design Document
+Created: 2026-05-23 | Updated: 2026-05-24
+Status: Approved for Implementation
+================================================================
+
+OVERVIEW
+--------
+12 guilds across 3 tiers populate the world with AI-controlled
+SimPlayers that behave like real player organisations.
+Each guild has 12 members. 144 SimPlayers total.
+Approximately 30 active at any given time.
+Average 3-4 members online per guild.
+
+POWER TIER SUMMARY
+------------------
+Tier 1 guilds     : Low skills, safe zones, non-threatening
+Tier 2 guilds     : 7x100 = 700 skill cap, StatCap 180
+Tier 3 standard   : 7x100 = 700 skill cap, StatCap 225
+Blood Pact        : 8x100 = 800 skill cap, StatCap 250
+Shadowblade       : 8x100 = 800 skill cap, StatCap 250
+The Void          : 5x120+2x100+1x50 = 850, StatCap 270
+Dread Hunters     : 5x120+2x100+1x80 = 880, StatCap 300 (max 125/stat)
+
+================================================================
+TIER 1 — SAFE LANDS
+================================================================
+
+----------------------------------------------------------------
+GUILD 1: THE WANDERERS
+----------------------------------------------------------------
+Alignment    : Blue
+Real players : Friendly — greet, give directions, brief groups
+Rivals       : None
+Gate following: 25% chance on every gate within 10 tiles
+               No cooldown. All 12 members. Every gate type.
+
+ACTIVITIES (priority order):
+1. Bank chat at Britain bank
+2. Light monster hunting — graveyards, roads, dungeon level 1 max
+3. Skinning and looting corpses after kills
+4. Self-healing with bandages
+5. Vendor shopping — bandages, weapons, basic gear
+6. Fishing at Britain and Trinsic docks occasionally
+7. Skill training near Tier 1 towns
+8. Socialising near real players — brief, never follows
+9. Gate following — 25% chance, no cooldown
+
+TEMPLATES — 12 members:
+
+  Warrior Wanderer (6 members)
+  Swords 65, Tactics 60, Anatomy 55, Healing 60,
+  Hiding 50, Camping 50, Tracking 40
+  Stats: Str 60, Dex 55, Int 35
+  Gear: Leather armour, random one-handed weapon, no shield
+
+  Mage Wanderer (3 members)
+  Magery 60, Meditation 55, Magic Resist 50, Eval Int 45,
+  Healing 50, Hiding 50, Camping 50
+  Stats: Str 30, Dex 35, Int 85
+  Gear: Robe, sandals, basic spellbook Circles 1-4
+
+  Ranger Wanderer (3 members)
+  Archery 65, Tactics 60, Anatomy 55, Healing 55,
+  Hiding 60, Stealth 50, Tracking 50
+  Stats: Str 50, Dex 65, Int 35
+  Gear: Leather armour, bow, arrows x50
+
+----------------------------------------------------------------
+GUILD 2: THE CRAFTSMEN'S LEAGUE
+----------------------------------------------------------------
+Alignment    : Blue
+Real players : Friendly — will trade resources, sell ingots/cloth
+Rivals       : None
+Gate following: None
+
+HARVESTING LOCATIONS:
+  Mining (12): Minoc mountains, Britain mines, Wrong entrance,
+    Covetous entrance, Vesper northern hills, Shame entrance,
+    Yew mountain, Trinsic eastern hills, Jhelom quarry,
+    Papua mountains, Delucia mines, Skara Brae eastern ridge
+  Lumberjacking (10): Yew deep forest, Skara Brae western,
+    Britain eastern, Trinsic southern, Papua jungle,
+    Jhelom island, Delucia forest, Cove north, Vesper east,
+    Wrong area forest
+  Fishing (8): Britain, Trinsic, Moonglow, Vesper, Minoc docks,
+    Ocllo island, Jhelom waterfront, Papua docks
+
+ACTIVITIES (priority order):
+1. Crafting at stations (10-20 min sessions)
+2. Mining — rotating 12 locations
+3. Lumberjacking — rotating 10 locations
+4. Fishing — rotating 8 locations
+5. Banking — deposit when inventory full
+6. Vendor shopping — tools, raw materials
+7. Trading resources with real players
+8. Brief bank chat between work sessions
+9. Flee and gate home if attacked — NEVER fight back
+
+TEMPLATES — 12 members:
+
+  Blacksmith (4): Blacksmithy 100, Mining 100, Arms Lore 80,
+    Tinkering 60, Carpentry 50. Combat: Swords 30 (flee only)
+
+  Tailor (3): Tailoring 100, Fishing 80, Carpentry 50, Cooking 60
+    Combat: None — flee only
+
+  Carpenter (3): Carpentry 100, Lumberjacking 100, Tinkering 60,
+    Fletching 50. Combat: Macing 30 (hatchet — flee only)
+
+  Tinker (2): Tinkering 100, Blacksmithy 70, Mining 60,
+    Arms Lore 80, Item ID 70. Combat: None — flee only
+
+----------------------------------------------------------------
+GUILD 3: THE SHADOW HAND
+----------------------------------------------------------------
+Alignment    : Grey
+Real players : Steal from NPCs ONLY — never from real players
+               Never violent. Always deny.
+Rivals       : Silver Wolves (hunted in Tier 1/2 towns)
+Gate following: 15%
+Independent from Shadowblade — completely separate guilds
+Members operate independently — no coordination
+
+ACTIVITIES (priority order):
+1. Snooping — opening nearby NPC and player backpacks visually
+2. Pickpocketing NPCs — visible animation, occasional guard call
+3. Blending in near vendors and bank
+4. Fleeing Silver Wolves — scatter, hide, gate if cornered
+5. Hiding in crowds
+6. Town hopping — Britain, Trinsic, Moonglow, Minoc, Vesper
+7. Brief friendly interaction with real players — cover
+If cornered: die without fighting back
+
+TEMPLATES — 12 members:
+
+  Pickpocket (8): Stealing 80, Hiding 100, Stealth 90,
+    Snooping 80, Detect Hidden 50, Item ID 60
+    Combat: Fencing 40, Tactics 30 (escape only)
+
+  Master Thief (4): Stealing 100, Hiding 100, Stealth 100,
+    Snooping 100, Detect Hidden 70, Item ID 80
+    Combat: Fencing 60, Tactics 50 (brief if cornered)
+
+================================================================
+TIER 2 — CONTESTED
+================================================================
+
+----------------------------------------------------------------
+GUILD 4: IRON COMPANY
+----------------------------------------------------------------
+Alignment    : Blue
+Real players : Neutral. Tolerates real players joining spawns.
+               Hostile if real player steals their loot.
+Rivals       : Blood Pact (champion spawn griefing)
+Gate following: None
+
+CHAMPION SPAWN ROLES:
+  2 Tanks — front line, hold aggro
+  2 DPS — focused damage, same target always
+  1 Support — monitors group health, bandages at 60%
+  1 Flex — watches for Blood Pact, calls warning
+Max 6 at champion spawn at any time.
+
+Blood Pact response: Flex calls warning. If favourable: 2 peel
+off to engage, 4 continue spawn. If unfavourable: finish wave,
+gate to rally point, regroup.
+
+ACTIVITIES (priority order):
+1. Champion spawn runs — coordinated, defined roles
+2. Dungeon runs — individual or pairs between spawns
+3. Thorough looting after every kill
+4. Self-healing at 60% HP threshold
+5. Banking after each run
+6. Vendor resupply
+7. Regrouping at rally point when pressured
+
+TEMPLATES — 12 members (7x100, StatCap 180):
+
+  Heavy Warrior (5): Swords 100, Tactics 100, Anatomy 90,
+    Healing 90, Parry 100, Magic Resist 80, Chivalry 80
+    Stats: Str 85, Dex 65, Int 30
+
+  Combat Specialist (4): Swords 100, Tactics 100, Anatomy 100,
+    Healing 80, Magic Resist 70, Chivalry 80, Parry 70
+    Stats: Str 80, Dex 70, Int 30
+
+  Battle Mage (3): Magery 100, Eval Int 100, Magic Resist 100,
+    Meditation 80, Wrestling 80, Healing 60, Focus 80
+    Stats: Str 30, Dex 35, Int 115
+
+----------------------------------------------------------------
+GUILD 5: THE ARCANE BROTHERHOOD
+----------------------------------------------------------------
+Alignment    : Blue
+Real players : Neutral. May intervene if real player attacked
+               by Blood Pact nearby — out of principle.
+Rivals       : The Void (ideological magic conflict)
+Gate following: None
+
+ACTIVITIES (priority order):
+1. Deep dungeon runs — Deceit lvl 3, Shame, Hythloth upper
+2. Reagent shopping — full restock after every run
+3. Champion spawn support alongside Iron Company
+4. Thorough looting — reagents, scrolls, spellbooks priority
+5. Library visits — town bookshelves
+6. Banking after each run
+7. Moonglow bank socialising — their hub, not Britain
+8. Engaging The Void on sight in shared dungeons
+
+TEMPLATES — 12 members (7x100, StatCap 180):
+
+  War Mage (8): Magery 100, Eval Int 100, Magic Resist 100,
+    Meditation 90, Wrestling 80, Focus 70, Inscription 60
+    Stats: Str 30, Dex 35, Int 115
+
+  Arcane Scholar (4): Magery 100, Eval Int 100, Magic Resist 100,
+    Meditation 100, Inscription 80, Focus 80, Detect Hidden 60,
+    Wrestling 80
+    Stats: Str 25, Dex 35, Int 120
+
+----------------------------------------------------------------
+GUILD 6: THE SILVER WOLVES
+----------------------------------------------------------------
+Alignment    : Blue (strictly — never compromised)
+Real players : Friendly to blues. Assists blue players attacked
+               by reds. Warns of Blood Pact.
+Rivals       : Blood Pact (active hunting), Shadow Hand (towns)
+Loosely allied: Paladin Order (shared goals, no coordination)
+               Will NOT attack Dead Watchers despite grey alignment
+Gate following: None
+ALWAYS hunt in groups of 3: 1 Scout + 2 Warriors/Captain
+
+ACTIVITIES (priority order):
+1. Tier 2 patrolling — Despise, Covetous, Wrong, Shame
+2. Pursuing Blood Pact on sight — engage immediately
+3. Assisting blue real players under attack
+4. Shadow Hand pursuit when spotted in towns
+5. Warning real players of known Blood Pact activity
+6. Banking and resupply between patrols
+
+TEMPLATES — 12 members (7x100, StatCap 180):
+
+  Wolf Scout (4): Archery 100, Tactics 100, Anatomy 90,
+    Healing 80, Hiding 80, Stealth 70, Detect Hidden 80
+    Stats: Str 70, Dex 80, Int 30
+
+  Wolf Warrior (5): Swords 100, Tactics 100, Anatomy 90,
+    Healing 90, Parry 90, Magic Resist 80, Detect Hidden 50
+    Stats: Str 80, Dex 65, Int 35
+
+  Wolf Captain (3): Swords 100, Tactics 100, Anatomy 100,
+    Healing 100, Parry 100, Chivalry 80, Detect Hidden 70
+    Stats: Str 85, Dex 70, Int 25
+
+================================================================
+TIER 3 — CURSED (GOOD-ALIGNED)
+================================================================
+
+----------------------------------------------------------------
+GUILD 7: THE PALADIN ORDER
+----------------------------------------------------------------
+Alignment    : Blue (highest honour)
+Real players : Friendly to blues. Defends blues from reds.
+Rivals       : Blood Pact (primary nemesis)
+               Shadowblade (deep mutual enmity)
+Loosely allied: Silver Wolves
+Gate following: None
+NEVER retreat — fights to the finish
+
+ACTIVITIES (priority order):
+1. Hunting Blood Pact — engage on sight
+2. Hunting Shadowblade — Detect Hidden active
+3. Tier 3 champion spawns
+4. Defending blue real players in Tier 3
+5. Deep dungeon runs between hunts
+6. Resupply gate to Britain/Trinsic — straight back
+
+TEMPLATES — 12 members (7x100, StatCap 225):
+
+  Paladin Knight (8): Swords 100, Tactics 100, Anatomy 100,
+    Healing 100, Parry 100, Chivalry 100, Magic Resist 100
+    Stats: Str 90, Dex 80, Int 55
+    Gear: Exceptional white/silver platemail
+
+  Paladin Commander (4): Swords 100, Tactics 100, Healing 100,
+    Parry 100, Chivalry 100, Magic Resist 100, Focus 100
+    Stats: Str 85, Dex 80, Int 60
+
+----------------------------------------------------------------
+GUILD 8: THE DEAD WATCHERS
+----------------------------------------------------------------
+Alignment    : Permanently Grey
+Real players : Neutral to blues unless provoked.
+               Always hostile to reds and greys.
+Rivals       : Blood Pact (feared more than Paladin Order)
+Gate following: None
+Team size    : RANDOM 1-4 per engagement — never predictable
+Blue-testing mechanic: SAVED FOR LATER — do not implement yet
+
+ACTIVITIES (priority order):
+1. Hunting Blood Pact — observe first, then strike
+2. Deep dungeon clearing — Doom, Bedlam, Stygian Abyss
+3. Monitoring Tier 3 champion spawn areas for reds
+4. Eliminating reds and greys on sight
+5. Observing blue real players silently then ignoring them
+6. Resupply gate — straight back, no socialising
+
+TEMPLATES — 12 members (7x100, StatCap 225):
+
+  Death Knight (8): Swords 100, Tactics 100, Anatomy 100,
+    Healing 100, Necromancy 100, Spirit Speak 100, Parry 100
+    Stats: Str 90, Dex 80, Int 55
+    Gear: Dark bone armour or black platemail
+
+  Wraith Mage (4): Magery 100, Eval Int 100, Magic Resist 100,
+    Necromancy 100, Spirit Speak 100, Meditation 100, Wrestling 100
+    Stats: Str 40, Dex 55, Int 130
+
+----------------------------------------------------------------
+GUILD 9: THE DREAD HUNTERS
+----------------------------------------------------------------
+Alignment    : Blue (leaning grey — Tier 3 incidents)
+Real players : Neutral. Full force retaliation if attacked.
+Rivals       : The Void (territorial)
+Gate following: None
+Skill cap    : 5x120+2x100+1x80 = 880
+Stat cap     : 300, max 125 per stat
+Team size    : 2-3 dungeon, 4-5 spawns, up to 6 world bosses
+
+ACTIVITIES (priority order):
+1. Extreme Tier 3 dungeons — Stygian Abyss, Underworld, Hythloth deep
+2. Tier 3 champion spawns exclusively
+3. World boss hunting — up to 6 converge
+4. Engaging The Void on sight — territorial
+5. Thorough looting
+6. Fast resupply gate — straight back out
+
+TEMPLATES — 12 members:
+
+  Classic Dexxer (2): Swords 120, Tactics 120, Anatomy 120,
+    Healing 120, Parry 120, Magic Resist 100, Chivalry 100, Focus 80
+    Stats: Str 125, Dex 125, Int 50
+
+  Pure Mage (2): Magery 120, Eval Int 120, Magic Resist 120,
+    Meditation 120, Wrestling 120, Focus 100, Inscription 100,
+    Spirit Speak 80. Stats: Str 75, Dex 100, Int 125
+
+  NecroMage (2): Magery 120, Eval Int 120, Magic Resist 120,
+    Necromancy 120, Spirit Speak 120, Meditation 100,
+    Wrestling 100, Inscription 80. Stats: Str 75, Dex 100, Int 125
+
+  Ninja Dexxer (2): Fencing 120, Tactics 120, Ninjitsu 120,
+    Hiding 120, Stealth 120, Anatomy 100, Healing 100,
+    Detect Hidden 80. Stats: Str 100, Dex 125, Int 75
+
+  Paladin (1): Swords 120, Tactics 120, Anatomy 120, Healing 120,
+    Parry 120, Chivalry 100, Magic Resist 100, Focus 80
+    Stats: Str 125, Dex 125, Int 50
+
+  Archer (1): Archery 120, Tactics 120, Anatomy 120, Healing 120,
+    Hiding 120, Stealth 100, Ninjitsu 100, Detect Hidden 80
+    Stats: Str 100, Dex 125, Int 75
+
+  Sampire (2): Swords 120, Tactics 120, Bushido 120,
+    Necromancy 120, Spirit Speak 120, Anatomy 100, Healing 100,
+    Parry 80. Stats: Str 125, Dex 125, Int 50
+
+================================================================
+TIER 3 — CURSED (EVIL-ALIGNED)
+================================================================
+
+----------------------------------------------------------------
+GUILD 10: BLOOD PACT
+----------------------------------------------------------------
+Alignment    : Red (full murderers)
+Real players : Hostile in Tier 2/3 — CALCULATED.
+               Never attacks if odds unfavourable.
+               Instant death in cities — never enter.
+Rivals       : Iron Company, Silver Wolves, Paladin Order
+               Dead Watchers (feared — avoid unless overwhelming)
+Gate following: None
+City gates   : Instant guard death — never
+Random daily online roster: 2-7 members
+Respawn timer: 20 minutes (stat loss consequence)
+Skill cap    : 8x100 = 800, StatCap 250
+
+ENGAGEMENT EVALUATION ALGORITHM:
+  ENGAGE if:
+    Blood Pact available >= target group size
+    AND target health < 70% average
+    AND escape route available
+    AND no Dead Watchers or Paladin Order nearby
+    AND loot value > stat loss risk
+  WAIT if:
+    Target health > 70%
+    OR numbers are even
+    OR Silver Wolves/Paladin Order in area
+  RETREAT immediately if:
+    Any member HP < 25%
+    OR Dead Watchers arrive
+
+ACTIVITIES (priority order):
+1. Lurking near champion spawns — wait for Iron Company to weaken
+2. Hunting solo real players in Tier 2/3
+3. Evaluating group targets before engaging
+4. Recalling immediately when losing
+5. Calling reinforcements when viable
+6. Thorough fast looting
+7. Avoiding Dead Watchers
+8. Wilderness resupply only
+
+TEMPLATES — 12 members:
+
+  Classic Dexxer (2): Swords 100, Tactics 100, Anatomy 100,
+    Healing 100, Parry 100, Magic Resist 100, Chivalry 100, Focus 100
+    Stats: Str 100, Dex 100, Int 50
+
+  Pure Mage (1): Magery 100, Eval Int 100, Magic Resist 100,
+    Meditation 100, Wrestling 100, Focus 100, Inscription 100, Hiding 100
+    Stats: Str 50, Dex 75, Int 125
+
+  NecroMage (3) — most common: Magery 100, Eval Int 100,
+    Magic Resist 100, Necromancy 100, Spirit Speak 100,
+    Meditation 100, Wrestling 100, Hiding 100
+    Stats: Str 50, Dex 75, Int 125
+
+  Ninja Dexxer (2): Fencing 100, Tactics 100, Ninjitsu 100,
+    Hiding 100, Stealth 100, Anatomy 100, Healing 100,
+    Detect Hidden 100. Stats: Str 75, Dex 125, Int 50
+
+  Paladin (1): Swords 100, Tactics 100, Anatomy 100, Healing 100,
+    Parry 100, Chivalry 100, Magic Resist 100, Focus 100
+    Stats: Str 100, Dex 100, Int 50
+
+  Archer (2): Archery 100, Tactics 100, Anatomy 100, Healing 100,
+    Hiding 100, Stealth 100, Ninjitsu 100, Detect Hidden 100
+    Stats: Str 75, Dex 125, Int 50
+
+  Sampire (1): Swords 100, Tactics 100, Bushido 100,
+    Necromancy 100, Spirit Speak 100, Parry 100, Chivalry 100,
+    Anatomy 100. Stats: Str 100, Dex 100, Int 50
+
+----------------------------------------------------------------
+GUILD 11: THE VOID
+----------------------------------------------------------------
+Alignment    : Red (high murder counts)
+Real players : Hostile to everyone — no evaluation, no warning
+               Including occasionally other Void members (5%)
+Rivals       : Arcane Brotherhood, Dread Hunters
+Gate following: None
+City gates   : Instant guard death — never
+Always solo  : Never group, never coordinate
+Never retreat: Fights to the death, always
+Skill cap    : 5x120+2x100+1x50 = 850, StatCap 270
+
+ACTIVITIES (priority order):
+1. Deep dungeon haunting — Deceit 3+, Hythloth deep, Stygian,
+   Underworld. Considers these locations theirs.
+2. Killing everything on sight — no assessment
+3. Clashing with Arcane Brotherhood in dungeons
+4. Clashing with Dread Hunters over territory
+5. Occasional friendly fire — 5% chance vs other Void members
+6. Wilderness resupply only
+
+TEMPLATE — all 12 members identical:
+  Void NecroMage: Magery 120, Eval Int 120, Magic Resist 120,
+    Necromancy 120, Spirit Speak 120, Meditation 100,
+    Wrestling 100, Hiding 50
+    Stats: Str 60, Dex 85, Int 125
+    Gear: Black robe, both spellbooks in backpack, full reagents
+    Style: Wraith Form always. Strangle opener. Wither on groups.
+    Animate Dead on nearby corpses. Pain Spike on fleeing targets.
+    Never recalls. Fights to death.
+
+----------------------------------------------------------------
+GUILD 12: SHADOWBLADE
+----------------------------------------------------------------
+Alignment    : Mixed — 6 Red, 6 Grey
+Real players : Hostile — target high-value loot carriers.
+               Grey members can enter cities and scout.
+               Red members instant death in cities.
+Rivals       : Paladin Order (deep mutual enmity — hunts them)
+Independent from Shadow Hand — completely separate guilds
+Gate following: 35% — grey members follow city gates to scout
+Always alone or in pairs — never more than 2
+Skill cap    : 8x100 = 800, StatCap 250
+
+ACTIVITIES (priority order):
+1. Target assessment — evaluate loot value before striking
+2. Assassination from stealth — Death Strike opener always
+3. Hunting Paladin Order — enmity overrides loot calculation
+4. Champion spawn exit camping — tired players with max loot
+5. Town operations — grey members only, scout wealth
+6. Wilderness resupply — red members; grey can use city vendors
+7. Relocate when Paladin Order detected — unless actively hunting
+
+TEMPLATES — 12 members (6 Red, 6 Grey):
+
+  Shadow Assassin (6): Ninjitsu 100, Hiding 100, Stealth 100,
+    Fencing 100, Tactics 100, Anatomy 100, Healing 100,
+    Detect Hidden 100. Stats: Str 75, Dex 125, Int 50
+    Gear: Black ninja suit, GM Kryss/Assassin Spike, smoke bombs x8
+    Style: Death Strike after 5 tile movement from stealth.
+    Mirror Image when cornered. Recalls if Death Strike fails.
+
+  Shadow Archer (4): Archery 100, Ninjitsu 100, Hiding 100,
+    Stealth 100, Tactics 100, Anatomy 100, Healing 100,
+    Detect Hidden 100. Stats: Str 80, Dex 125, Int 45
+    Gear: Kasa, dark cloak, Elven Composite Longbow, poison arrows
+    Style: Poison Shot opener from stealth max range.
+    Moves after every shot. Recalls if target has backup.
+
+  Shadow Blade Master (2): Ninjitsu 100, Hiding 100, Stealth 100,
+    Fencing 100, Tactics 100, Anatomy 100, Healing 100, Bushido 100
+    Stats: Str 85, Dex 125, Int 40
+    Style: Lightning Strike + Death Strike combined.
+    Specifically hunts Paladin Order. Engages even if odds
+    slightly unfavourable when target wears Paladin armour.
+
+================================================================
+GUILD COMPARISON MATRIX
+================================================================
+
+Guild              | Tier | Align  | Skills | Stats | GateFollow
+The Wanderers      |  1   | Blue   |  ~450  |  150  | 25% all
+Craftsmen's League |  1   | Blue   |  ~380  |  150  | None
+Shadow Hand        |  1   | Grey   |  ~500  |  150  | 15%
+Iron Company       |  2   | Blue   |   700  |  180  | None
+Arcane Brotherhood |  2   | Blue   |   700  |  180  | None
+Silver Wolves      |  2   | Blue   |   700  |  180  | None
+Paladin Order      |  3   | Blue   |   700  |  225  | None
+Dead Watchers      |  3   | P.Grey |   700  |  225  | None
+Dread Hunters      |  3   | B/Grey |   880  |  300  | None
+Blood Pact         |  3   | Red    |   800  |  250  | None*
+The Void           |  3   | Red    |   850  |  270  | None*
+Shadowblade        |  3   | R/Grey |   800  |  250  | 35%†
+
+* Instant death in cities
+† Grey members only follow city gates
+
+================================================================
+CROSS-TIER RIVALRIES (8 total)
+================================================================
+
+Blood Pact    vs Iron Company          Champion spawn conflict
+Silver Wolves vs Blood Pact            Active hunting Tier 2
+Shadow Hand   vs Silver Wolves         Town cat-and-mouse
+Shadowblade   vs Paladin Order         Deep mutual enmity
+The Void      vs Arcane Brotherhood    Ideological magic war
+Blood Pact    vs Dead Watchers         Blood Pact avoids them
+Shadowblade   vs Shadow Hand           Shadow Hand fears Shadowblade
+Dread Hunters vs The Void              Pure territorial competition
+
+================================================================
+REAL PLAYER RELATIONSHIPS
+================================================================
+
+Guild              | Blues      | Greys       | Reds
+The Wanderers      | Friendly   | Neutral     | Neutral
+Craftsmen's League | Friendly   | Neutral     | Neutral
+Shadow Hand        | Neutral*   | Neutral     | Neutral
+Iron Company       | Neutral    | Neutral     | Neutral
+Arcane Brotherhood | Neutral    | Neutral     | Neutral
+Silver Wolves      | Friendly   | Hostile     | Hostile
+Paladin Order      | Friendly   | Neutral     | Hostile
+Dead Watchers      | Neutral†   | Hostile     | Hostile
+Dread Hunters      | Neutral    | Neutral     | Neutral‡
+Blood Pact         | Hostile§   | Hostile     | Neutral
+The Void           | Hostile    | Hostile     | Neutral
+Shadowblade        | Hostile¶   | Hostile     | Neutral
+
+* Snoop/steal from NPCs only
+† Blue-testing mechanic saved for Phase 3
+‡ Full force retaliation if attacked
+§ Calculated — only engages when odds favour Blood Pact
+¶ Prioritises high-value loot carriers
+
+================================================================
+ROSTER AND RESPAWN SYSTEM
+================================================================
+
+NOTE: SimPlayers do NOT respawn. They RE-ACTIVATE after cooldown.
+Pool PKs (FBPKSpawner) DO respawn. These are different systems.
+
+Base online rate:    25-35% per guild (3-4 members average)
+Prime time bonus:    +2 members (18:00-23:00 server time)
+Off-peak reduction:  -1 member (00:00-08:00)
+
+SimPlayer re-activation cooldowns after death:
+  Tier 1 guilds      :  5 minutes
+  Tier 2 guilds      : 10 minutes
+  Tier 3 good        : 15 minutes
+  Dread Hunters      : 15 minutes
+  Blood Pact         : 20 minutes (stat loss consequence)
+  The Void           : 20 minutes
+  Shadowblade        : 15 minutes
+
+ROSTER EXHAUSTION:
+  Kill enough SimPlayers fast enough — guild runs dry.
+  No more members active until cooldowns expire.
+  Core gameplay mechanic. Players can tactically exhaust guilds.
+
+================================================================
+REINFORCEMENT CAPS
+================================================================
+
+Iron Company    : Up to 6 at champion spawn
+Silver Wolves   : Groups of 3 only
+Paladin Order   : Up to 4 per engagement, never retreat
+Dead Watchers   : Random 1-4, never predictable
+Dread Hunters   : Up to 6 at world events
+Blood Pact      : Up to 4, evaluates before calling
+Shadowblade     : Max 2 always, never more
+
+================================================================
+SAVED FOR LATER (Phase 3+)
+================================================================
+
+Dead Watchers blue-testing mechanic:
+  Rich player-reveal feature. Dead Watchers occasionally
+  "test" blue real players to assess their character.
+  Do NOT implement until Phase 3 is complete.
+
+================================================================
+IMPLEMENTATION PHASES
+================================================================
+
+PHASE 1 — Wanderers only (foundation test)
+PHASE 2 — Craftsmen's League + Iron Company + Silver Wolves
+PHASE 3 — All 12 guilds
+(Full detail in PlayerSimulator_DesignDoc.txt)
+
+================================================================
+RELATED DOCUMENTS
+================================================================
+
+SystemArchitecture_DesignDoc.txt  Architecture + build order
+PlayerSimulator_DesignDoc.txt     SimPlayer architecture detail
+PlayerSimulator_ActivitySpec.txt  20 player activities mapped
+PKNPCTemplates_AllArchetypes.txt  7 PK templates × 3 tiers
+SkillSynergies_DesignDoc.txt      Skill synergy reference
+COWORK_HANDOVER.txt               Full project context
+================================================================

@@ -13,6 +13,7 @@
 // ============================================================
 
 using System;
+using System.Collections.Generic;
 using Server;
 using Server.Custom;
 using Server.Engines.CannedEvil;
@@ -92,12 +93,78 @@ namespace Server.Custom
         private ChampionSpawn _targetSpawn      = null;
         private int           _lastKnownLevel   = -1;
         private bool          _champAnnounced   = false;
+        private Timer         _bossBattlecryTimer = null;
+
+        // -- Combat healing + mobility (transient) ------------------------
+        private DateTime _nextHealAt          = DateTime.MinValue;
+        private Point3D  _spawnEntryPoint     = Point3D.Zero;
+        private Serial   _lastCombatantSerial = Serial.Zero;
+        private DateTime _combatantSince      = DateTime.MinValue;
+        private DateTime _nextReturnAt        = DateTime.MinValue;
+
+        // -- Retaliation tracking (transient) --------------------------------
+        // If a blue (innocent) player attacks us, we fight back for 30 seconds.
+        // Outside that window we never auto-acquire innocent players as targets.
+        private Serial   _retaliateSerial  = Serial.Zero;
+        private DateTime _retaliateExpires = DateTime.MinValue;
+
+        private bool IsRetaliationTarget(Mobile m)
+            => m != null && m.Serial == _retaliateSerial && DateTime.UtcNow < _retaliateExpires;
+
+        // -- Stuck resolution (3-phase) -----------------------------------
+        // None → Teleported (6s stuck) → CrossbowOut (5s after teleport still stuck)
+        // → give up after 15s with crossbow → return to entry + re-equip melee
+        private enum StuckPhase { None, Teleported, CrossbowOut }
+        private StuckPhase _stuckPhase   = StuckPhase.None;
+        private DateTime   _stuckPhaseAt = DateTime.MinValue;
+
+        // -- Victory gold collection dedup --------------------------------
+        // Tracks which champion spawn serials have already had gold collected
+        // this run, so only the first member to call BeginWithdraw(true) fires it.
+        private static readonly HashSet<Serial> _goldCollectedForSpawn = new HashSet<Serial>();
+
+        // -- Unreachable target blacklist ----------------------------------
+        // Targets we gave up on are skipped for 3 minutes so we don't
+        // immediately re-acquire an unreachable ledge monster.
+        private readonly Dictionary<Serial, DateTime> _blockedTargets
+            = new Dictionary<Serial, DateTime>();
+        private static readonly TimeSpan BlockDuration = TimeSpan.FromMinutes(3);
 
         // Used when no Felucca ChampionSpawn is found in the world at all
         private static readonly Point3D[] FallbackDestinations =
         {
             new Point3D(1296, 1263, 0),   // Despise entrance (Felucca)
             new Point3D(533,  1566, 0),   // Shame entrance (Felucca)
+        };
+
+        // -- Downed / resurrection state -----------------------------------
+        // When an Iron Company member would die, OnBeforeDeath intercepts it.
+        // They are left downed (alive at 1 HP, invulnerable, immobile) until a
+        // fellow guild member comes within 10 tiles and resurrects them.
+        private bool     _isDowned        = false;
+        private DateTime _nextRezCheckAt  = DateTime.MinValue;
+        private DateTime _nextGuildHealAt = DateTime.MinValue;
+
+        private static readonly string[] DownedLines =
+        {
+            "*collapses with a grunt*",
+            "*falls to the ground*",
+            "I need... help...",
+            "*staggers and falls*",
+        };
+        private static readonly string[] RezLines =
+        {
+            "Stay with me!",
+            "On your feet, soldier!",
+            "I've got you — hold on!",
+            "Don't you die on me!",
+        };
+        private static readonly string[] BackUpLines =
+        {
+            "*rises shakily* Back in the fight!",
+            "Thank you, brother.",
+            "*gasps* That was close...",
+            "I owe you one.",
         };
 
         // -- Speech pools ----------------------------------------------
@@ -145,7 +212,86 @@ namespace Server.Custom
 
         public IronCompanySimPlayer(Serial serial) : base(serial) { }
 
+        // -- Serialization ---------------------------------------------
+
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.Write(0); // version — IronCompany has no extra persistent fields
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            reader.ReadInt(); // version
+
+            // Transient combat state must not persist across restarts.
+            // If the world was saved mid-champ-run, FightMode could be
+            // Closest and Team could be 1, causing the base AI to run in
+            // combat mode while _champPhase is reset to None — breaking patrol.
+            FightMode = FightMode.None;
+            Combatant = null;
+            Team      = 0;
+        }
+
         // -- Overrides -------------------------------------------------
+
+        // While downed we are invulnerable — prevents the killing blow repeating
+        public override bool IsInvulnerable => _isDowned;
+
+        /// <summary>
+        /// Controls who the AI considers an enemy at the champ spawn.
+        /// — Uncontrolled non-SimPlayer creatures (spawn monsters): always enemy.
+        /// — Innocent (blue) players and their pets: never enemy.
+        /// — Red players (murderers): enemy via base logic.
+        /// Outside the spawn phase falls back to base behaviour.
+        /// </summary>
+        public override bool IsEnemy(Mobile m)
+        {
+            // Never attack innocent player pets regardless of phase or location.
+            // A pet owned by a blue player is only fair game if it or its owner
+            // attacked us first (retaliation window).
+            if (m is BaseCreature petCheck && petCheck.Controlled
+                && petCheck.ControlMaster is PlayerMobile petOwner
+                && petOwner.Kills < 5
+                && !IsRetaliationTarget(petCheck)
+                && !IsRetaliationTarget(petOwner))
+                return false;
+
+            if (_champPhase == ChampPhase.AtSpawn)
+            {
+                // At spawn: target uncontrolled non-SimPlayer creatures (spawn monsters)
+                if (m is BaseCreature bc && !bc.Controlled && !bc.Summoned && !(m is SimPlayer))
+                    return true;
+
+                // At spawn: never auto-attack innocent (blue) players
+                if (m is PlayerMobile pm && pm.Kills < 5 && !IsRetaliationTarget(pm))
+                    return false;
+            }
+
+            return base.IsEnemy(m);
+        }
+
+        /// <summary>
+        /// Intercept death: instead of dying, go downed. A guild member will
+        /// resurrect us when they come within range.
+        /// </summary>
+        public override bool OnBeforeDeath()
+        {
+            if (_isDowned) return false; // already downed, ignore
+
+            _isDowned  = true;
+            Hits       = 1;
+            Combatant  = null;
+            FightMode  = FightMode.None;
+            _stuckPhase = StuckPhase.None;
+            StopBossBattlecryTimer();
+
+            Animate(22, 5, 1, true, false, 0); // fall animation
+            Say(DownedLines[Utility.Random(DownedLines.Length)]);
+
+            return false; // returning false prevents actual death
+        }
 
         /// <summary>Pause SimState movement ticks while fighting, rallying at bank, or fighting at spawn.</summary>
         protected override bool SkipStateTick => Combatant != null
@@ -157,9 +303,200 @@ namespace Server.Custom
 
         public override void OnThink()
         {
+            // While downed: check if a guild member is nearby to rez us,
+            // then do nothing else (no movement, no combat, no state ticks).
+            if (_isDowned)
+            {
+                // nothing — rez is driven by living members scanning outward
+                return;
+            }
+
+            // Living member: scan for downed or injured colleagues within 10 tiles
+            CheckRezNearby();
+            CheckHealNearby();
+
+            // Clear any innocent pet that the base AI acquired as combatant —
+            // applies in ALL phases, not just AtSpawn.
+            if (Combatant is BaseCreature combatPet && combatPet.Controlled
+                && combatPet.ControlMaster is PlayerMobile combatOwner
+                && combatOwner.Kills < 5
+                && !IsRetaliationTarget(combatPet)
+                && !IsRetaliationTarget(combatOwner))
+                Combatant = null;
+
             // Champ state machine always runs — even during combat / SkipStateTick
             ManageChampPhase();
+
+            // Self-heal when fighting at the spawn
+            if (_champPhase == ChampPhase.AtSpawn && Alive)
+                TrySelfHeal();
+
             base.OnThink();
+        }
+
+        /// <summary>
+        /// Scan nearby mobiles for downed Iron Company members and help them up.
+        /// Throttled to once every 3 seconds.
+        /// </summary>
+        private void CheckRezNearby()
+        {
+            if (DateTime.UtcNow < _nextRezCheckAt) return;
+            _nextRezCheckAt = DateTime.UtcNow + TimeSpan.FromSeconds(3);
+
+            foreach (Mobile m in GetMobilesInRange(10))
+            {
+                if (m == this || m.Deleted) continue;
+                if (!(m is IronCompanySimPlayer ic)) continue;
+                if (!ic._isDowned) continue;
+
+                PerformRez(ic);
+                break; // one at a time
+            }
+        }
+
+        private void PerformRez(IronCompanySimPlayer target)
+        {
+            Combatant = null; // pause our own combat briefly
+            Say(RezLines[Utility.Random(RezLines.Length)]);
+            Animate(11, 5, 1, true, false, 0); // cast/heal animation
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            {
+                if (Deleted || target.Deleted || !target._isDowned) return;
+
+                target._isDowned = false;
+                target.Hits      = target.HitsMax / 2;
+                target.Stam      = target.StamMax;
+                target.Mana      = target.ManaMax / 2;
+
+                // Restore fight mode if still at spawn
+                if (target._champPhase == ChampPhase.AtSpawn)
+                    target.FightMode = FightMode.Closest;
+
+                Effects.SendLocationParticles(
+                    EffectItem.Create(target.Location, target.Map, EffectItem.DefaultDuration),
+                    0x376A, 9, 32, 5023);
+                target.PlaySound(0x1F2);
+                target.Say(BackUpLines[Utility.Random(BackUpLines.Length)]);
+            });
+        }
+
+        /// <summary>
+        /// If anyone damages us while at the spawn, register them as a
+        /// retaliation target for 30 seconds — even blue innocent players.
+        /// This is the only way an innocent player can become our combatant.
+        /// </summary>
+
+        /// <summary>
+        /// Intercept damage before HP is reduced. At a champion spawn, all damage
+        /// from innocent (blue) players and their pets is silently absorbed —
+        /// this covers direct hits, AoE weapons, and AoE spells.
+        /// </summary>
+        public override int Damage(int amount, Mobile from)
+        {
+            if (_champPhase == ChampPhase.AtSpawn && from != null)
+            {
+                // Blue player — absorb all damage including AoE
+                if (from is PlayerMobile pm && pm.Kills < 5)
+                    return 0;
+
+                // Blue player's pet — absorb all damage including AoE
+                if (from is BaseCreature bc && bc.Controlled
+                    && bc.ControlMaster is PlayerMobile petOwner
+                    && petOwner.Kills < 5)
+                    return 0;
+            }
+
+            return base.Damage(amount, from);
+        }
+
+        public override void OnDamage(int amount, Mobile from, bool willKill)
+        {
+            base.OnDamage(amount, from, willKill);
+
+            if (_champPhase == ChampPhase.AtSpawn && from != null && from.Alive && from != this)
+            {
+                // Never retaliate against innocent player pets at a champion spawn.
+                // Pets in Guard mode frequently hit us by mistake while we fight spawn
+                // monsters — retaliating starts an unintended fight loop with the player.
+                if (from is BaseCreature aggPet && aggPet.Controlled
+                    && aggPet.ControlMaster is PlayerMobile aggOwner
+                    && aggOwner.Kills < 5)
+                    return;
+
+                // Also ignore if the damage came from a blue player directly
+                if (from is PlayerMobile attPm && attPm.Kills < 5)
+                    return;
+
+                // Red player or actual enemy — register for retaliation
+                _retaliateSerial  = from.Serial;
+                _retaliateExpires = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+            }
+        }
+
+        /// <summary>
+        /// Scan nearby Iron Company members below 50% HP and heal the most
+        /// injured one. Throttled to once every 8 seconds.
+        /// Priority: downed rez > guild heal > self-heal.
+        /// </summary>
+        private void CheckHealNearby()
+        {
+            if (DateTime.UtcNow < _nextGuildHealAt) return;
+
+            IronCompanySimPlayer needsHeal = null;
+            int lowestHitsPct = 50; // only heal if below 50%
+
+            foreach (Mobile m in GetMobilesInRange(10))
+            {
+                if (m == this || m.Deleted) continue;
+                if (!(m is IronCompanySimPlayer ic)) continue;
+                if (ic._isDowned) continue;  // handled by rez system
+                if (ic.HitsMax <= 0) continue;
+
+                int pct = (ic.Hits * 100) / ic.HitsMax;
+                if (pct < lowestHitsPct)
+                {
+                    lowestHitsPct = pct;
+                    needsHeal     = ic;
+                }
+            }
+
+            if (needsHeal == null) return;
+
+            _nextGuildHealAt = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(7, 10));
+
+            // Heal animation + sound on the healer
+            Animate(11, 5, 1, true, false, 0);
+            PlaySound(0x57);
+
+            // Compute heal amount using our own Healing + Anatomy
+            double healSkill = Skills[SkillName.Healing].Value;
+            double anatSkill = Skills[SkillName.Anatomy].Value;
+            int amount = (int)((healSkill + anatSkill) * 0.3 + Utility.RandomMinMax(10, 25));
+
+            needsHeal.Hits = Math.Min(needsHeal.HitsMax, needsHeal.Hits + amount);
+            needsHeal.FixedEffect(0x375A, 10, 15);
+            needsHeal.PlaySound(0x1F2);
+        }
+
+        /// <summary>
+        /// Simulates bandage + chivalry healing. Fires every ~12 seconds when
+        /// HP drops below 75%. Amount is based on Healing + Anatomy skills.
+        /// </summary>
+        private void TrySelfHeal()
+        {
+            if (DateTime.UtcNow < _nextHealAt) return;
+            if (Hits >= (int)(HitsMax * 0.75))  return;
+
+            double healSkill = Skills[SkillName.Healing].Value;
+            double anatSkill = Skills[SkillName.Anatomy].Value;
+            int amount = (int)((healSkill + anatSkill) * 0.3 + Utility.RandomMinMax(5, 15));
+
+            Hits = Math.Min(HitsMax, Hits + amount);
+            PlaySound(0x57);
+            FixedEffect(0x375A, 10, 15);
+
+            _nextHealAt = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(10, 14));
         }
 
         // -- Champion run state machine --------------------------------
@@ -213,6 +550,21 @@ namespace Server.Custom
 
             _champPhase = ChampPhase.GatherAtBank;
             FightMode   = FightMode.None;
+
+            // Pull every other Iron Company member to the same spawn
+            PlayerSimulatorManager.BroadcastChampRun(_targetSpawn, this);
+
+            // Sergeant Vale announces the destination to the world
+            if (MemberName == "Sergeant Vale" && _targetSpawn != null)
+            {
+                string dest = string.IsNullOrEmpty(_targetSpawn.SpawnName)
+                    ? $"({_targetSpawn.X}, {_targetSpawn.Y})"
+                    : _targetSpawn.SpawnName;
+
+                World.Broadcast(0x4AA, true,
+                    $"[Iron Company] Sergeant Vale: \"Iron Company, move out! " +
+                    $"We march on {dest}. All members rally at once!\"");
+            }
 
             // Walk to nearest city bank — a short, reliable trip
             StartTravelTo(_bankLocation, TimeSpan.FromMinutes(5));
@@ -295,6 +647,7 @@ namespace Server.Custom
                     landing = dest.Location;
 
                 MoveToWorld(landing, Map.Felucca);
+                _spawnEntryPoint = landing; // remember where we arrived
                 ForceIdle(); // reset SimState after teleport
                 ArriveAtSpawn();
             });
@@ -302,10 +655,10 @@ namespace Server.Custom
 
         private void ArriveAtSpawn()
         {
-            _champPhase     = ChampPhase.AtSpawn;
-            FightMode       = FightMode.Closest;
-            _leaveSpawnAt   = DateTime.UtcNow + TimeSpan.FromHours(2); // hard cap
-            _champAnnounced = false;
+            _champPhase       = ChampPhase.AtSpawn;
+            FightMode         = FightMode.Closest;
+            _leaveSpawnAt     = DateTime.UtcNow + TimeSpan.FromHours(2); // hard cap
+            _champAnnounced   = false;
 
             if (_targetSpawn != null && !_targetSpawn.Deleted)
             {
@@ -334,12 +687,15 @@ namespace Server.Custom
 
             int level = _targetSpawn.Level;
 
-            // Announce each tier advance
+            // Announce each tier advance — Sergeant Vale also fires a Battlecry buff
             if (level > _lastKnownLevel && level >= 1)
             {
                 int idx = Math.Min(level - 1, TierSpeech.Length - 1);
                 Say(TierSpeech[idx]);
                 _lastKnownLevel = level;
+
+                if (MemberName == "Sergeant Vale")
+                    BattlecrySystem.ApplyBattlecry(this);
             }
 
             // Detect and directly engage champion when it spawns
@@ -349,6 +705,10 @@ namespace Server.Custom
             {
                 _champAnnounced = true;
                 Combatant = _targetSpawn.Champion;
+
+                // Start repeating battlecry every 2 minutes while champion is alive
+                if (MemberName == "Sergeant Vale")
+                    StartBossBattlecryTimer();
             }
 
             // Detect champion killed → victory
@@ -369,55 +729,347 @@ namespace Server.Custom
                 return;
             }
 
-            // Actively acquire a target if not currently fighting
+            // Never fight friendly SimPlayers — clear if the AI auto-acquired one.
+            // Hostile SimPlayers (AlwaysAttackable or AlwaysMurderer) are fair game.
+            if (Combatant is SimPlayer sp && !sp.AlwaysAttackable && !sp.AlwaysMurderer)
+                Combatant = null;
+
+            // Never auto-attack innocent (blue) real players.
+            // Only engage them if they damaged us first (retaliation window = 30s).
+            if (Combatant is PlayerMobile bluePm && bluePm.Kills < 5 && !IsRetaliationTarget(bluePm))
+                Combatant = null;
+
+            // Never attack player pets unless they (or their owner) attacked us first.
+            if (Combatant is BaseCreature pet && pet.Controlled && pet.ControlMaster is PlayerMobile petOwner
+                && petOwner.Kills < 5 && !IsRetaliationTarget(pet) && !IsRetaliationTarget(petOwner))
+                Combatant = null;
+
+            // Track how long we've had this specific combatant
+            if (Combatant == null)
+            {
+                if (_lastCombatantSerial != Serial.Zero)
+                {
+                    // Combat ended — reset stuck phase and re-equip melee if needed
+                    if (_stuckPhase == StuckPhase.CrossbowOut) EquipMelee();
+                    _stuckPhase          = StuckPhase.None;
+                    _lastCombatantSerial = Serial.Zero;
+                    _combatantSince      = DateTime.MinValue;
+                }
+            }
+            else if (Combatant.Serial != _lastCombatantSerial)
+            {
+                // New target — reset stuck phase
+                if (_stuckPhase == StuckPhase.CrossbowOut) EquipMelee();
+                _stuckPhase          = StuckPhase.None;
+                _lastCombatantSerial = Combatant.Serial;
+                _combatantSince      = DateTime.UtcNow;
+            }
+
+            // No target — scan and optionally return to entry
             if (Combatant == null || Combatant.Deleted || !Combatant.Alive)
+            {
                 AcquireSpawnTarget();
+
+                if (Combatant == null && _spawnEntryPoint != Point3D.Zero
+                    && GetDistanceToSqrt(_spawnEntryPoint) > 20
+                    && DateTime.UtcNow >= _nextReturnAt)
+                {
+                    TeleportToEntryPoint();
+                }
+            }
+            else
+            {
+                double distFromEntry = _spawnEntryPoint != Point3D.Zero
+                    ? GetDistanceToSqrt(_spawnEntryPoint)
+                    : (_targetSpawn != null ? GetDistanceToSqrt(_targetSpawn.Location) : 0.0);
+
+                double distToTarget = GetDistanceToSqrt(Combatant);
+
+                // Chased too far outside spawn — abort and return
+                if (distFromEntry > 80 && DateTime.UtcNow >= _nextReturnAt)
+                {
+                    if (_stuckPhase == StuckPhase.CrossbowOut) EquipMelee();
+                    _stuckPhase = StuckPhase.None;
+                    Combatant   = null;
+                    TeleportToEntryPoint();
+                }
+                else if (distToTarget <= 4 && _stuckPhase == StuckPhase.CrossbowOut)
+                {
+                    // Managed to close the gap — swap back to melee
+                    EquipMelee();
+                    _stuckPhase = StuckPhase.None;
+                }
+                else
+                {
+                    // 3-phase stuck resolution
+                    switch (_stuckPhase)
+                    {
+                        case StuckPhase.None:
+                            // Stuck in melee range for 6s → teleport
+                            if (distToTarget > 6
+                                && _combatantSince != DateTime.MinValue
+                                && DateTime.UtcNow >= _combatantSince + TimeSpan.FromSeconds(6))
+                            {
+                                TeleportToCombatant(Combatant as Mobile);
+                                _stuckPhase  = StuckPhase.Teleported;
+                                _stuckPhaseAt = DateTime.UtcNow;
+                            }
+                            break;
+
+                        case StuckPhase.Teleported:
+                            // 5s after teleport still out of range → pull out crossbow
+                            if (distToTarget > 6
+                                && DateTime.UtcNow >= _stuckPhaseAt + TimeSpan.FromSeconds(5))
+                            {
+                                EquipCrossbow();
+                                _stuckPhase   = StuckPhase.CrossbowOut;
+                                _stuckPhaseAt = DateTime.UtcNow;
+                            }
+                            break;
+
+                        case StuckPhase.CrossbowOut:
+                            // 15s with crossbow, still no progress → give up, return
+                            if (DateTime.UtcNow >= _stuckPhaseAt + TimeSpan.FromSeconds(15))
+                            {
+                                // Blacklist this target so we don't immediately re-acquire it
+                                if (Combatant != null)
+                                    _blockedTargets[Combatant.Serial] = DateTime.UtcNow + BlockDuration;
+
+                                EquipMelee();
+                                _stuckPhase = StuckPhase.None;
+                                Combatant   = null;
+                                TeleportToEntryPoint();
+                            }
+                            break;
+                    }
+                }
+            }
         }
 
+        // Scan cooldown — don't scan every single tick when idle at spawn
+        private DateTime _nextScanAt = DateTime.MinValue;
+
         /// <summary>
-        /// Scans nearby mobiles and sets Combatant to kick off fighting.
-        /// Prefers the champion if it exists, otherwise the nearest creature.
+        /// Actively hunts for targets within the 80-tile spawn area.
+        /// Prefers the champion, then the nearest creature.
+        /// If the target is far away (>15 tiles), teleports toward it immediately
+        /// rather than waiting for the AI to path there.
         /// </summary>
         private void AcquireSpawnTarget()
         {
-            // Champion first
+            if (DateTime.UtcNow < _nextScanAt) return;
+            _nextScanAt = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+
+            // Prune expired blacklist entries
+            var expired = new List<Serial>();
+            foreach (var kvp in _blockedTargets)
+                if (DateTime.UtcNow >= kvp.Value) expired.Add(kvp.Key);
+            foreach (var s in expired)
+                _blockedTargets.Remove(s);
+
+            // Champion is always top priority — never blacklisted
             if (_targetSpawn != null && !_targetSpawn.Deleted
                 && _targetSpawn.Champion != null && !_targetSpawn.Champion.Deleted
                 && _targetSpawn.Champion.Alive)
             {
-                Combatant = _targetSpawn.Champion;
+                Mobile champ = _targetSpawn.Champion;
+                Combatant = champ;
+                if (GetDistanceToSqrt(champ) > 15)
+                    TeleportToCombatant(champ);
                 return;
             }
 
-            // Nearest hostile creature within 15 tiles
+            // Scan up to 80 tiles — full spawn hunt radius
             Mobile nearest     = null;
             double nearestDist = double.MaxValue;
 
-            foreach (Mobile m in GetMobilesInRange(15))
+            foreach (Mobile m in GetMobilesInRange(80))
             {
                 if (m == this || m.Deleted || !m.Alive) continue;
+                if (m is SimPlayer sp2 && !sp2.AlwaysAttackable && !sp2.AlwaysMurderer) continue;
                 if (!(m is BaseCreature bc) || bc.Controlled) continue;
                 if (!CanBeHarmful(m, false)) continue;
+                if (_blockedTargets.ContainsKey(m.Serial)) continue; // skip unreachable targets
 
                 double dist = GetDistanceToSqrt(m);
                 if (dist < nearestDist) { nearestDist = dist; nearest = m; }
             }
 
-            if (nearest != null)
-                Combatant = nearest;
+            if (nearest == null) return;
+
+            Combatant = nearest;
+
+            // Target is beyond normal AI range — teleport toward it to start the engagement
+            if (nearestDist > 15)
+                TeleportToCombatant(nearest);
+        }
+
+        /// <summary>
+        /// Phase 1 stuck response: teleport next to the target.
+        /// </summary>
+        private void TeleportToCombatant(Mobile target)
+        {
+            if (target == null) return;
+
+            FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
+            PlaySound(0x1F5);
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.0), () =>
+            {
+                if (Deleted || _champPhase != ChampPhase.AtSpawn) return;
+                if (target == null || target.Deleted || !target.Alive) return;
+
+                Point3D landing = Point3D.Zero;
+                for (int i = 0; i < 12; i++)
+                {
+                    int ox = target.X + Utility.RandomMinMax(-2, 2);
+                    int oy = target.Y + Utility.RandomMinMax(-2, 2);
+                    int oz = Map.GetAverageZ(ox, oy);
+                    if (Map.CanSpawnMobile(ox, oy, oz)) { landing = new Point3D(ox, oy, oz); break; }
+                }
+                if (landing == Point3D.Zero) landing = target.Location;
+
+                MoveToWorld(landing, Map);
+                FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
+
+                if (!target.Deleted && target.Alive)
+                    Combatant = target;
+            });
+        }
+
+        /// <summary>Phase 2: swap to heavy crossbow for ranged engagement.</summary>
+        private void EquipCrossbow()
+        {
+            if (Backpack == null) return;
+            var xbow = Backpack.FindItemByType(typeof(HeavyCrossbow)) as HeavyCrossbow;
+            if (xbow == null) return;
+
+            var current = Weapon as BaseWeapon;
+            if (current != null && !(current is HeavyCrossbow))
+                PackItem(current);
+
+            EquipItem(xbow);
+        }
+
+        /// <summary>Swap back to longsword after ranged phase ends.</summary>
+        private void EquipMelee()
+        {
+            if (Backpack == null) return;
+            var sword = Backpack.FindItemByType(typeof(Longsword)) as Longsword;
+            if (sword == null) return;
+
+            var current = Weapon as BaseWeapon;
+            if (current != null && !(current is Longsword))
+                PackItem(current);
+
+            EquipItem(sword);
+        }
+
+        /// <summary>
+        /// Sacred Journey back to the entry point of the champion spawn.
+        /// Called when combat ends and the member has drifted far from their position.
+        /// </summary>
+        private void TeleportToEntryPoint()
+        {
+            _nextReturnAt = DateTime.UtcNow + TimeSpan.FromSeconds(10); // 10s cooldown
+
+            FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
+            PlaySound(0x1F5);
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.0), () =>
+            {
+                if (Deleted || _champPhase != ChampPhase.AtSpawn) return;
+                if (_spawnEntryPoint == Point3D.Zero) return;
+
+                MoveToWorld(_spawnEntryPoint, Map.Felucca);
+                FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
+
+                // Immediately look for next target
+                AcquireSpawnTarget();
+            });
+        }
+
+
+        /// <summary>
+        /// Called on victory. Scans the ground within 30 tiles for Gold items
+        /// and removes 66% of the total — Iron Company takes their cut.
+        /// Only one member should call this per victory (handled by the coordinator).
+        /// </summary>
+        private void CollectGroundGold(Point3D center, Map map)
+        {
+            if (Deleted || map == null || map == Map.Internal) return;
+
+            var goldPiles = new List<Gold>();
+
+            IPooledEnumerable<Item> eable = map.GetItemsInRange(center, 30);
+            foreach (Item item in eable)
+            {
+                if (item is Gold g && !g.Deleted && g.Parent == null)
+                    goldPiles.Add(g);
+            }
+            eable.Free();
+
+            if (goldPiles.Count == 0) return;
+
+            int totalGold = 0;
+            foreach (Gold g in goldPiles)
+                totalGold += g.Amount;
+
+            int toTake    = (int)(totalGold * 0.80);
+            int remaining = toTake;
+
+            foreach (Gold g in goldPiles)
+            {
+                if (remaining <= 0) break;
+                int take  = Math.Min(g.Amount, remaining);
+                g.Amount -= take;
+                if (g.Amount <= 0) g.Delete();
+                remaining -= take;
+            }
+
+            Say($"Iron Company claims their due — {toTake:N0} gold.");
         }
 
         private void BeginWithdraw(bool victory)
         {
+            // Stop boss battlecry timer if running
+            StopBossBattlecryTimer();
+
             // Clean up phase immediately so no other code re-enters
             _champPhase   = ChampPhase.None;
             _targetSpawn  = null;
             FightMode     = FightMode.None;
             Combatant     = null;
+            _blockedTargets.Clear(); // reset for next run
+            _isDowned   = false;    // ensure clean state
+            FightMode   = FightMode.None; // in case we were downed mid-fight
             _nextChampRun = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
 
-            if (!victory)
+            if (victory)
+            {
+                Say(WithdrawSpeech[0]); // "Champion down! Iron Company stands!"
+
+                // Only the first member to trigger victory collects gold —
+                // guard with the spawn serial so the other 17 skip it.
+                if (_targetSpawn != null && _goldCollectedForSpawn.Add(_targetSpawn.Serial))
+                {
+                    Serial  capturedSerial = _targetSpawn.Serial;
+                    Point3D capturedLoc    = Location;
+                    Map     capturedMap    = Map;
+
+                    Timer.DelayCall(TimeSpan.FromSeconds(4.0), () =>
+                    {
+                        CollectGroundGold(capturedLoc, capturedMap);
+                        // Remove after 10 min so the set doesn't grow forever
+                        Timer.DelayCall(TimeSpan.FromMinutes(10), () =>
+                            _goldCollectedForSpawn.Remove(capturedSerial));
+                    });
+                }
+            }
+            else
+            {
                 Say(WithdrawSpeech[Utility.Random(1, WithdrawSpeech.Length - 1)]);
+            }
 
             // Sacred Journey back home after a short pause
             Timer.DelayCall(TimeSpan.FromSeconds(3.0), () =>
@@ -447,28 +1099,80 @@ namespace Server.Custom
         /// Underground spawns (Z &lt; -5) are skipped — Iron Company walks, not teleports.
         /// Returns null if the shard has no Felucca champion spawns configured.
         /// </summary>
+        // ── Boss battlecry timer ──────────────────────────────────────────────
+
+        private void StartBossBattlecryTimer()
+        {
+            StopBossBattlecryTimer();
+            _bossBattlecryTimer = new BossBattlecryTimer(this);
+            _bossBattlecryTimer.Start();
+        }
+
+        private void StopBossBattlecryTimer()
+        {
+            _bossBattlecryTimer?.Stop();
+            _bossBattlecryTimer = null;
+        }
+
+        private class BossBattlecryTimer : Timer
+        {
+            private readonly IronCompanySimPlayer _vale;
+
+            public BossBattlecryTimer(IronCompanySimPlayer vale)
+                : base(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(2))
+            {
+                _vale    = vale;
+                Priority = TimerPriority.OneMinute;
+            }
+
+            protected override void OnTick()
+            {
+                if (_vale == null || _vale.Deleted || !_vale.Alive)
+                {
+                    Stop();
+                    return;
+                }
+                // Stop if champion is gone (already handled by BeginWithdraw, but be safe)
+                if (_vale._champPhase != ChampPhase.AtSpawn)
+                {
+                    Stop();
+                    return;
+                }
+                BattlecrySystem.ApplyBattlecry(_vale);
+            }
+        }
+
         private ChampionSpawn FindBestFeluccaSpawn()
         {
-            ChampionSpawn best      = null;
-            double        bestScore = double.MaxValue;
+            // Build weighted candidate list — all valid Felucca spawns are eligible.
+            // Active spawns get 3 tickets (more likely to be joined), inactive get 1.
+            // This ensures every spawn including distant ones (Abyss etc.) can be chosen.
+            var candidates = new List<ChampionSpawn>();
 
             foreach (ChampionSpawn cs in ChampionSystem.AllSpawns)
             {
-                if (cs == null || cs.Deleted)      continue;
-                if (cs.Map != Map.Felucca)          continue;
-                if (cs.Location.Z < -5)             continue; // skip underground altars
+                if (cs == null || cs.Deleted)   continue;
+                if (cs.Map != Map.Felucca)       continue;
+                if (cs.Location.Z < -5)          continue; // skip underground altars
+                if (IsAbyssSpawn(cs))            continue; // Iron Company never runs the Abyss
 
-                double dist  = DistanceTo(_homeLocation, cs.Location);
-                double score = cs.Active ? dist * 0.5 : dist;
-
-                if (score < bestScore)
-                {
-                    bestScore = score;
-                    best      = cs;
-                }
+                int tickets = cs.Active ? 3 : 1;
+                for (int i = 0; i < tickets; i++)
+                    candidates.Add(cs);
             }
 
-            return best;
+            if (candidates.Count == 0)
+                return null;
+
+            return candidates[Utility.Random(candidates.Count)];
+        }
+
+        /// <summary>Returns true if this spawn is the Abyss — Iron Company never runs it.</summary>
+        public static bool IsAbyssSpawn(ChampionSpawn cs)
+        {
+            if (cs == null) return false;
+            string typeName = cs.Type.ToString();
+            return typeName.IndexOf("Abyss", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static double DistanceTo(Point3D a, Point3D b)
@@ -482,6 +1186,12 @@ namespace Server.Custom
 
         [CommandProperty(AccessLevel.GameMaster)]
         public string ChampPhaseInfo => GetStatusDetail();
+
+        /// <summary>Returns the spawn the Iron Company is actively running toward or fighting,
+        /// or null if they are idle/resting.</summary>
+        public ChampionSpawn ActiveTargetSpawn =>
+            (_champPhase != ChampPhase.None && _targetSpawn != null && !_targetSpawn.Deleted)
+                ? _targetSpawn : null;
 
         public override string GetStatusDetail()
         {
@@ -562,22 +1272,25 @@ namespace Server.Custom
         // -- Template --------------------------------------------------
         protected override void ApplyTemplate()
         {
-            SetStr(85, 85);
-            SetDex(65, 65);
-            SetInt(30, 30);
-            SetHits(120, 120);
-            SetSkill(SkillName.Swords,      100.0, 100.0);
-            SetSkill(SkillName.Tactics,     100.0, 100.0);
-            SetSkill(SkillName.Anatomy,      90.0,  90.0);
-            SetSkill(SkillName.Healing,      90.0,  90.0);
-            SetSkill(SkillName.Parry,       100.0, 100.0);
-            SetSkill(SkillName.MagicResist,  80.0,  80.0);
-            SetSkill(SkillName.Chivalry,     80.0,  80.0);
-            VirtualArmor = 40;
-            Fame  = 2000;
-            Karma = 2000;
-            Kills = 0;
+            SetStr(150, 150);
+            SetDex(100, 100);
+            SetInt(40,  40);
+            SetHits(350, 350);
+            SetSkill(SkillName.Swords,      115.0, 115.0);
+            SetSkill(SkillName.Tactics,     115.0, 115.0);
+            SetSkill(SkillName.Anatomy,     110.0, 110.0);
+            SetSkill(SkillName.Healing,     110.0, 110.0);
+            SetSkill(SkillName.Parry,       110.0, 110.0);
+            SetSkill(SkillName.MagicResist, 100.0, 100.0);
+            SetSkill(SkillName.Chivalry,    100.0, 100.0);
+            SetSkill(SkillName.Archery,     100.0, 100.0);
+            VirtualArmor  = 65;
+            Fame          = 2000;
+            Karma         = 2000;
+            Kills         = 0;
+            ActiveSpeed   = 0.13; // ~50% faster than default 0.2
 
+            // Full plate
             AddItem(new PlateChest());
             AddItem(new PlateLegs());
             AddItem(new PlateArms());
@@ -585,23 +1298,32 @@ namespace Server.Custom
             AddItem(new PlateGorget());
             AddItem(new PlateHelm());
             AddItem(new Boots());
-            AddItem(new Longsword());
             AddItem(new HeaterShield());
+
+            // Longsword with 25% hit fire area — bypasses physical resists on champion spawn creatures
+            var sword = new Longsword();
+            sword.WeaponAttributes.HitFireArea  = 25;
+            sword.WeaponAttributes.HitLeechHits = 40; // 40% life leech
+            sword.Attributes.WeaponDamage       = 50;
+            sword.Attributes.AttackChance       = 15;
+            AddItem(sword);
+
             PackItem(new BookOfChivalry()); // always PackItem
+
+            // Ranged fallback: magic heavy crossbow stored in pack
+            // EquipCrossbow() swaps to this when stuck on unreachable targets
+            var xbow = new HeavyCrossbow();
+            xbow.WeaponAttributes.HitFireball  = 30; // 30% hit fireball — ranged elemental damage
+            xbow.Attributes.WeaponDamage       = 50;
+            xbow.Attributes.AttackChance       = 15;
+            PackItem(xbow);
+            PackItem(new Bolt(500)); // 500 bolts
+
+            // Weapon specials — AI uses these automatically in combat
+            SetWeaponAbility(WeaponAbility.ArmorIgnore);    // Longsword primary — bypasses armor
+            SetWeaponAbility(WeaponAbility.ConcussionBlow); // Longsword secondary — reduces target Int
         }
 
-        // -- Serialization (all champ state is transient) -------------
-        public override void Serialize(GenericWriter writer)
-        {
-            base.Serialize(writer);
-            writer.Write(0); // version
-        }
-
-        public override void Deserialize(GenericReader reader)
-        {
-            base.Deserialize(reader);
-            reader.ReadInt(); // version
-        }
     }
 
     // ============================================================

@@ -434,10 +434,9 @@ namespace Server.Mobiles
             {
                 spell = DoCombo((Mobile)c);
             }
-            else if (c is Mobile && SmartAI && (((Mobile)c).Spell is HealSpell || ((Mobile)c).Spell is GreaterHealSpell) &&
-                     !((Mobile)c).Poisoned) // They have a heal spell out
+            else if (c is Mobile && SmartAI && (((Mobile)c).Spell is HealSpell || ((Mobile)c).Spell is GreaterHealSpell)) // They have a heal spell out
             {
-                spell = new PoisonSpell(m_Mobile, null);
+                spell = new HarmSpell(m_Mobile, null);
             }
             else
             {

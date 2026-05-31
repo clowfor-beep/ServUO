@@ -71,7 +71,8 @@ namespace Server.Mobiles
         }
 
         // Called by the gump when the player confirms a destination
-        public void TeleportPlayer(PlayerMobile pm, Point3D destination, Map map, int cost)
+        public void TeleportPlayer(PlayerMobile pm, Point3D destination, Map map, int cost,
+                                   PortalType portalType = PortalType.OneWay)
         {
             if (!pm.InRange(Location, 10))
             {
@@ -79,36 +80,128 @@ namespace Server.Mobiles
                 return;
             }
 
-            if (!DeductBankGold(pm, cost))
+            if (!DeductGold(pm, cost))
             {
-                pm.SendMessage("You do not have enough gold in your bank. ({0} gold required.)", cost);
+                pm.SendMessage("You do not have enough gold. ({0} gold required — pack and bank are both accepted.)", cost);
                 return;
             }
 
-            pm.MoveToWorld(destination, map);
-            pm.SendMessage(0x35, "The Arch Wizard gestures and the world blurs around you...");
-            Effects.SendLocationParticles(EffectItem.Create(pm.Location, map, EffectItem.DefaultDuration), 0x3728, 10, 10, 5023);
-            pm.PlaySound(0x1FE);
+            // Wizard cast animation + speech
+            Animate(203, 7, 1, true, false, 0);
+            Say("*weaves a rift in the fabric of space*");
+
+            PlayerMobile capturedPm   = pm;
+            Point3D      capturedDest = destination;
+            Map          capturedMap  = map;
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            {
+                if (capturedPm == null || capturedPm.Deleted) return;
+
+                switch (portalType)
+                {
+                    case PortalType.TwoWayShort:
+                        ArchWizardPortal.CreatePair(capturedPm, capturedDest, capturedMap,
+                            TimeSpan.FromSeconds(30));
+                        break;
+
+                    case PortalType.TwoWayLong:
+                        ArchWizardPortal.CreatePair(capturedPm, capturedDest, capturedMap,
+                            TimeSpan.FromMinutes(10));
+                        break;
+
+                    default: // OneWay — instant teleport, no portal object
+                        Point3D fromLoc = capturedPm.Location;
+                        Map     fromMap = capturedPm.Map;
+                        capturedPm.MoveToWorld(capturedDest, capturedMap);
+                        TeleportPets(capturedPm, fromLoc, fromMap, capturedDest, capturedMap);
+                        capturedPm.SendMessage(0x35, "The Arch Wizard whisks you to your destination...");
+                        Effects.SendLocationParticles(
+                            EffectItem.Create(capturedPm.Location, capturedMap, EffectItem.DefaultDuration),
+                            0x3728, 10, 10, 5023);
+                        capturedPm.PlaySound(0x1FE);
+                        break;
+                }
+            });
         }
 
-        // ── Bank gold helper ──────────────────────────────────────
+        // ── Gold helpers — check/deduct from pack first, then bank ────────
 
-        public static bool HasBankGold(PlayerMobile pm, int amount)
+        /// <summary>Returns true if the player can cover <paramref name="amount"/> gold
+        /// between their backpack and bank combined.</summary>
+        public static bool HasGold(PlayerMobile pm, int amount)
         {
+            int packGold = pm.Backpack != null ? pm.Backpack.GetAmount(typeof(Gold)) : 0;
+            if (packGold >= amount) return true;
+
             BankBox bank = pm.FindBankNoCreate();
-            if (bank == null) return false;
-            return bank.GetAmount(typeof(Gold)) >= amount;
+            int bankGold = bank != null ? bank.GetAmount(typeof(Gold)) : 0;
+            return packGold + bankGold >= amount;
         }
 
-        public static bool DeductBankGold(PlayerMobile pm, int amount)
+        /// <summary>Deducts <paramref name="amount"/> gold from the player, drawing
+        /// from the backpack first and the bank for any remainder.
+        /// Returns false (and takes nothing) if total funds are insufficient.</summary>
+        public static bool DeductGold(PlayerMobile pm, int amount)
         {
+            int packGold = pm.Backpack != null ? pm.Backpack.GetAmount(typeof(Gold)) : 0;
             BankBox bank = pm.FindBankNoCreate();
-            if (bank == null) return false;
-            if (bank.GetAmount(typeof(Gold)) < amount) return false;
-            bank.ConsumeTotal(typeof(Gold), amount);
-            pm.SendMessage("Your bank balance has been reduced by {0} gold.", amount);
+            int bankGold = bank != null ? bank.GetAmount(typeof(Gold)) : 0;
+
+            if (packGold + bankGold < amount)
+                return false;
+
+            // Drain pack first
+            int fromPack = Math.Min(packGold, amount);
+            if (fromPack > 0)
+            {
+                pm.Backpack.ConsumeTotal(typeof(Gold), fromPack);
+                pm.SendMessage("You pay {0} gold from your pack.", fromPack);
+            }
+
+            // Draw the rest from bank
+            int fromBank = amount - fromPack;
+            if (fromBank > 0)
+            {
+                bank.ConsumeTotal(typeof(Gold), fromBank);
+                pm.SendMessage("Your bank balance has been reduced by {0} gold.", fromBank);
+            }
+
             return true;
         }
+
+        // ── Pet teleportation ─────────────────────────────────────────────────
+
+        /// <summary>Moves all controlled pets found within <paramref name="searchRange"/>
+        /// tiles of <paramref name="fromLoc"/> to near <paramref name="dest"/>.</summary>
+        public static void TeleportPets(PlayerMobile pm, Point3D fromLoc, Map fromMap,
+                                        Point3D dest, Map destMap, int searchRange = 15)
+        {
+            if (fromMap == null || fromMap == Map.Internal) return;
+
+            var pets = new System.Collections.Generic.List<BaseCreature>();
+            foreach (Mobile m in fromMap.GetMobilesInRange(fromLoc, searchRange))
+            {
+                if (m is BaseCreature bc
+                    && bc.Controlled
+                    && bc.ControlMaster == pm
+                    && !bc.IsDeadBondedPet
+                    && !bc.Deleted)
+                    pets.Add(bc);
+            }
+
+            foreach (var pet in pets)
+            {
+                int ox = Utility.RandomMinMax(-2, 2);
+                int oy = Utility.RandomMinMax(-2, 2);
+                pet.MoveToWorld(new Point3D(dest.X + ox, dest.Y + oy, dest.Z), destMap);
+                pet.ControlOrder = OrderType.Follow;
+            }
+        }
+
+        // Legacy wrapper — kept so any other callers still compile
+        public static bool HasBankGold(PlayerMobile pm, int amount)  => HasGold(pm, amount);
+        public static bool DeductBankGold(PlayerMobile pm, int amount) => DeductGold(pm, amount);
 
         public override void Serialize(GenericWriter writer)
         {
@@ -120,6 +213,160 @@ namespace Server.Mobiles
         {
             base.Deserialize(reader);
             reader.ReadInt();
+        }
+    }
+
+    // ================================================================
+    // ArchWizardPortal
+    // A two-way personal moongate pair. One portal appears at the
+    // player's starting location, a second at the destination.
+    // Both ends stay open for 30 minutes and can be used repeatedly.
+    // Only the paying player can step through either end.
+    // When one portal closes it closes its partner too.
+    //
+    // Usage: call ArchWizardPortal.CreatePair(pm, dest, destMap)
+    //        — do not use the constructor directly.
+    // ================================================================
+    public class ArchWizardPortal : Item
+    {
+        private PlayerMobile     _target;
+        private Point3D          _destination;
+        private Map              _destMap;
+        private ArchWizardPortal _partner;   // the portal at the other end
+
+        /// <summary>
+        /// Creates a linked portal pair: one at <paramref name="pm"/>'s current
+        /// location, one at <paramref name="destination"/>. Both share the same
+        /// lifetime specified by <paramref name="duration"/>.
+        /// </summary>
+        public static void CreatePair(PlayerMobile pm, Point3D destination, Map destMap, TimeSpan duration)
+        {
+            // Portal A — at the player's current location, leads to destination
+            var portalA = new ArchWizardPortal(pm, destination, destMap);
+            portalA.MoveToWorld(pm.Location, pm.Map);
+            Effects.SendLocationParticles(
+                EffectItem.Create(portalA.Location, portalA.Map, EffectItem.DefaultDuration),
+                0x376A, 9, 32, 5023);
+            Effects.PlaySound(portalA.Location, portalA.Map, 0x20E);
+
+            // Portal B — at the destination, leads back to the player's origin
+            var portalB = new ArchWizardPortal(pm, pm.Location, pm.Map);
+            portalB.MoveToWorld(destination, destMap);
+            Effects.SendLocationParticles(
+                EffectItem.Create(portalB.Location, portalB.Map, EffectItem.DefaultDuration),
+                0x376A, 9, 32, 5023);
+            Effects.PlaySound(portalB.Location, portalB.Map, 0x20E);
+
+            // Link them
+            portalA._partner = portalB;
+            portalB._partner = portalA;
+
+            // Single shared expiry timer — closes both ends
+            Timer.DelayCall(duration, () =>
+            {
+                portalA.ClosePortal();
+                portalB.ClosePortal();
+            });
+
+            int seconds = (int)duration.TotalSeconds;
+            string timeLabel = seconds >= 60
+                ? (seconds / 60) + " minute" + (seconds / 60 != 1 ? "s" : "")
+                : seconds + " second" + (seconds != 1 ? "s" : "");
+
+            pm.SendMessage(0x35,
+                "Two shimmering portals open — one here, one at your destination. " +
+                "They will remain open for " + timeLabel + ".");
+        }
+
+        // Private — use CreatePair
+        private ArchWizardPortal(PlayerMobile target, Point3D destination, Map destMap)
+            : base(0xF6C)   // moongate graphic
+        {
+            _target      = target;
+            _destination = destination;
+            _destMap     = destMap;
+
+            Movable  = false;
+            Hue      = 1153;   // light blue
+            Name     = "a wizard's portal";
+            Light    = LightType.Circle300;
+        }
+
+        public ArchWizardPortal(Serial serial) : base(serial) { }
+
+        // Triggered when any mobile walks onto the tile
+        public override bool OnMoveOver(Mobile m)
+        {
+            UsePortal(m);
+            return true;
+        }
+
+        // Also triggered on double-click
+        public override void OnDoubleClick(Mobile from)
+        {
+            UsePortal(from);
+        }
+
+        private void UsePortal(Mobile m)
+        {
+            if (Deleted) return;
+            if (!(m is PlayerMobile pm)) return;
+
+            if (pm != _target)
+            {
+                pm.SendMessage("This portal was not opened for you.");
+                return;
+            }
+
+            // Departure effects
+            Effects.SendLocationParticles(
+                EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                0x376A, 9, 32, 5023);
+            Effects.PlaySound(Location, Map, 0x1FE);
+
+            // Save origin for pet teleport (pm.Location changes on MoveToWorld)
+            Point3D fromLoc = pm.Location;
+            Map     fromMap = pm.Map;
+
+            // Move player
+            pm.MoveToWorld(_destination, _destMap);
+            pm.SendMessage(0x35, "The portal whisks you across the world...");
+
+            // Move pets from origin to destination
+            ArchWizardNPC.TeleportPets(pm, fromLoc, fromMap, _destination, _destMap);
+
+            // Arrival effects at the other end
+            Effects.SendLocationParticles(
+                EffectItem.Create(_destination, _destMap, EffectItem.DefaultDuration),
+                0x376A, 9, 32, 5023);
+            Effects.PlaySound(_destination, _destMap, 0x20E);
+
+            // Portals stay open — player can walk back through the partner portal
+        }
+
+        private void ClosePortal()
+        {
+            if (Deleted) return;
+
+            Effects.SendLocationParticles(
+                EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                0x3728, 8, 20, 5042);
+            Effects.PlaySound(Location, Map, 0x1FE);
+            Delete();
+        }
+
+        // Portals are transient — delete on server restart
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.Write(0);
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            reader.ReadInt();
+            Timer.DelayCall(TimeSpan.Zero, Delete);
         }
     }
 }

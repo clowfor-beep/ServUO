@@ -1,0 +1,524 @@
+================================================================
+FORSAKEN BRITANNIA — SYSTEM ARCHITECTURE DESIGN DOCUMENT
+Created: 2026-05-24
+Status: Approved — Ready for Implementation
+================================================================
+
+This document is the authoritative reference for system
+architecture. Cowork should read this before building anything.
+
+
+================================================================
+CORE PRINCIPLE
+================================================================
+
+Every custom system in Forsaken Britannia is additive.
+We never modify existing ServUO systems except at defined
+hook points. When we need cross-system communication we use
+FBEventBus — never direct references between systems.
+
+
+================================================================
+THE THREE TYPES OF AI COMBAT CHARACTERS
+================================================================
+
+This distinction is critical. Confusing these types causes
+implementation bugs.
+
+TYPE A — SimPlayers (144 total, persistent)
+  Who: Named guild members. Blood Pact "Ragnar". Void "Mira".
+  Wanderer "Erik". These are specific individuals.
+  Class: SimPlayer : BaseFBCombatNPC
+  Managed by: PlayerSimulatorManager
+  Persistence: World save — survive server restarts
+  State: Guild, personality, schedule, reputation, chat brain
+  Respawn: SimPlayers do NOT respawn. They have a cooldown
+  before re-activating (15-20 min). Different from respawn.
+  Max active: ~30 at any time (active/idle pool management)
+
+TYPE B — Pool PKs (unnamed, respawnable patrol enemies)
+  Who: Anonymous PK grunts in dungeons and roads.
+  "a brigand", "a murderer", "a cutpurse"
+  Class: PoolPK : BaseFBCombatNPC
+  Managed by: FBPKSpawner
+  Persistence: NOT persistent. Die and respawn after timer.
+  State: None beyond combat
+  Respawn: True respawn via FBPKSpawner pool management
+
+TYPE C — Encounter PKs (event-triggered, temporary)
+  Who: PKs that portal in when a player enters a specific area.
+  Class: NovicePlayerKiller : BaseFBCombatNPC (existing)
+  Managed by: GraveyardPKEncounter + FBEncounterSystem
+  Persistence: Temporary. Auto-despawn after 5 min or death.
+  State: None
+  Trigger: EventSink.Movement + Rectangle check
+
+These types are COMPLEMENTARY, not competing. All three run
+simultaneously. The graveyard encounter is a jump scare for
+new players. Pool PKs are ambient Tier 2/3 danger. SimPlayers
+are the living world population.
+
+
+================================================================
+SHARED COMBAT FOUNDATION
+================================================================
+
+All three AI combat types share the same combat template code
+through a common base class.
+
+BaseFBCombatNPC : BaseCreature
+  Responsibility: Combat templates, gear loadouts, PK speech
+  Contains:
+    - 7 combat template builders (ApplyDexxerTemplate,
+      ApplyMageTemplate, ApplyNecroMageTemplate, etc.)
+    - Gear loadout methods per template
+    - PK taunt speech pools
+    - Karma/Fame defaults (-10000 karma = murderer)
+    - IMPORTANT: Books (spellbooks, chivalry books) go in
+      BACKPACK, not equipped layer. Weapons use explicit layer.
+
+NovicePlayerKiller : BaseFBCombatNPC   (refactor existing)
+  Adds: Tier 1 stats, flee-at-20%-HP behaviour
+
+PoolPK : BaseFBCombatNPC               (new)
+  Adds: Pool membership tracking, zone assignment
+
+SimPlayer : BaseFBCombatNPC            (new)
+  Adds: Guild, PersonalityType, SimStateMachine,
+        ScheduleProfile, SimChatBrain, HomeLocation,
+        ActiveCooldownUntil (replaces respawn concept)
+
+
+================================================================
+MODULE DEPENDENCY GRAPH
+================================================================
+
+  [Existing ServUO — never modified except at hook points]
+       |
+  FBZones.cs                 No dependencies — pure data
+  (zone registry)
+       |
+  FBEventBus.cs              No dependencies — pure events
+  (cross-system routing)
+       |
+  ┌────┴──────────────────────────┐
+  |                               |
+FBPKSpawner.cs             PlayerSimulatorManager.cs
+(pool PK management)       (SimPlayer lifecycle)
+  |                               |
+  └──────────┬────────────────────┘
+             |
+        FBEventBus
+             |
+    ┌────────┴───────────────┐
+    |                        |
+ReputationSystem.cs    QuestFactory.cs
+(guild standing)       (dynamic quest gen)
+    |                        |
+    └────────┬───────────────┘
+             |
+    BountyBoardFB.cs    QuestTrackerHUD.cs
+    (live bounties)     (player UX — standalone)
+             |
+    BaseQuest (existing ServUO)
+
+RULE: No arrows going upward. Systems only depend on layers
+below them. FBEventBus breaks any potential circular dependency.
+
+
+================================================================
+MODULE SPECIFICATIONS
+================================================================
+
+----------------------------------------------------------------
+FBZones.cs
+----------------------------------------------------------------
+Location: Scripts/Custom/FBZones.cs
+Purpose: Single source of truth for all world coordinates.
+         Every other system imports locations from here.
+         Never hardcode a Point3D in any other file.
+Pattern: Static class, pure data, no dependencies.
+
+Contains:
+  - SpawnZone enum (all named zones)
+  - Rectangle2D[] per zone (spawn region boundaries)
+  - Point2D[][] per zone (waypoint patrol courses)
+  - Point3D[] per guild (HomeLocations)
+  - Point3D[] static objects (bulletin boards, quest NPCs)
+
+Example:
+  public static class FBZones
+  {
+    public static readonly Point3D SilverWolvesBoard_Britain
+        = new Point3D(1442, 1693, 5);
+
+    public static readonly Rectangle2D BloodPact_Despise
+        = new Rectangle2D(1270, 1060, 80, 60);
+
+    public static readonly Point2D[][] BloodPact_DespiseWaypoints
+        = new Point2D[][] { ... };
+  }
+
+----------------------------------------------------------------
+FBEventBus.cs
+----------------------------------------------------------------
+Location: Scripts/Custom/FBEventBus.cs
+Purpose: Decouples all custom systems. Systems subscribe to
+         events rather than referencing each other directly.
+Pattern: Static class with C# events (Action delegates).
+
+Events:
+  SimPlayerKilledPlayer(SimPlayer killer, Mobile victim)
+  PlayerKilledSimPlayer(Mobile killer, SimPlayer victim)
+  SimPlayerEnteredZone(SimPlayer sp, SpawnZone zone)
+  SimPlayerActivated(SimPlayer sp)
+  SimPlayerDeactivated(SimPlayer sp)
+  ChampionSpawnActivated(ChampionSpawn spawn)
+  ChampionSpawnCompleted(ChampionSpawn spawn, Mobile killer)
+  ReputationChanged(Mobile player, string guild, int delta)
+
+Usage:
+  // Firing (in SimPlayer.OnDeath):
+  FBEventBus.PlayerKilledSimPlayer?.Invoke(killer, this);
+
+  // Subscribing (in ReputationSystem.Initialize):
+  FBEventBus.PlayerKilledSimPlayer += OnPlayerKilledSimPlayer;
+
+----------------------------------------------------------------
+BaseFBCombatNPC.cs
+----------------------------------------------------------------
+Location: Scripts/Custom/BaseFBCombatNPC.cs
+Purpose: Shared combat foundation for all PK NPC types.
+         Contains 7 combat templates. No spawning logic here.
+
+!! CRITICAL EQUIPMENT RULE !!
+  Weapons:   SetWearable(new Katana(), layer: Layer.OneHanded)
+  Spellbooks: AddToBackpack(new NecromancerSpellbook())
+              NOT SetWearable — they conflict with weapons
+  Chivalry:   AddToBackpack(new BookOfChivalry())
+  This fixes the LayerConflict.log bugs from 18-05-2026.
+
+Templates:
+  ApplyDexxerTemplate(int tier)       — Swords/Tactics/Anatomy
+  ApplyMageTemplate(int tier)         — Magery/EvalInt/MR
+  ApplyNecroMageTemplate(int tier)    — Magery/Necro/SpiritSpeak
+  ApplyNinjaDexxerTemplate(int tier)  — Fencing/Ninjitsu/Hiding
+  ApplyPaladinTemplate(int tier)      — Swords/Chivalry/Parry
+  ApplyArcherTemplate(int tier)       — Archery/Ninjitsu/Hiding
+  ApplySampireTemplate(int tier)      — Swords/Bushido/Necro
+
+Tier parameter: 1, 2, or 3 — scales stat cap, skill cap, gear.
+
+----------------------------------------------------------------
+NovicePlayerKiller.cs  (refactor of existing)
+----------------------------------------------------------------
+Location: Scripts/Custom/NovicePlayerKiller.cs
+Status: EXISTS — has compile error, needs 1-line fix first
+Fix: Change 'protected override void OnDeath' to
+     'public override void OnDeath'
+
+After fix: Refactor to extend BaseFBCombatNPC and call
+ApplyDexxerTemplate(1) in constructor.
+No behaviour changes — same stats, same AI, same loot.
+
+----------------------------------------------------------------
+FBPKSpawner.cs
+----------------------------------------------------------------
+Location: Scripts/Custom/FBPKSpawner.cs
+Purpose: Pool-managed patrol PKs. Models BountyQuestSpawner.cs
+         exactly but for Forsaken Britannia PK content.
+Pattern: Single manager Item, placed at fixed location,
+         manages pool of PoolPK instances per zone.
+
+Key differences from BountyQuestSpawner:
+  - Spawns PoolPK (BaseFBCombatNPC) instead of pirate ships
+  - Multiple tiers (Tier 1 near roads, Tier 2/3 in dungeons)
+  - Fires FBEventBus events on spawn and death
+  - Integrates with BountyBoardFB for named PKs
+  - Pool PKs patrol via SpawnDefinition waypoints
+
+----------------------------------------------------------------
+SimPlayer.cs
+----------------------------------------------------------------
+Location: Scripts/Custom/SimPlayer.cs
+Purpose: Base class for all persistent SimGuild members.
+         Extends BaseFBCombatNPC with persistent state.
+
+Key properties:
+  string GuildName
+  SimPersonalityType PersonalityType
+  SimStateMachine StateMachine
+  ScheduleProfile Schedule
+  SimChatBrain ChatBrain
+  Point3D HomeLocation
+  DateTime ActiveCooldownUntil  (NOT a respawn — a cooldown)
+  bool IsOnCooldown => DateTime.UtcNow < ActiveCooldownUntil
+
+On death:
+  ActiveCooldownUntil = DateTime.UtcNow + CooldownDuration
+  PlayerSimulatorManager notified via FBEventBus
+  SimPlayer is moved to internal map (not world visible)
+  After cooldown: returns to HomeLocation
+
+IMPORTANT: SimPlayer cooldown ≠ respawn.
+  Pool PKs respawn (new instance created by FBPKSpawner).
+  SimPlayers re-activate (same instance, returns to world).
+
+----------------------------------------------------------------
+PlayerSimulatorManager.cs
+----------------------------------------------------------------
+Location: Scripts/Custom/PlayerSimulatorManager.cs
+Purpose: Creates, manages, and coordinates all 144 SimPlayers.
+Pattern: Singleton Item at fixed location, similar to
+         BountyQuestSpawner manager pattern.
+
+Key responsibilities:
+  - Creates SimPlayers on first world load (if not exists)
+  - Maintains active pool (~30 max active simultaneously)
+  - Manages cooldown timers for inactive SimPlayers
+  - Routes SimGuild inter-guild interactions (rivalries)
+  - Provides SimPlayer lookup by guild / by zone
+
+Active pool management:
+  TotalSimPlayers: 144
+  MaxActiveSimultaneous: 30
+  Prime time bonus (18:00-23:00): +2 active
+  Off peak (00:00-08:00): -1 active
+
+----------------------------------------------------------------
+ReputationSystem.cs
+----------------------------------------------------------------
+Location: Scripts/Custom/ReputationSystem.cs
+Purpose: Tracks each player's standing with each of 12 guilds.
+         Persists in PlayerMobile via extra data dictionary.
+Pattern: Static class with Initialize() hook.
+
+Standing tiers per guild:
+  < 0:   Hostile    (guild is actively hostile to you)
+  0-99:  Neutral    (no relationship)
+  100-299: Known    (guild acknowledges you)
+  300-599: Trusted  (guild will assist you)
+  600+:  Allied     (guild actively defends you)
+
+Standing changes:
+  Kill a Blood Pact member: +10 SilverWolves, +15 PaladinOrder
+  Kill a real player: -20 SilverWolves, -15 PaladinOrder
+  Complete a guild quest: +25 that guild
+  Help on champion spawn: +15 IronCompany
+
+Hooks:
+  FBEventBus.PlayerKilledSimPlayer → OnPlayerKilledSimPlayer
+  FBEventBus.SimPlayerKilledPlayer → OnSimPlayerKilledPlayer
+  EventSink.InvokeQuestComplete    → OnQuestComplete
+
+----------------------------------------------------------------
+QuestTrackerHUD.cs
+----------------------------------------------------------------
+Location: Scripts/Custom/QuestTrackerHUD.cs
+Purpose: Always-visible quest objective tracker.
+         Same architecture as CooldownSystem.cs.
+Pattern: Polls pm.Quests every 1 second, renders gump.
+
+Display: Small always-on gump showing:
+  [Quest Name]
+  Objective 1: X / Y
+  Objective 2: X / Y (if applicable)
+
+No new hooks needed — reads pm.Quests directly.
+Can be built at any time, no dependencies on other FB systems.
+
+----------------------------------------------------------------
+ForsakenBritannia.xml
+----------------------------------------------------------------
+Location: Data/Spawns/ForsakenBritannia.xml
+Purpose: Deploys all static world objects via [xmlload.
+         Version controlled. Reviewable without running game.
+Naming: FB_[Guild]_[ObjectType]_[Location]
+
+Contains:
+  Guild bulletin boards in towns
+  Quest NPC placement
+  Bounty board placement
+  Reputation contact NPCs
+  SimPlayer home location markers (count=0 markers only)
+
+Deploy: [xmlload Data/Spawns/ForsakenBritannia.xml
+Export: [xmlsave Data/Spawns/ForsakenBritannia.xml
+
+DO NOT put monster spawns in this file.
+Monster populations stay in existing XmlSpawner files.
+
+
+================================================================
+WORLD POPULATION LAYERS (summary)
+================================================================
+
+LAYER 1 — Ambient world (EXISTING, DO NOT TOUCH)
+  XmlSpawners — all monster and ground object populations
+  Already fully deployed and verified. Never modify.
+
+LAYER 2a — Patrol PKs (FBPKSpawner)
+  Pool-managed unnamed PK grunts
+  Tier 1: Roads near towns (ruffians, thugs)
+  Tier 2: Dungeon entrances and corridors (brigands, murderers)
+  Tier 3: Deep dungeon patrols (veteran killers)
+
+LAYER 2b — Static world objects (ForsakenBritannia.xml)
+  Guild boards, quest NPCs, reputation contacts
+  Deploy once with [xmlload, persist in world save
+
+LAYER 3 — Triggered encounters (GraveyardPKEncounter pattern)
+  Event-driven PKs that portal in on player location
+  Currently: Britain graveyard
+  Planned: Multiple Tier 2/3 trigger zones via FBEncounterSystem
+
+LAYER 4 — SimPlayers (PlayerSimulatorManager)
+  144 persistent AI characters across 12 guilds
+  ~30 active simultaneously
+  These are the named individuals who make the world feel alive
+
+
+================================================================
+BUILD ORDER FOR COWORK
+================================================================
+
+STEP 0 — Fix compile error (do this first, everything else waits)
+  File: Scripts/Custom/NovicePlayerKiller.cs
+  Change: 'protected override void OnDeath'
+  To:     'public override void OnDeath'
+  Compile and verify no errors before proceeding.
+
+STEP 1 — Foundation (no dependencies, build these first)
+  Create Scripts/Custom/FBZones.cs
+    Start with Britain/Despise/Covetous coordinates only.
+    Expand as each guild is implemented.
+
+  Create Scripts/Custom/FBEventBus.cs
+    Declare all events as nullable Actions.
+    No logic — just event declarations.
+
+STEP 2 — Shared combat base
+  Create Scripts/Custom/BaseFBCombatNPC.cs
+    Implement all 7 template methods.
+    Apply EQUIPMENT RULE: books in backpack, weapons explicit layer.
+
+  Refactor Scripts/Custom/NovicePlayerKiller.cs
+    Extend BaseFBCombatNPC.
+    Call ApplyDexxerTemplate(1) in constructor.
+    No behaviour changes.
+
+STEP 3 — World population
+  Create Scripts/Custom/FBPKSpawner.cs
+    Model directly from BountyQuestSpawner.cs.
+    Start with Tier 1 only (roads near Britain).
+
+  Create Data/Spawns/ForsakenBritannia.xml
+    Start with Britain bank bulletin board only.
+    Test [xmlload / [xmlsave round-trip.
+
+STEP 4 — Player data
+  Create Scripts/Custom/ReputationSystem.cs
+    Hook FBEventBus events.
+    Storage: pm.ExtendedInfo dictionary or separate persistence.
+
+STEP 5 — SimGuild Phase 1 (Wanderers only)
+  Create Scripts/Custom/SimPlayer.cs (base class)
+  Create Scripts/Custom/PlayerSimulatorManager.cs
+  Implement Wanderer guild only (12 members, no combat AI)
+  Verify performance with 12 active SimPlayers before expanding
+
+STEP 6 — Quest UX (can be done any time)
+  Create Scripts/Custom/QuestTrackerHUD.cs
+  Build and test standalone — no FB system dependencies
+
+STEP 7 — Quest generation
+  Create Scripts/Custom/QuestFactory.cs
+  Implement Hunt quest generation from active bounty targets
+
+STEP 8 — Defensive skill synergies
+  Hook GetPhysicalResistBonus → PlayerMobile.ComputeResistances
+  Hook GetMaxResistance overrides → PlayerMobile.GetMaxResistance
+  Hook GetDCIBonus → BaseWeapon.CheckHit
+  Hook GetBonusHP → PlayerMobile.HitsMax getter
+  Reference: SkillSynergies_DesignDoc.txt for full spec
+
+STEP 9 — SimGuild Phase 2 (all 12 guilds)
+  Only after Phase 1 is stable and performance verified
+
+STEP 10 — Phase 3 (Epic system — last)
+  CrossClassSkillSystem.cs
+  Only after Phases 1-2 complete and stable
+
+
+================================================================
+KNOWN ISSUES AND REQUIRED FIXES
+================================================================
+
+ISSUE 1 — NovicePlayerKiller compile error (BLOCKING)
+  File: Scripts/Custom/NovicePlayerKiller.cs
+  Fix:  protected → public on OnDeath override
+  Priority: Fix before anything else
+
+ISSUE 2 — Equipment layer conflicts (AFFECTS ALL TEMPLATES)
+  Evidence: LayerConflict.log from 18-05-2026
+  SampireNewbie: NecromancerSpellbook conflicts with Katana
+  PaladinNewbie: BookOfChivalry conflicts with Broadsword
+  Fix: ALWAYS put books in backpack, NEVER use SetWearable
+  Affects: NecroMage, Sampire, Paladin, Pure Mage templates
+  Rule: weapons → explicit layer | books → AddToBackpack
+
+ISSUE 3 — SimPlayer vs Pool PK terminology (DESIGN CLARITY)
+  SimPlayers DO NOT respawn — they have a cooldown
+  Pool PKs DO respawn — new instance after timer
+  Use correct language everywhere to avoid implementation bugs
+
+ISSUE 4 — WorldAtlas Z coordinates unverified
+  Luna z=-50, Umbra z=-85, Zento z=30 are suspect
+  Must be verified in-game before Atlas is used in production
+
+ISSUE 5 — Bad spawn in Ter Mur (NON-BLOCKING)
+  badspawn.log: 946, 3858, -40, TerMur
+  Pre-existing issue. Not blocking. Clean up when convenient.
+
+
+================================================================
+GOTCHAS FROM PREVIOUS WORK
+================================================================
+
+Skills.cs compiles BEFORE Scripts/Custom/
+  Use static delegate pattern (already done in CooldownSystem)
+  Never reference Server.Custom directly from Server/Skills.cs
+
+PowerShell Danish locale
+  No Unicode in Write-Host strings
+  Always use plain ASCII in PS scripts
+
+ServUO gump limitation
+  AddImageTiledPart does NOT exist in this build
+  Use two AddImageTiled calls instead
+
+Patch script naming
+  Always: Patch_Description_YYYYMMDD_HHMM.ps1
+  Google Drive creates duplicates without timestamps
+
+Reds/Blood Pact in cities
+  Instant death from town guards
+  Never gate Blood Pact or Void into Felucca cities
+
+Assembly boundary between Server/ and Scripts/Custom/
+  Server/ compiles first — use delegates, not direct references
+  Pattern already established in CooldownSystem.cs
+
+
+================================================================
+RELATED DOCUMENTS
+================================================================
+
+COWORK_HANDOVER.txt              Full project context
+GuildSystem_FullDesignDoc.txt    12 guilds, templates, activities
+SkillSynergies_DesignDoc.txt     Offensive + defensive synergies
+QuestSystem_DesignDoc.txt        Quest types, UX gaps, approaches
+PKNPCTemplates_AllArchetypes.txt 7 PK templates × 3 tiers
+PlayerSimulator_DesignDoc.txt    SimPlayer architecture detail
+PlayerSimulator_ActivitySpec.txt 20 player activities mapped
+================================================================
