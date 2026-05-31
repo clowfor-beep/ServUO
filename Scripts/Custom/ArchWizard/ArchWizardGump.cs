@@ -381,18 +381,23 @@ namespace Server.Custom.ArchWizard
                 int startIdx   = _pageIndex * ItemsPerPage;
                 int endIdx     = Math.Min(startIdx + ItemsPerPage, _champions.Count);
 
+                // Check if the Iron Company is heading to one of these spawns
+                ChampionSpawn icSpawn = PlayerSimulatorManager.GetIronCompanyActiveSpawn();
+
                 int btnId = BtnDestBase;
                 int y     = RowStart - 20;
 
                 for (int i = startIdx; i < endIdx; i++)
                 {
-                    var dest       = _champions[i];
-                    int baseLabel  = ArchWizardNPC.HasGold(_player, ArchWizardNPC.CostChampion) ? 1152 : 33;
-                    int pct        = dest.Spawn.Active ? Math.Min(100, dest.Spawn.Level * 25) : 0;
-                    string label   = dest.Name + "  [" + pct + "% spawned]";
+                    var dest      = _champions[i];
+                    int baseLabel = ArchWizardNPC.HasGold(_player, ArchWizardNPC.CostChampion) ? 1152 : 33;
+                    int pct       = dest.Spawn.Active ? Math.Min(100, dest.Spawn.Level * 25) : 0;
+                    bool isIC     = icSpawn != null && dest.Spawn == icSpawn;
+                    string label  = dest.Name + "  [" + pct + "% spawned]"
+                                    + (isIC ? "  ⚔ Iron Company" : "");
 
                     AddButton(ColLeft, y, 4005, 4007, btnId, GumpButtonType.Reply, 0);
-                    AddLabel(ColLeft + 35, y + 2, baseLabel, label);
+                    AddLabel(ColLeft + 35, y + 2, isIC ? 0x21 : baseLabel, label);
                     btnId++;
                     y += RowStep;
                 }

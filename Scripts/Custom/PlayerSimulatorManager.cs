@@ -728,6 +728,73 @@ namespace Server.Custom
             }
         }
 
+        // -- Iron Company spawn helpers --------------------------------
+
+        /// <summary>Returns the ChampionSpawn the Iron Company is currently
+        /// heading to or fighting, or null if they are idle/resting.</summary>
+        public static ChampionSpawn GetIronCompanyActiveSpawn()
+        {
+            if (_instance == null) return null;
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp.Deleted) continue;
+                if (sp.GuildName != FBGuilds.IronCompany) continue;
+                if (sp is IronCompanySimPlayer ic && ic.ActiveTargetSpawn != null)
+                    return ic.ActiveTargetSpawn;
+            }
+            return null;
+        }
+
+        /// <summary>Silently triggers an Iron Company champion run if they are
+        /// currently idle (no cooldown, not already running). Returns true if
+        /// a run was successfully initiated.</summary>
+        public static bool TriggerIronCompanyChamp()
+        {
+            if (_instance == null) return false;
+
+            // Don't trigger if already active or gathering
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp.Deleted) continue;
+                if (sp.GuildName != FBGuilds.IronCompany) continue;
+                if (sp is IronCompanySimPlayer ic)
+                {
+                    string detail = ic.GetStatusDetail();
+                    // On cooldown or already running — do not trigger
+                    if (detail.Contains("next run in") || detail.Contains("AtSpawn")
+                        || detail.Contains("GatherAtBank") || detail.Contains("WaitingAtBank"))
+                        return false;
+                }
+            }
+
+            // Find eligible surface Felucca spawns
+            var candidates = new List<ChampionSpawn>();
+            foreach (ChampionSpawn cs in ChampionSystem.AllSpawns)
+            {
+                if (cs == null || cs.Deleted) continue;
+                if (cs.Map != Map.Felucca)    continue;
+                if (cs.Location.Z < -5)       continue;
+                candidates.Add(cs);
+            }
+            if (candidates.Count == 0) return false;
+
+            ChampionSpawn target = candidates[Utility.Random(candidates.Count)];
+            if (!target.Active) target.Active = true;
+
+            int sent = 0;
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp.Deleted) continue;
+                if (sp.GuildName != FBGuilds.IronCompany) continue;
+                if (sp is IronCompanySimPlayer ic)
+                {
+                    ic.ForceChampRunAt(target);
+                    sent++;
+                }
+            }
+            return sent > 0;
+        }
+
         // -- Public status query for ShadyFigure ----------------------
 
         /// <summary>

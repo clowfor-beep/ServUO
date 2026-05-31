@@ -1100,6 +1100,12 @@ namespace Server.Custom
         [CommandProperty(AccessLevel.GameMaster)]
         public string ChampPhaseInfo => GetStatusDetail();
 
+        /// <summary>Returns the spawn the Iron Company is actively running toward or fighting,
+        /// or null if they are idle/resting.</summary>
+        public ChampionSpawn ActiveTargetSpawn =>
+            (_champPhase != ChampPhase.None && _targetSpawn != null && !_targetSpawn.Deleted)
+                ? _targetSpawn : null;
+
         public override string GetStatusDetail()
         {
             if (_champPhase == ChampPhase.None)

@@ -111,7 +111,10 @@ namespace Server.Mobiles
                         break;
 
                     default: // OneWay — instant teleport, no portal object
+                        Point3D fromLoc = capturedPm.Location;
+                        Map     fromMap = capturedPm.Map;
                         capturedPm.MoveToWorld(capturedDest, capturedMap);
+                        TeleportPets(capturedPm, fromLoc, fromMap, capturedDest, capturedMap);
                         capturedPm.SendMessage(0x35, "The Arch Wizard whisks you to your destination...");
                         Effects.SendLocationParticles(
                             EffectItem.Create(capturedPm.Location, capturedMap, EffectItem.DefaultDuration),
@@ -165,6 +168,35 @@ namespace Server.Mobiles
             }
 
             return true;
+        }
+
+        // ── Pet teleportation ─────────────────────────────────────────────────
+
+        /// <summary>Moves all controlled pets found within <paramref name="searchRange"/>
+        /// tiles of <paramref name="fromLoc"/> to near <paramref name="dest"/>.</summary>
+        public static void TeleportPets(PlayerMobile pm, Point3D fromLoc, Map fromMap,
+                                        Point3D dest, Map destMap, int searchRange = 15)
+        {
+            if (fromMap == null || fromMap == Map.Internal) return;
+
+            var pets = new System.Collections.Generic.List<BaseCreature>();
+            foreach (Mobile m in fromMap.GetMobilesInRange(fromLoc, searchRange))
+            {
+                if (m is BaseCreature bc
+                    && bc.Controlled
+                    && bc.ControlMaster == pm
+                    && !bc.IsDeadBondedPet
+                    && !bc.Deleted)
+                    pets.Add(bc);
+            }
+
+            foreach (var pet in pets)
+            {
+                int ox = Utility.RandomMinMax(-2, 2);
+                int oy = Utility.RandomMinMax(-2, 2);
+                pet.MoveToWorld(new Point3D(dest.X + ox, dest.Y + oy, dest.Z), destMap);
+                pet.ControlOrder = OrderType.Follow;
+            }
         }
 
         // Legacy wrapper — kept so any other callers still compile
@@ -292,9 +324,16 @@ namespace Server.Mobiles
                 0x376A, 9, 32, 5023);
             Effects.PlaySound(Location, Map, 0x1FE);
 
+            // Save origin for pet teleport (pm.Location changes on MoveToWorld)
+            Point3D fromLoc = pm.Location;
+            Map     fromMap = pm.Map;
+
             // Move player
             pm.MoveToWorld(_destination, _destMap);
             pm.SendMessage(0x35, "The portal whisks you across the world...");
+
+            // Move pets from origin to destination
+            ArchWizardNPC.TeleportPets(pm, fromLoc, fromMap, _destination, _destMap);
 
             // Arrival effects at the other end
             Effects.SendLocationParticles(

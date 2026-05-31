@@ -196,9 +196,22 @@ namespace Server.Custom
 
                 pm.Backpack.ConsumeTotal(typeof(Gold), InfoCost);
 
+                string champInfo = GetChampInfo();
+
                 pm.SendMessage(0x55, "*Coins vanish into the shadows...*");
                 pm.SendMessage(0x55, $"The wandering merchant — {GetMerchantInfo()}");
-                pm.SendMessage(0x55, $"The Iron Company — {GetChampInfo()}");
+                pm.SendMessage(0x55, $"The Iron Company — {champInfo}");
+
+                // If IC is idle (no cooldown, not already running), tip them off
+                // and have them start a champion spawn
+                if (!champInfo.Contains("right now")
+                    && !champInfo.Contains("gathering")
+                    && !champInfo.Contains("Next spawn run")
+                    && !champInfo.Contains("minutes"))
+                {
+                    if (PlayerSimulatorManager.TriggerIronCompanyChamp())
+                        pm.SendMessage(0x55, "*whispers* I've sent word. Expect the Iron Company to move shortly.");
+                }
             }
         }
 
