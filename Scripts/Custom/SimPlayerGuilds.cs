@@ -384,6 +384,30 @@ namespace Server.Custom
         /// retaliation target for 30 seconds — even blue innocent players.
         /// This is the only way an innocent player can become our combatant.
         /// </summary>
+
+        /// <summary>
+        /// Intercept damage before HP is reduced. At a champion spawn, all damage
+        /// from innocent (blue) players and their pets is silently absorbed —
+        /// this covers direct hits, AoE weapons, and AoE spells.
+        /// </summary>
+        public override void Damage(int amount, Mobile from)
+        {
+            if (_champPhase == ChampPhase.AtSpawn && from != null)
+            {
+                // Blue player — absorb all damage including AoE
+                if (from is PlayerMobile pm && pm.Kills < 5)
+                    return;
+
+                // Blue player's pet — absorb all damage including AoE
+                if (from is BaseCreature bc && bc.Controlled
+                    && bc.ControlMaster is PlayerMobile petOwner
+                    && petOwner.Kills < 5)
+                    return;
+            }
+
+            base.Damage(amount, from);
+        }
+
         public override void OnDamage(int amount, Mobile from, bool willKill)
         {
             base.OnDamage(amount, from, willKill);
