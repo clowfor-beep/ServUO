@@ -929,24 +929,10 @@ namespace Server.Items
 
         public void ApplyAttributesTo(BaseWeapon weapon)
         {
-            CraftResourceInfo resInfo = CraftResources.GetInfo(Resource);
-
-            if (resInfo == null)
-                return;
-
-            CraftAttributeInfo attrs = resInfo.AttributeInfo;
-
-            if (attrs == null)
-                return;
-
-            int attributeCount = Utility.RandomMinMax(attrs.RunicMinAttributes, attrs.RunicMaxAttributes);
-            int min = attrs.RunicMinIntensity;
-            int max = attrs.RunicMaxIntensity;
-
-            ApplyAttributesTo(weapon, true, 0, attributeCount, min, max);
+            ApplyAttributesTo(weapon, null);
         }
 
-        public void ApplyAttributesTo(BaseArmor armor)
+        public void ApplyAttributesTo(BaseWeapon weapon, Mobile crafter)
         {
             CraftResourceInfo resInfo = CraftResources.GetInfo(Resource);
 
@@ -962,7 +948,33 @@ namespace Server.Items
             int min = attrs.RunicMinIntensity;
             int max = attrs.RunicMaxIntensity;
 
-            ApplyAttributesTo(armor, true, 0, attributeCount, min, max);
+            int luck = crafter is PlayerMobile pm ? pm.RealLuck : (crafter != null ? crafter.Luck : 0);
+            ApplyAttributesTo(weapon, true, LootPack.GetLuckChance(luck), attributeCount, min, max);
+        }
+
+        public void ApplyAttributesTo(BaseArmor armor)
+        {
+            ApplyAttributesTo(armor, null);
+        }
+
+        public void ApplyAttributesTo(BaseArmor armor, Mobile crafter)
+        {
+            CraftResourceInfo resInfo = CraftResources.GetInfo(Resource);
+
+            if (resInfo == null)
+                return;
+
+            CraftAttributeInfo attrs = resInfo.AttributeInfo;
+
+            if (attrs == null)
+                return;
+
+            int attributeCount = Utility.RandomMinMax(attrs.RunicMinAttributes, attrs.RunicMaxAttributes);
+            int min = attrs.RunicMinIntensity;
+            int max = attrs.RunicMaxIntensity;
+
+            int luck = crafter is PlayerMobile pm ? pm.RealLuck : (crafter != null ? crafter.Luck : 0);
+            ApplyAttributesTo(armor, true, LootPack.GetLuckChance(luck), attributeCount, min, max);
         }
 
         private static int Scale(int min, int max, int low, int high)

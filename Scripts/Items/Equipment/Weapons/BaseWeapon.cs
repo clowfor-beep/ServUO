@@ -5207,7 +5207,7 @@ namespace Server.Items
             {
                 if (tool is BaseRunicTool)
                 {
-                    ((BaseRunicTool)tool).ApplyAttributesTo(this);
+                    ((BaseRunicTool)tool).ApplyAttributesTo(this, from);
                 }
             }
 

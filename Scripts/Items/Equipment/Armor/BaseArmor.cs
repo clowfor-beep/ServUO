@@ -2494,7 +2494,7 @@ namespace Server.Items
             }
 
             if (tool is BaseRunicTool && !craftItem.ForceNonExceptional)
-                ((BaseRunicTool)tool).ApplyAttributesTo(this);
+                ((BaseRunicTool)tool).ApplyAttributesTo(this, from);
 
             if (!craftItem.ForceNonExceptional)
             {
