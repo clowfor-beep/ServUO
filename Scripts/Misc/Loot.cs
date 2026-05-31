@@ -149,7 +149,7 @@ namespace Server
 
         private static readonly Type[] m_RangedWeaponTypes = new[] 
 		{ 
-			typeof(Bow), typeof(Crossbow), typeof(HeavyCrossbow), typeof(CompositeBow), typeof(RepeatingCrossbow)
+			typeof(Bow), typeof(Crossbow), typeof(HeavyCrossbow), typeof(CompositeBow), typeof(RepeatingCrossbow), typeof(JukaBow)
 		};
         public static Type[] RangedWeaponTypes => m_RangedWeaponTypes;
 

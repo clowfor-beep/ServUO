@@ -13,6 +13,9 @@ namespace Server.Items
         { 
 		}
 
+        public override WeaponAbility PrimaryAbility  => WeaponAbility.ShadowStrike;
+        public override WeaponAbility SecondaryAbility => WeaponAbility.SerpentArrow;
+
         [CommandProperty(AccessLevel.GameMaster)]
         public bool IsModified => Slayer != SlayerName.None;
 
