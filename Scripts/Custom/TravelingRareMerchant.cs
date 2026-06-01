@@ -168,103 +168,93 @@ namespace Server.Custom
             new RareMerchantEntry("Orb of Enchantment",          50,  () => new OrbOfEnchantment()),
             new RareMerchantEntry("Orb of Reforging",            55,  () => new OrbOfReforging()),
 
-            // ── Power Scrolls — combat ────────────────────────────────────
-            new RareMerchantEntry("PS +105: Swords",             20,  () => new PowerScroll(SkillName.Swords,      105)),
-            new RareMerchantEntry("PS +110: Swords",             45,  () => new PowerScroll(SkillName.Swords,      110)),
-            new RareMerchantEntry("PS +115: Swords",             70,  () => new PowerScroll(SkillName.Swords,      115)),
-            new RareMerchantEntry("PS +120: Swords",             90,  () => new PowerScroll(SkillName.Swords,      120)),
-            new RareMerchantEntry("PS +105: Archery",            20,  () => new PowerScroll(SkillName.Archery,     105)),
-            new RareMerchantEntry("PS +110: Archery",            45,  () => new PowerScroll(SkillName.Archery,     110)),
-            new RareMerchantEntry("PS +115: Archery",            70,  () => new PowerScroll(SkillName.Archery,     115)),
-            new RareMerchantEntry("PS +120: Archery",            90,  () => new PowerScroll(SkillName.Archery,     120)),
-            new RareMerchantEntry("PS +105: Fencing",            20,  () => new PowerScroll(SkillName.Fencing,     105)),
-            new RareMerchantEntry("PS +110: Fencing",            45,  () => new PowerScroll(SkillName.Fencing,     110)),
-            new RareMerchantEntry("PS +115: Fencing",            70,  () => new PowerScroll(SkillName.Fencing,     115)),
-            new RareMerchantEntry("PS +120: Fencing",            90,  () => new PowerScroll(SkillName.Fencing,     120)),
-            new RareMerchantEntry("PS +105: Macing",             20,  () => new PowerScroll(SkillName.Macing,      105)),
-            new RareMerchantEntry("PS +110: Macing",             45,  () => new PowerScroll(SkillName.Macing,      110)),
-            new RareMerchantEntry("PS +115: Macing",             70,  () => new PowerScroll(SkillName.Macing,      115)),
-            new RareMerchantEntry("PS +120: Macing",             90,  () => new PowerScroll(SkillName.Macing,      120)),
-            new RareMerchantEntry("PS +105: Tactics",            20,  () => new PowerScroll(SkillName.Tactics,     105)),
-            new RareMerchantEntry("PS +110: Tactics",            45,  () => new PowerScroll(SkillName.Tactics,     110)),
-            new RareMerchantEntry("PS +115: Tactics",            70,  () => new PowerScroll(SkillName.Tactics,     115)),
-            new RareMerchantEntry("PS +120: Tactics",            90,  () => new PowerScroll(SkillName.Tactics,     120)),
-            new RareMerchantEntry("PS +105: Healing",            20,  () => new PowerScroll(SkillName.Healing,     105)),
-            new RareMerchantEntry("PS +110: Healing",            45,  () => new PowerScroll(SkillName.Healing,     110)),
-            new RareMerchantEntry("PS +115: Healing",            70,  () => new PowerScroll(SkillName.Healing,     115)),
-            new RareMerchantEntry("PS +120: Healing",            90,  () => new PowerScroll(SkillName.Healing,     120)),
-            new RareMerchantEntry("PS +105: Parry",              20,  () => new PowerScroll(SkillName.Parry,       105)),
-            new RareMerchantEntry("PS +110: Parry",              45,  () => new PowerScroll(SkillName.Parry,       110)),
-            new RareMerchantEntry("PS +115: Parry",              70,  () => new PowerScroll(SkillName.Parry,       115)),
-            new RareMerchantEntry("PS +120: Parry",              90,  () => new PowerScroll(SkillName.Parry,       120)),
+        }; // end Pool (non-PS items only — PS uses two-stage equal-skill draw)
 
-            // ── Power Scrolls — magic ──────────────────────────────────────
-            new RareMerchantEntry("PS +105: Magery",             20,  () => new PowerScroll(SkillName.Magery,      105)),
-            new RareMerchantEntry("PS +110: Magery",             50,  () => new PowerScroll(SkillName.Magery,      110)),
-            new RareMerchantEntry("PS +115: Magery",             75,  () => new PowerScroll(SkillName.Magery,      115)),
-            new RareMerchantEntry("PS +120: Magery",             100, () => new PowerScroll(SkillName.Magery,      120)),
-            new RareMerchantEntry("PS +105: Eval Intelligence",  20,  () => new PowerScroll(SkillName.EvalInt,     105)),
-            new RareMerchantEntry("PS +110: Eval Intelligence",  50,  () => new PowerScroll(SkillName.EvalInt,     110)),
-            new RareMerchantEntry("PS +115: Eval Intelligence",  75,  () => new PowerScroll(SkillName.EvalInt,     115)),
-            new RareMerchantEntry("PS +120: Eval Intelligence",  100, () => new PowerScroll(SkillName.EvalInt,     120)),
-            new RareMerchantEntry("PS +105: Meditation",         20,  () => new PowerScroll(SkillName.Meditation,  105)),
-            new RareMerchantEntry("PS +110: Meditation",         50,  () => new PowerScroll(SkillName.Meditation,  110)),
-            new RareMerchantEntry("PS +115: Meditation",         75,  () => new PowerScroll(SkillName.Meditation,  115)),
-            new RareMerchantEntry("PS +120: Meditation",         100, () => new PowerScroll(SkillName.Meditation,  120)),
-
-            // ── Power Scrolls — taming ────────────────────────────────────
-            new RareMerchantEntry("PS +105: Animal Taming",      25,  () => new PowerScroll(SkillName.AnimalTaming,105)),
-            new RareMerchantEntry("PS +110: Animal Taming",      60,  () => new PowerScroll(SkillName.AnimalTaming,110)),
-            new RareMerchantEntry("PS +115: Animal Taming",      100, () => new PowerScroll(SkillName.AnimalTaming,115)),
-            new RareMerchantEntry("PS +120: Animal Taming",      150, () => new PowerScroll(SkillName.AnimalTaming,120)),
-
-            // ── Power Scrolls — bard ──────────────────────────────────────
-            new RareMerchantEntry("PS +105: Musicianship",       18,  () => new PowerScroll(SkillName.Musicianship,105)),
-            new RareMerchantEntry("PS +110: Musicianship",       35,  () => new PowerScroll(SkillName.Musicianship,110)),
-            new RareMerchantEntry("PS +115: Provocation",        55,  () => new PowerScroll(SkillName.Provocation, 115)),
-            new RareMerchantEntry("PS +120: Provocation",        75,  () => new PowerScroll(SkillName.Provocation, 120)),
-            new RareMerchantEntry("PS +115: Discordance",        55,  () => new PowerScroll(SkillName.Discordance, 115)),
-            new RareMerchantEntry("PS +120: Discordance",        75,  () => new PowerScroll(SkillName.Discordance, 120)),
-            new RareMerchantEntry("PS +115: Peacemaking",        55,  () => new PowerScroll(SkillName.Peacemaking, 115)),
-            new RareMerchantEntry("PS +120: Peacemaking",        75,  () => new PowerScroll(SkillName.Peacemaking, 120)),
-
-            // ── Power Scrolls — crafting ──────────────────────────────────
-            new RareMerchantEntry("PS +115: Blacksmithy",        50,  () => new PowerScroll(SkillName.Blacksmith,  115)),
-            new RareMerchantEntry("PS +120: Blacksmithy",        70,  () => new PowerScroll(SkillName.Blacksmith,  120)),
-            new RareMerchantEntry("PS +115: Tailoring",          50,  () => new PowerScroll(SkillName.Tailoring,   115)),
-            new RareMerchantEntry("PS +120: Tailoring",          70,  () => new PowerScroll(SkillName.Tailoring,   120)),
-
-            // ── Power Scrolls — special ───────────────────────────────────
-            new RareMerchantEntry("PS +105: Chivalry",           20,  () => new PowerScroll(SkillName.Chivalry,    105)),
-            new RareMerchantEntry("PS +110: Chivalry",           45,  () => new PowerScroll(SkillName.Chivalry,    110)),
-            new RareMerchantEntry("PS +115: Chivalry",           70,  () => new PowerScroll(SkillName.Chivalry,    115)),
-            new RareMerchantEntry("PS +120: Chivalry",           90,  () => new PowerScroll(SkillName.Chivalry,    120)),
-            new RareMerchantEntry("PS +105: Necromancy",         20,  () => new PowerScroll(SkillName.Necromancy,  105)),
-            new RareMerchantEntry("PS +110: Necromancy",         45,  () => new PowerScroll(SkillName.Necromancy,  110)),
-            new RareMerchantEntry("PS +115: Necromancy",         70,  () => new PowerScroll(SkillName.Necromancy,  115)),
-            new RareMerchantEntry("PS +120: Necromancy",         90,  () => new PowerScroll(SkillName.Necromancy,  120)),
-            new RareMerchantEntry("PS +115: Bushido",            70,  () => new PowerScroll(SkillName.Bushido,     115)),
-            new RareMerchantEntry("PS +120: Bushido",            90,  () => new PowerScroll(SkillName.Bushido,     120)),
-            new RareMerchantEntry("PS +115: Ninjitsu",           70,  () => new PowerScroll(SkillName.Ninjitsu,    115)),
-            new RareMerchantEntry("PS +120: Ninjitsu",           90,  () => new PowerScroll(SkillName.Ninjitsu,    120)),
-            new RareMerchantEntry("PS +115: Spellweaving",       70,  () => new PowerScroll(SkillName.Spellweaving,115)),
-            new RareMerchantEntry("PS +120: Spellweaving",       90,  () => new PowerScroll(SkillName.Spellweaving,120)),
-            new RareMerchantEntry("PS +115: Mysticism",          70,  () => new PowerScroll(SkillName.Mysticism,   115)),
-            new RareMerchantEntry("PS +120: Mysticism",          90,  () => new PowerScroll(SkillName.Mysticism,   120)),
-            new RareMerchantEntry("PS +115: Imbuing",            70,  () => new PowerScroll(SkillName.Imbuing,     115)),
-            new RareMerchantEntry("PS +120: Imbuing",            90,  () => new PowerScroll(SkillName.Imbuing,     120)),
+        // ── All 34 PS-eligible skills (matches PowerScroll.cs m_Skills) ─────────
+        private static readonly (SkillName skill, string display)[] PSSkills =
+        {
+            (SkillName.Swords,       "Swords"),
+            (SkillName.Fencing,      "Fencing"),
+            (SkillName.Macing,       "Macing"),
+            (SkillName.Archery,      "Archery"),
+            (SkillName.Wrestling,    "Wrestling"),
+            (SkillName.Parry,        "Parrying"),
+            (SkillName.Tactics,      "Tactics"),
+            (SkillName.Anatomy,      "Anatomy"),
+            (SkillName.Healing,      "Healing"),
+            (SkillName.Magery,       "Magery"),
+            (SkillName.EvalInt,      "Eval Intelligence"),
+            (SkillName.Meditation,   "Meditation"),
+            (SkillName.MagicResist,  "Magic Resistance"),
+            (SkillName.Focus,        "Focus"),
+            (SkillName.AnimalTaming, "Animal Taming"),
+            (SkillName.AnimalLore,   "Animal Lore"),
+            (SkillName.Veterinary,   "Veterinary"),
+            (SkillName.Musicianship, "Musicianship"),
+            (SkillName.Provocation,  "Provocation"),
+            (SkillName.Discordance,  "Discordance"),
+            (SkillName.Peacemaking,  "Peacemaking"),
+            (SkillName.Chivalry,     "Chivalry"),
+            (SkillName.Necromancy,   "Necromancy"),
+            (SkillName.SpiritSpeak,  "Spirit Speak"),
+            (SkillName.Bushido,      "Bushido"),
+            (SkillName.Ninjitsu,     "Ninjitsu"),
+            (SkillName.Spellweaving, "Spellweaving"),
+            (SkillName.Mysticism,    "Mysticism"),
+            (SkillName.Imbuing,      "Imbuing"),
+            (SkillName.Blacksmith,   "Blacksmithy"),
+            (SkillName.Tailoring,    "Tailoring"),
+            (SkillName.Stealing,     "Stealing"),
+            (SkillName.Stealth,      "Stealth"),
+            (SkillName.Throwing,     "Throwing"),
         };
+
+        // Tier → coin cost
+        private static readonly int[] PSTiers     = { 105, 110, 115, 120 };
+        private static readonly int[] PSTierCosts  = {  20,  45,  70,  90 };
+
+        /// <summary>
+        /// Builds a pool of PS entries where every skill has exactly equal
+        /// representation. Each skill gets 2 slots (different random tiers),
+        /// giving 68 virtual PS entries — close to the original 74, maintaining
+        /// roughly the same PS-vs-non-PS ratio in the 10-slot stock.
+        /// </summary>
+        private static List<RareMerchantEntry> BuildPSPool()
+        {
+            var pool = new List<RareMerchantEntry>();
+            foreach (var (skill, display) in PSSkills)
+            {
+                for (int rep = 0; rep < 2; rep++)
+                {
+                    int tierIdx = Utility.Random(PSTiers.Length);
+                    int tier    = PSTiers[tierIdx];
+                    int cost    = PSTierCosts[tierIdx];
+
+                    // Capture for closure — both display item and factory use the same skill+tier
+                    SkillName capturedSkill = skill;
+                    double    capturedTier  = tier;
+                    string    name          = $"PS +{tier}: {display}";
+
+                    pool.Add(new RareMerchantEntry(name, cost,
+                        () => new PowerScroll(capturedSkill, capturedTier)));
+                }
+            }
+            return pool;
+        }
 
         public static List<RareMerchantEntry> GetRandomStock(int count = 10)
         {
-            var pool   = new List<RareMerchantEntry>(Pool);
+            // Combine non-PS flat pool with dynamically built PS pool (equal skill weight)
+            var combined = new List<RareMerchantEntry>(Pool);
+            combined.AddRange(BuildPSPool()); // adds 68 PS entries, 2 per skill
+
             var result = new List<RareMerchantEntry>();
-            count = Math.Min(count, pool.Count);
+            count = Math.Min(count, combined.Count);
             while (result.Count < count)
             {
-                int idx = Utility.Random(pool.Count);
-                result.Add(pool[idx]);
-                pool.RemoveAt(idx);
+                int idx = Utility.Random(combined.Count);
+                result.Add(combined[idx]);
+                combined.RemoveAt(idx);
             }
             return result;
         }
@@ -806,3 +796,4 @@ namespace Server.Custom
         }
     }
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
