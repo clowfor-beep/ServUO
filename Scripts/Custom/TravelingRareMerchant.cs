@@ -289,13 +289,6 @@ namespace Server.Custom
             (new Point3D(1355, 3834, 20), Map.Felucca, "Jhelom"),
             (new Point3D(4471, 1177,  0), Map.Felucca, "Moonglow"),
             (new Point3D(3714, 2190, 20), Map.Felucca, "Magincia"),
-            (new Point3D(1439, 1698, 20), Map.Trammel, "Britain (Trammel)"),
-            (new Point3D(1859, 2754,  0), Map.Trammel, "Trinsic (Trammel)"),
-            (new Point3D(2526,  582,  0), Map.Trammel, "Minoc (Trammel)"),
-            (new Point3D(2893,  686,  0), Map.Trammel, "Vesper (Trammel)"),
-            (new Point3D( 586, 2150,  0), Map.Trammel, "Skara Brae (Trammel)"),
-            (new Point3D(4471, 1177,  0), Map.Trammel, "Moonglow (Trammel)"),
-            (new Point3D(3503, 2574, 14), Map.Trammel, "New Haven"),
         };
 
         public static void Initialize()
