@@ -1319,6 +1319,11 @@ namespace Server.Engines.Craft
                 bonus += .3;
             }
 
+            if (system.MainSkill == SkillName.Carpentry || system.MainSkill == SkillName.Fletching)
+            {
+                bonus += Math.Floor(from.Skills[SkillName.Lumberjacking].Value / 10.0) * 0.01;
+            }
+
             switch (system.ECA)
             {
                 default:
@@ -1442,6 +1447,11 @@ namespace Server.Engines.Craft
             if (WoodworkersBench.HasBonus(from, craftSystem.MainSkill))
             {
                 chance += .5;
+            }
+
+            if (craftSystem.MainSkill == SkillName.Carpentry || craftSystem.MainSkill == SkillName.Fletching)
+            {
+                chance += Math.Floor(from.Skills[SkillName.Lumberjacking].Value / 10.0) * 0.01;
             }
 
             if (allRequiredSkills && valMainSkill == maxMainSkill)
