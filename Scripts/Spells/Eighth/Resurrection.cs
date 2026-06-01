@@ -1,4 +1,5 @@
 using Server.Gumps;
+using Server.Mobiles;
 using Server.Targeting;
 
 namespace Server.Spells.Eighth
@@ -26,6 +27,9 @@ namespace Server.Spells.Eighth
 
         public void Target(Mobile m)
         {
+            BaseCreature pet = m as BaseCreature;
+            bool isBondedDeadPet = pet != null && pet.IsBonded && pet.IsDeadPet;
+
             if (!Caster.CanSee(m))
             {
                 Caster.SendLocalizedMessage(500237); // Target can not be seen.
@@ -46,14 +50,15 @@ namespace Server.Spells.Eighth
             {
                 Caster.SendLocalizedMessage(501042); // Target is not close enough.
             }
-            else if (!m.Player)
+            else if (!m.Player && !isBondedDeadPet)
             {
                 Caster.SendLocalizedMessage(501043); // Target is not a being.
             }
             else if (m.Map == null || !m.Map.CanFit(m.Location, 16, false, false))
             {
                 Caster.SendLocalizedMessage(501042); // Target can not be resurrected at that location.
-                m.SendLocalizedMessage(502391); // Thou can not be resurrected there!
+                if (!isBondedDeadPet)
+                    m.SendLocalizedMessage(502391); // Thou can not be resurrected there!
             }
             else if (m.Region != null && m.Region.IsPartOf("Khaldun"))
             {
@@ -66,8 +71,16 @@ namespace Server.Spells.Eighth
                 m.PlaySound(0x214);
                 m.FixedEffect(0x376A, 10, 16);
 
-                m.CloseGump(typeof(ResurrectGump));
-                m.SendGump(new ResurrectGump(m, Caster));
+                if (isBondedDeadPet)
+                {
+                    Caster.CloseGump(typeof(PetResurrectGump));
+                    Caster.SendGump(new PetResurrectGump(Caster, pet));
+                }
+                else
+                {
+                    m.CloseGump(typeof(ResurrectGump));
+                    m.SendGump(new ResurrectGump(m, Caster));
+                }
             }
 
             FinishSequence();
