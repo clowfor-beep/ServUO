@@ -1329,6 +1329,11 @@ namespace Server.Engines.Craft
                 bonus += Math.Floor(from.Skills[SkillName.Mining].Value / 10.0) * 0.01;
             }
 
+            if (system.MainSkill == SkillName.Alchemy || system.MainSkill == SkillName.Cooking)
+            {
+                bonus += Math.Floor(from.Skills[SkillName.TasteID].Value / 10.0) * 0.01;
+            }
+
             switch (system.ECA)
             {
                 default:
@@ -1462,6 +1467,11 @@ namespace Server.Engines.Craft
             if (craftSystem.MainSkill == SkillName.Blacksmith || craftSystem.MainSkill == SkillName.Imbuing)
             {
                 chance += Math.Floor(from.Skills[SkillName.Mining].Value / 10.0) * 0.01;
+            }
+
+            if (craftSystem.MainSkill == SkillName.Alchemy || craftSystem.MainSkill == SkillName.Cooking)
+            {
+                chance += Math.Floor(from.Skills[SkillName.TasteID].Value / 10.0) * 0.01;
             }
 
             if (allRequiredSkills && valMainSkill == maxMainSkill)
