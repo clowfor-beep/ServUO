@@ -575,8 +575,8 @@ namespace Server.Custom
         protected BaseBagOfHolding(Serial serial) : base(serial) { }
 
         // ── Weight reduction ──────────────────────────────────────────────
-        // Intercept weight updates and propagate only the reduced delta upward
-        // so the player's carry weight reflects the reduction.
+        // Runtime path: intercept weight deltas and propagate only the reduced
+        // share upward so the player's carry weight reflects the discount.
         public override void UpdateTotal(Item sender, TotalType type, int delta)
         {
             if (type == TotalType.Weight && sender != this)
@@ -588,6 +588,22 @@ namespace Server.Custom
             {
                 base.UpdateTotal(sender, type, delta);
             }
+        }
+
+        // World-load path: Container.UpdateTotals() resets m_TotalWeight from
+        // scratch, bypassing UpdateTotal entirely.  BagOfHoldingSystem.Initialize()
+        // hooks EventSink.WorldLoad and calls this on every bag after load to
+        // subtract the excess weight from both the bag and its parent chain.
+        public void CorrectWeightAfterLoad()
+        {
+            if (WeightReductionPct <= 0 || Deleted) return;
+
+            int fullWeight  = TotalWeight; // m_TotalWeight as set by UpdateTotals = full weight
+            int reducedWeight = (int)Math.Round(fullWeight * (100.0 - WeightReductionPct) / 100.0);
+            int excess = fullWeight - reducedWeight;
+
+            if (excess > 0)
+                UpdateTotal(this, TotalType.Weight, -excess);
         }
 
         // ── CheckHold override ────────────────────────────────────────────
@@ -689,6 +705,27 @@ namespace Server.Custom
         {
             base.Deserialize(reader);
             reader.ReadInt();
+        }
+    }
+
+    // ── Post-load weight correction ───────────────────────────────────────
+    // Container.UpdateTotals() (called on every world load) bypasses our
+    // UpdateTotal delta reduction and resets m_TotalWeight to the full item
+    // weight.  We hook WorldLoad to subtract the excess once loading is done.
+    public static class BagOfHoldingSystem
+    {
+        public static void Initialize()
+        {
+            EventSink.WorldLoad += OnWorldLoad;
+        }
+
+        private static void OnWorldLoad()
+        {
+            foreach (Item item in World.Items.Values)
+            {
+                if (item is BaseBagOfHolding bag)
+                    bag.CorrectWeightAfterLoad();
+            }
         }
     }
 

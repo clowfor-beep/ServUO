@@ -14,7 +14,7 @@ namespace Server.Engines.Quests
             AddReward(new BaseReward(typeof(FletcherCraftsmanSatchel), 1074282));
         }
 
-        public override TimeSpan RestartDelay => TimeSpan.FromMinutes(2);
+        public override TimeSpan RestartDelay => TimeSpan.FromSeconds(30);
 
         /* Lethal Darts */
         public override object Title => 1073876;

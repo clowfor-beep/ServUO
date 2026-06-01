@@ -1,0 +1,471 @@
+================================================================
+NECROMANCER SUMMONER — BUILD DESIGN DOCUMENT
+Shard: Forsaken Britannia | ServUO + ClassicUO
+Created: 2026-05-31
+================================================================
+
+OVERVIEW
+--------
+The Necromancer Summoner is a controller archetype that never
+directly strikes enemies. Instead, it fields a squad of scaled-up
+summoned undead and elementals, amplified by two multiplicative
+bonus systems:
+
+  1. SPIRIT SPEAK SYNERGY (SummonerSynergySystem.cs)
+     Scales all summoned creature stats at cast time, based on
+     the caster's Spirit Speak value.
+
+  2. HERDING + CROOK (SkillSynergies.cs — Herding section)
+     Multiplies follower attack damage and reduces damage received
+     by followers, based on effective Herding skill.
+     An enchanted ShepherdsCrook boosts effective Herding beyond 100.
+
+These two systems are MULTIPLICATIVE with each other and already
+fully hooked into the engine. The necro summoner is the primary
+beneficiary of both.
+
+
+================================================================
+PART 1 — MECHANIC STACK (HOW THE BONUSES MULTIPLY)
+================================================================
+
+----------------------------------------------------------------
+1A. SPIRIT SPEAK SYNERGY (SummonerSynergySystem.cs)
+----------------------------------------------------------------
+
+Applied ONCE at summon time. Scales with: factor = SS / 100
+
+  HP bonus:           base_HP * 1.5 * factor   (added to base HP)
+  Damage bonus:       base_dmg * 0.5 * factor  (added to base dmg)
+  Wrestling bonus:    +50 * factor             (capped at 120)
+  Virtual Armor:      +25 * factor
+  MagicResist bonus:  +50 * factor             (capped at 120)
+
+RESULT AT KEY SS VALUES:
+  SS  20:  +30% HP,  +10% dmg,  +10 Wrestling, +5 VA,  +10 MR
+  SS  50:  +75% HP,  +25% dmg,  +25 Wrestling, +12 VA, +25 MR
+  SS 100: +150% HP,  +50% dmg,  +50 Wrestling, +25 VA, +50 MR  (2.5x HP total)
+  SS 120: +180% HP,  +60% dmg,  +60 Wrestling, +30 VA, +60 MR  (2.8x HP total)
+
+The bonuses apply to the creature's BASE stats set by its constructor.
+For Animate Dead, those stats are 50% of the original corpse (the
+Scale() call in AnimateDeadSpell.cs), so a dragon corpse produces
+a Skeletal Dragon at 50% of dragon stats, then +150% HP on top.
+
+
+----------------------------------------------------------------
+1B. HERDING + CROOK MULTIPLIER (SkillSynergies.cs)
+----------------------------------------------------------------
+
+Applied EVERY HIT, both melee and spell damage.
+Requires an ACTIVATED ShepherdsCrook (double-click to activate,
+or equip it — stays active from pack after that).
+
+  effectiveHerding = Herding.Value
+                   + crook.Attributes.AttackChance   (HCI)
+                   + crook.Attributes.WeaponDamage   (DI)
+
+FOLLOWER OUTGOING DAMAGE:
+  PvM: damage *= (1 + 0.22 * effectiveHerding / 100)
+  PvP: damage *= (1 + 0.11 * effectiveHerding / 100)
+
+FOLLOWER INCOMING DAMAGE (resist):
+  PvM: damage *= (1 - 0.11 * effectiveHerding / 100)
+  PvP: damage *= (1 - 0.055 * effectiveHerding / 100)
+
+AT KEY EFFECTIVE HERDING VALUES (PvM):
+  Effective 100: +22% outgoing, -11% incoming
+  Effective 115: +25% outgoing, -13% incoming
+  Effective 130: +29% outgoing, -14% incoming  (Herding 100 + crook +30)
+  Effective 150: +33% outgoing, -17% incoming  (Herding 120 + crook +30)
+
+NOTE: Crook HCI and DI are WEAPON ATTRIBUTES (Attributes.AttackChance,
+Attributes.WeaponDamage), not skill bonuses. They can be pushed beyond
+item cap using OrbOfResonance (+1/+3/+5 DI). An OrbOfEnchantment adds
+a random SKILL bonus (not DI/HCI) so it does not boost effectiveHerding.
+
+
+----------------------------------------------------------------
+1C. COMBINED DAMAGE MULTIPLIER (PvM, outgoing)
+----------------------------------------------------------------
+
+Combined = SS factor × Herding factor
+         = (1 + 0.5 * SS/100) × (1 + 0.22 * effectiveHerding/100)
+
+KEY COMBINATIONS:
+  SS 100, Herding 100 (no crook):         1.50 × 1.22 = 1.83×
+  SS 100, Herding 100 (crook +15/+15):    1.50 × 1.29 = 1.93×
+  SS 100, Herding 100 (crook +30/+0):     1.50 × 1.29 = 1.93×
+  SS 120, Herding 100 (crook +15/+15):    1.60 × 1.29 = 2.06×
+  SS 120, Herding 120 (crook +15/+15):    1.60 × 1.33 = 2.13×
+
+HP multiply is independent (only SS):
+  SS 100: 2.5× HP
+  SS 120: 2.8× HP
+
+Combined incoming damage reduction (PvM) from Herding alone:
+  Effective 115: followers take ~13% less damage from all sources
+
+
+================================================================
+PART 2 — SKILL TEMPLATES
+================================================================
+
+----------------------------------------------------------------
+TEMPLATE A — THE STANDARD NECRO SUMMONER (700 skill cap)
+----------------------------------------------------------------
+
+  Necromancy   100  — animate dead, familiar, offensive necro spells
+  Spirit Speak 100  — scales all summon stats; also powers necro spells
+  Magery       100  — high circle summons (elemental/daemon), utility
+  Eval Int     100  — scales Magery spell damage (offensive support)
+  Herding      100  — follower damage/resist multiplier (crook required)
+  Meditation   100  — passive mana regen while stationary
+  MagicResist  100  — defence against spell interrupts and debuffs
+                 ___
+               = 700 (exactly at default cap)
+
+Stat allocation (225 stat cap):
+  STR  60  →  ~60 HP base (+20 from Herding synergy bonus = ~80 HP total)
+  DEX  25  →  min needed for spell casting
+  INT 140  →  ~140 mana base
+  Total: 225
+
+Role: You never swing. Summon, activate crook, maintain distance, cast.
+Your summons fight everything. You throw Wither / Strangle to assist.
+
+
+----------------------------------------------------------------
+TEMPLATE B — THE TANK SUMMONER (700+ cap, OrbOfExpansion required)
+----------------------------------------------------------------
+
+Requires OrbOfExpansion × 2 or more (cap raised to 720+).
+
+  Necromancy   100
+  Spirit Speak 100
+  Magery       100
+  Herding      100
+  Meditation   100
+  MagicResist   80  — partial: still provides decent resist to interrupts
+  Wraith Form passive — covered by Necromancy
+  Wrestling     80  — prevents spells being interrupted by melee hits
+  (Eval Int dropped — trade offensive damage for durability)
+                 ___
+               = 660 core + 60 flex via expanded cap
+
+Alternative stat spread (higher STR, lower INT):
+  STR  80  →  ~80 HP base (+20 Herding = 100 HP)
+  DEX  25
+  INT 120  →  120 mana — enough with Meditation
+  Total: 225
+
+
+----------------------------------------------------------------
+TEMPLATE C — THE HYBRID TAMER-SUMMONER (requires 770+ cap)
+----------------------------------------------------------------
+
+Combines a tamed high-end pet with Spirit Speak-scaled summons.
+Herding buff applies to BOTH the pet and the summons simultaneously.
+Requires significant OrbOfExpansion investment.
+
+  Necromancy    80  — animate dead + familiar (lower tier)
+  Spirit Speak 100
+  Magery       100
+  AnimalTaming 100  — control a high-end pet (dragon, cu sidhe, etc.)
+  AnimalLore    80  — lore check for taming, pet bonding
+  Herding      100  — buffs both pet AND summons
+  Meditation   100
+  Vet           60  — keep the tamed pet alive
+                 ___
+               = 720 (needs expanded cap)
+
+This template is powerful but fragile — losing the pet is costly.
+Not recommended as a starter build.
+
+
+================================================================
+PART 3 — SUMMONED CREATURE BREAKDOWN
+================================================================
+
+All spells below have SummonerSynergySystem.ApplyBonuses() hooked.
+Bonuses apply at cast time; stats are baked in for the summon's duration.
+
+NECROMANCY
+----------
+
+  Animate Dead (Necromancy 40+, Spirit Speak 30+)
+  Duration: 1 day (effectively permanent until killed)
+  Base stats: 50% of the animating corpse
+  SS 100 result: 125% of corpse HP, 75% of corpse damage
+  Best corpse targets: Dragon, Ancient Wyrm, Balron, Lich Lord
+  Slot cost: varies (typically 2 for large undead)
+  Key advantage: free HP — reusable corpses from dungeon runs
+  Note: Skeletal Dragon has an additional -50% HP nerf from Scale()
+        applied AFTER SummonerSynergy, so it ends up at ~1.25× base,
+        not 2.5× — still worthwhile for the dragon template.
+
+  Summon Familiar (Spirit Speak 30+)
+  Duration: permanent until dismissed or killed
+  Options: dark wolf, cat, ferret, squirrel, shadow wisp, lich, vampire bat
+  Recommended: Lich (mage familiar — casts spells) or Vampire Bat (life drain)
+  Slot cost: 1
+  SS 100 result: lich has 2.5× HP and 1.5× spell damage
+  Role: free 1-slot unit — always have one active
+
+MAGERY (8TH CIRCLE)
+--------------------
+
+  Air Elemental
+  Duration: 4 min/EI circle (base ~20 min at EI 100)
+  Base: fast, medium HP, high ranged DPS
+  SS 100 result: 2.5× HP, 1.5× damage — becomes a high-sustain ranged unit
+  Slot cost: 2
+
+  Fire Elemental
+  Duration: same formula
+  Base: high fire damage, resistant to fire
+  SS 100 result: potent AoE fire threat; Wither + fire elemental synergy
+  Slot cost: 2
+
+  Earth Elemental
+  Duration: same formula
+  Base: very high physical armour, slow melee
+  SS 100 result: near-unkillable tank at 2.5× HP with high VA
+  Slot cost: 2
+
+  Water Elemental
+  Duration: same formula
+  Base: moderate — cold damage, good sustain
+  Slot cost: 2
+
+  Summon Daemon (8th circle)
+  Duration: 2 min/Magery circle (shorter — keep Meditation up)
+  Base: best raw stats of the 8th circle summons
+  SS 100 result: Daemon with 2.5× HP, 1.5× damage, capped MR and Wrestling
+  Slot cost: 2
+  This is the premium combat summon. Chain-cast to maintain uptime.
+
+MAGERY (5TH CIRCLE — NOT SCALED, LOW PRIORITY)
+------------------------------------------------
+
+  Summon Creature (5th circle)
+  NOT hooked to SummonerSynergySystem — summons random animals.
+  No Spirit Speak scaling. Avoid using for this build.
+  (See Implementation section — low priority to hook.)
+
+  Blade Spirits (5th circle)
+  IS hooked. Duration 2 min. Attacks nearest mobile aggressively.
+  Good slot-filler if you have spare capacity.
+  Slot cost: 1
+
+  Energy Vortex (6th circle)
+  IS hooked. Duration 90 seconds. Attacks everything nearby including
+  friendlies — use with care in groups.
+  Slot cost: 1
+
+
+================================================================
+PART 4 — CROOK SPECIFICATION AND SOURCING
+================================================================
+
+The ShepherdsCrook is a weapon item. Its Herding bonus comes from:
+  crook.Attributes.AttackChance   (displayed as "Hit Chance Increase")
+  crook.Attributes.WeaponDamage   (displayed as "Damage Increase")
+
+ACTIVATION:
+  Double-click the crook to activate it, or equip it.
+  Once activated, it can sit in your backpack permanently.
+  The bonus is LOST if the crook is deleted, moved to bank, or
+  placed in a container other than your backpack (or worn layer).
+
+IDEAL CROOK SPEC:
+  Hit Chance Increase +15    → +15 to effectiveHerding
+  Damage Increase     +15    → +15 to effectiveHerding
+  Total bonus:                  +30 effectiveHerding above skill
+
+  With Herding 100 + crook +15/+15: effectiveHerding = 130
+  PvM damage bonus: +28.6% (vs +22% with no crook)
+  PvP damage bonus: +14.3% (vs +11%)
+
+PUSHING THE CROOK FURTHER:
+  OrbOfResonance (rare/very rare/epic) adds DI directly:
+    Tier 1: +1 DI
+    Tier 2: +3 DI
+    Tier 3: +5 DI
+  Stack Orb pushes with a naturally-rolled crook for maximum bonus.
+  A crook at +20 DI +20 HCI gives effectiveHerding 140 at Herding 100.
+
+NOTE: The crook is a 2-handed weapon. If you carry one in your pack
+you cannot also have a weapon equipped unless it is one-handed.
+Since this build never fights in melee, this is not a concern.
+
+
+================================================================
+PART 5 — SPELL ROTATION AND PLAYSTYLE
+================================================================
+
+SETUP (before entering content):
+  1. Activate crook: double-click it in your backpack
+  2. Cast Summon Familiar (always up — 1 slot, free power)
+  3. Cast Animate Dead on a strong nearby corpse if available
+  4. Wraith Form (optional — adds mana drain resistance, better mana regen)
+
+OPENING:
+  5. Summon Daemon (or Air/Fire Elemental depending on resist profile)
+     → Spirit Speak scales it on cast
+  6. Position yourself behind your summons — you are squishy
+  7. Herding bonus fires automatically on every follower attack
+
+IN COMBAT:
+  - Maintain Daemon uptime — re-cast if it dies (short 2-min duration)
+  - Wither: AoE cold damage centred on an undead target, hurts enemies
+  - Strangle / Poison Strike: DoT assist on priority targets
+  - Blood Oath on the most dangerous enemy (mirror damage)
+  - Reactive Armor / Magic Reflect if you are receiving spells
+
+MANA MANAGEMENT:
+  - Meditation 100 gives aggressive passive regen while stationary
+  - Wraith Form adds mana drain on melee hits to your summons' targets
+  - Wraith Form mana drain does NOT require Spirit Speak to activate
+  - High INT (140) combined with Meditation sustains chain-casting
+
+RUNNING LOW ON SUMMONS:
+  - Find a corpse and Animate Dead before re-summoning daemons
+  - Animated dead cost 0 mana upkeep and last 1 full day
+  - Daemon requires re-cast every ~2 min — only cast when mana is safe
+
+
+================================================================
+PART 6 — SYNERGY WITH OTHER CUSTOM SYSTEMS
+================================================================
+
+DEFENSIVE SKILL SYNERGIES (SkillSynergies.cs):
+  Herding 100 grants independently:
+    Poison Resist +8%   (scales from 80+)
+    Cold Resist   +5%
+    HP Bonus:    +20 HP (on top of your STR-based HP)
+    Cold Resist Cap  +2% at 100, +3% at 120
+    Poison Resist Cap +2% at 100, +3% at 120
+
+  These apply to the PLAYER, not the summons.
+
+ORB OF ALACRITY (OrbAndCurrencySystem.cs):
+  Doubles all skill gains for 10/20/40 minutes.
+  Ideal for training Spirit Speak (100 is mandatory) and Herding
+  (hard to gain past 80 without active use).
+
+ORB OF INSIGHT:
+  Triples skill gain FREQUENCY for 15/30/60 min.
+  Stack with Alacrity for ~6× effective skill gain rate during training.
+
+ORB OF ENHANCEMENT:
+  +0.1/0.2/0.3 to a single skill permanently.
+  Use on Spirit Speak or Herding if just under a key threshold.
+
+SCROLL OF WARDING / DEATHTOUCH / LEECHING:
+  These apply to the PLAYER's attacks, not summons.
+  Low value for this archetype — skip.
+
+REPUTATION SYSTEM (ReputationSystem.cs):
+  Killing Blood Pact SimPlayers → +10 Silver Wolves, +15 Paladin Order
+  Killing The Void SimPlayers → +10 Arcane Brotherhood, +10 Dread Hunters
+  This build excels at killing the red/mage SimPlayers near dungeon entrances
+  due to summon durability. Good reputation farming path.
+
+
+================================================================
+PART 7 — IMPLEMENTATION STATUS
+================================================================
+
+FULLY IMPLEMENTED AND HOOKED:
+  SummonerSynergySystem.ApplyBonuses() called in:
+    [x] AnimateDeadSpell.cs     — Animate Dead
+    [x] SummonFamiliar.cs       — Summon Familiar
+    [x] AirElemental.cs         — Air Elemental
+    [x] FireElemental.cs        — Fire Elemental
+    [x] EarthElemental.cs       — Earth Elemental
+    [x] WaterElemental.cs       — Water Elemental
+    [x] SummonDaemon.cs         — Summon Daemon
+    [x] BladeSpirits.cs         — Blade Spirits
+    [x] EnergyVortex.cs         — Energy Vortex
+
+  Herding hooks in BaseCreature.cs:
+    [x] AlterMeleeDamageTo      — follower melee outgoing
+    [x] AlterSpellDamageTo      — follower spell outgoing
+    [x] AlterMeleeDamageFrom    — follower melee incoming
+    [x] AlterSpellDamageFrom    — follower spell incoming
+    All four use: (Controlled || Summoned) — applies to both pets AND summons.
+
+MISSING / LOW PRIORITY:
+  [ ] SummonCreature.cs (5th circle) — random animals (pig, rabbit, etc.)
+      SummonerSynergy NOT hooked. Low combat value — acceptable gap.
+      If hooked, a Spirit Bear or Polar Bear would be viable at SS 100.
+      Effort: 1 line addition.
+
+NO OTHER GAPS IDENTIFIED.
+
+
+================================================================
+PART 8 — BALANCE NOTES AND DESIGN INTENT
+================================================================
+
+INTENDED POWER LEVEL:
+  This is a HIGH SKILL CAP build — requires 700 skill points all at GM,
+  a crafted/looted crook with DI+HCI, and knowledge of the spell rotation.
+  Its ceiling should feel rewarding but not trivially dominant.
+
+  Comparison to a GM Dexxer (Swords/Tactics/Anatomy/Healing/Parry +2 util):
+    Dexxer deals ~81.25% extra damage from Tactics alone, instant.
+    Necro Summoner deals damage through followers (+83% at SS100/H100),
+    which can be disrupted, area-killed, or outlasted.
+  These are roughly equivalent total DPS but very different risk profiles.
+
+FOLLOWER SLOT BOTTLENECK:
+  Default FollowersMax (5 slots) is the natural limiter.
+  With 5 slots: 1 Daemon (2) + 1 Familiar (1) + 1 Animate Dead (2) = 5 — full.
+  The player cannot field more without slot increases from items.
+  This is intentional — the build should feel slot-constrained.
+
+ANIMATE DEAD DURATION (1 day):
+  This is very long. The trade-off is:
+    - You must find a strong corpse first (PvM, not PvP reliable)
+    - The animated creature can be killed and costs a corpse
+    - Spirit Speak scaling bakes in at cast time, not on relog
+  The long duration rewards planning (animating before a dungeon run)
+  without feeling exploitable (you still spent 2 follower slots).
+
+HERDING PASSIVE SKILL GAIN:
+  `if (Utility.RandomDouble() < 0.05) master.CheckSkill(SkillName.Herding, 50.0, 120.0);`
+  Fires per follower hit. With 2-3 active summons, Herding trains
+  passively during PvM play. This is intentional — Herding is an
+  unusual choice and should be self-reinforcing once you commit to it.
+
+CROOK AS STAT STICK:
+  The crook never has to be used as a weapon. This is fine — it is
+  mechanically identical to how UO historically used skill-boosting
+  items (e.g., +skill jewelry). The Herding bonus being gated behind
+  a craftable/enchantable item gives the economy a meaningful demand
+  signal for blacksmiths and crafters.
+
+TUNING LEVERS (if the build proves too strong):
+  - Reduce HpMultiplierPerSS or DamageMultiplierPerSS in SummonerSynergySystem.cs
+  - Reduce pct multipliers in ApplyHerdingDamageBonus()
+  - Add a follower count penalty (bonus decays per extra slot used)
+  - Gate herding PvP bonus behind an extra check
+
+TUNING LEVERS (if the build proves too weak):
+  - Add Summon Creature hook to SummonerSynergySystem for earlier scaling
+  - Increase HpMultiplierPerSS
+  - Allow Herding to scale from 0 (not 30+ effective skill) for crook builds
+
+================================================================
+RELATED FILES
+================================================================
+
+SummonerSynergySystem.cs         Core Spirit Speak scaling implementation
+SkillSynergies.cs                 Herding+Crook follower bonuses + defensive bonuses
+SkillSynergies_DesignDoc.txt      Full synergy design (defensive table, all skills)
+Scripts/Spells/Necromancy/        Necromancy spell implementations
+Scripts/Spells/Eighth/            8th circle Magery summon implementations
+OrbAndCurrencyDesignDoc.txt       Orb details — Enhancement, Alacrity, Insight, Resonance
+================================================================

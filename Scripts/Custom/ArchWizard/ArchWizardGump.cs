@@ -278,19 +278,22 @@ namespace Server.Custom.ArchWizard
 
         private static string GetChampionName(ChampionSpawn cs)
         {
-            string typeName = cs.Type.ToString();
-            switch (typeName)
+            switch (cs.Type)
             {
-                case "Abyss":                             return "The Abyss (Daemon Spawn)";
-                case "Arachnid":                          return "Arachnid (Spider Spawn)";
-                case "ColdBlood":                         return "Cold Blood (Reptile Spawn)";
-                case "ForestLord":                        return "Forest Lord (Beast Spawn)";
-                case "Unholy Terror": case "UnholyTerror": return "Unholy Terror (Undead Spawn)";
-                case "VerminHorde":                       return "Vermin Horde (Rat Spawn)";
-                case "Sleeping Dragon": case "SleepingDragon": return "Sleeping Dragon";
-                case "Terathan":                          return "Terathan Matriarch";
-                case "Orc":                               return "Orc Spawn";
-                default:                                  return typeName + " Spawn";
+                case ChampionSpawnType.Abyss:          return "The Abyss (Daemon Spawn)";
+                case ChampionSpawnType.Arachnid:       return "Arachnid (Spider Spawn)";
+                case ChampionSpawnType.ColdBlood:      return "Cold Blood (Reptile Spawn)";
+                case ChampionSpawnType.ForestLord:     return "Forest Lord (Beast Spawn)";
+                case ChampionSpawnType.UnholyTerror:   return "Unholy Terror (Undead Spawn)";
+                case ChampionSpawnType.VerminHorde:    return "Vermin Horde (Rat Spawn)";
+                case ChampionSpawnType.SleepingDragon: return "Sleeping Dragon";
+                case ChampionSpawnType.Glade:          return "The Glade (ML Spawn)";
+                case ChampionSpawnType.Corrupt:        return "Corrupt (Plague Spawn)";
+                case ChampionSpawnType.Terror:         return "Terror (Daemon Spawn)";
+                case ChampionSpawnType.Infuse:         return "Infuse (Undead Spawn)";
+                case ChampionSpawnType.DragonTurtle:   return "Valley (Dragon Turtle Spawn)";
+                case ChampionSpawnType.Khaldun:        return "Khaldun (Khal Ankur)";
+                default:                               return cs.Type.ToString() + " Spawn";
             }
         }
 
