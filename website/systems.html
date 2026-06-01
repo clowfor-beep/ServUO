@@ -102,10 +102,9 @@ nav {
   border-bottom: 0.5px solid var(--border);
 }
 .card-image img {
-  width: 100%; height: 100%; object-fit: cover;
+  width: 100%; height: 100%; object-fit: contain;
   opacity: 0.85; transition: opacity 0.3s, transform 0.4s;
   display: block;
-  image-rendering: pixelated; image-rendering: crisp-edges;
 }
 .system-card:hover .card-image img { opacity: 1; transform: scale(1.03); }
 
@@ -293,9 +292,9 @@ footer {
           <div class="card-detail">
             The Wanted track adds a second dimension: Cutthroat, Murderer, and Dread Lord PKs carry active bounties. Kill one, take their severed head as proof, and cash it in for a bigger payout than any creature. Guildmaster NPCs are placed in Britain, Trinsic, and Minoc. The token shop carries exclusive rewards — items and bonuses unavailable anywhere else in the world.
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:1rem;border:0.5px solid var(--border);">
-              <img src="images/Improvement%20hunters%20guild%201.png" alt="Hunter Guild 1" style="width:100%;aspect-ratio:4/3;object-fit:cover;opacity:0.85;display:block;image-rendering:pixelated;image-rendering:crisp-edges;transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85">
-              <img src="images/Improvement%20hunters%20guild%202.png" alt="Hunter Guild 2" style="width:100%;aspect-ratio:4/3;object-fit:cover;opacity:0.85;display:block;image-rendering:pixelated;image-rendering:crisp-edges;transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85">
-              <img src="images/Improvement%20hunters%20guild%203.png" alt="Hunter Guild 3" style="width:100%;aspect-ratio:4/3;object-fit:cover;opacity:0.85;display:block;image-rendering:pixelated;image-rendering:crisp-edges;transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85">
+              <img src="images/Improvement%20hunters%20guild%201.png" alt="Hunter Guild 1" style="width:100%;aspect-ratio:4/3;object-fit:contain;background:#0a0a14;opacity:0.85;display:block;transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85">
+              <img src="images/Improvement%20hunters%20guild%202.png" alt="Hunter Guild 2" style="width:100%;aspect-ratio:4/3;object-fit:contain;background:#0a0a14;opacity:0.85;display:block;transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85">
+              <img src="images/Improvement%20hunters%20guild%203.png" alt="Hunter Guild 3" style="width:100%;aspect-ratio:4/3;object-fit:contain;background:#0a0a14;opacity:0.85;display:block;transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85">
             </div>
           </div>
           <button class="card-expand" onclick="toggleCard(this)">Read more ↓</button>
@@ -449,7 +448,7 @@ footer {
 
       <div class="coming-card" style="padding:0;overflow:hidden;">
         <div style="width:100%;aspect-ratio:16/9;overflow:hidden;border-bottom:0.5px solid var(--border);">
-          <img src="images/Improvement%20-%20Simulated%20players.png" alt="Simulated Players" style="width:100%;height:100%;object-fit:cover;opacity:0.5;image-rendering:pixelated;image-rendering:crisp-edges;">
+          <img src="images/Improvement%20-%20Simulated%20players.png" alt="Simulated Players" style="width:100%;height:100%;object-fit:contain;background:#0a0a14;opacity:0.5;">
         </div>
         <div style="padding:1.75rem;">
           <p class="coming-card-title">144 SimPlayers</p>
