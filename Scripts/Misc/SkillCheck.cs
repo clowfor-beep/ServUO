@@ -387,6 +387,12 @@ namespace Server.Misc
                         toGain = (int)Math.Max(1, toGain * 4.0);
                     else if (skill.Base < 80.0)
                         toGain = (int)Math.Max(1, toGain * 2.0);
+
+                    // Clamp to available skill cap room so the boost never blocks gaining
+                    // when the character is close to their total skill cap.
+                    int freePoints = from.Skills.Cap - from.Skills.Total;
+                    if (freePoints > 0 && toGain > freePoints)
+                        toGain = freePoints;
                 }
                 #endregion
 
