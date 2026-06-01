@@ -57,7 +57,7 @@ namespace Server.Spells.Fifth
             else if (SpellHelper.CheckTown(p, Caster) && CheckSequence())
             {
                 var spirit = new BladeSpirits(true);
-                    BaseCreature.Summon(spirit, false, Caster, new Point3D(p), 0x212, TimeSpan.FromSeconds(120));
+                    BaseCreature.Summon(spirit, false, Caster, new Point3D(p), 0x212, Server.Custom.SummonerSynergySystem.GetSummonDuration(Caster));
                     Server.Custom.SummonerSynergySystem.ApplyBonuses(spirit, Caster);
             }
 

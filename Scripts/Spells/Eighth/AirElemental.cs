@@ -37,7 +37,7 @@ namespace Server.Spells.Eighth
         {
             if (CheckSequence())
             {
-                TimeSpan duration = TimeSpan.FromSeconds((2 * Caster.Skills.Magery.Fixed) / 5);
+                TimeSpan duration = Server.Custom.SummonerSynergySystem.GetSummonDuration(Caster);
 
                 var summon = new SummonedAirElemental();
                 SpellHelper.Summon(summon, Caster, 0x217, duration, false, false);

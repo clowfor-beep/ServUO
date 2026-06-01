@@ -24,11 +24,69 @@ namespace Server.Custom
     public static class SummonerSynergySystem
     {
         // ── Tuning constants ────────────────────────────────────────────────
-        private const double HpMultiplierPerSS      = 1.5;   // +150% HP   per SS/100
-        private const double DamageMultiplierPerSS  = 0.5;   // +50%  dmg  per SS/100
-        private const double WrestlingBonusPerSS    = 50.0;  // +50 wrestling per SS/100
-        private const double VirtualArmorBonusPerSS = 25.0;  // +25 armor     per SS/100
-        private const double MagicResistBonusPerSS  = 50.0;  // +50 resist    per SS/100
+        private const double HpMultiplierPerSS         = 1.5;   // +150% HP        per SS/100
+        private const double DamageMultiplierPerSS     = 0.5;   // +50%  dmg       per SS/100
+        private const double AttackSpeedMultiplierPerSS = 0.25; // +25%  atk speed per SS/100
+        private const double WrestlingBonusPerSS       = 50.0;  // +50  wrestling  per SS/100
+        private const double VirtualArmorBonusPerSS    = 25.0;  // +25  armor      per SS/100
+        private const double MagicResistBonusPerSS     = 50.0;  // +50  resist     per SS/100
+
+        private const double MinActiveSpeed  = 0.05;
+        private const double MinPassiveSpeed = 0.10;
+
+        // ── Summon duration ─────────────────────────────────────────────────
+        // Formula: 2 min + 8 min * (SS / 100)
+        // SS   0 → 120 s  |  SS 100 → 600 s  |  SS 120 → 696 s
+        public static TimeSpan GetSummonDuration(Mobile caster)
+        {
+            double ss = caster.Skills[SkillName.SpiritSpeak].Value;
+            return TimeSpan.FromSeconds(120.0 + 480.0 * (ss / 100.0));
+        }
+
+        // ── Corpse-harvest timer extension (called from SpiritSpeak.cs) ─────
+        // Extends all nearby summoned creatures' timers by extensionSeconds,
+        // capped so no summon exceeds 30 minutes of total remaining time.
+        public static void ExtendNearbyTimers(Mobile caster, int extensionSeconds)
+        {
+            if (caster == null || caster.Map == null) return;
+
+            const int MaxRemainingSeconds = 1800; // 30-minute hard cap
+            bool extended = false;
+
+            foreach (Mobile m in caster.GetMobilesInRange(12))
+            {
+                BaseCreature bc = m as BaseCreature;
+                if (bc == null || bc.Deleted || !bc.Summoned) continue;
+                if (bc.SummonMaster != caster) continue;
+
+                DateTime now       = DateTime.UtcNow;
+                DateTime newExpiry = bc.SummonEnd.AddSeconds(extensionSeconds);
+                DateTime capExpiry = now.AddSeconds(MaxRemainingSeconds);
+
+                if (newExpiry > capExpiry) newExpiry = capExpiry;
+                if (newExpiry <= bc.SummonEnd) continue; // already at cap
+
+                TimeSpan remaining = newExpiry - now;
+                if (remaining <= TimeSpan.Zero) continue;
+
+                TimerRegistry.RemoveFromRegistry<BaseCreature>("UnsummonTimer", bc);
+                bc.SummonEnd = newExpiry;
+                TimerRegistry.Register<BaseCreature>("UnsummonTimer", bc, remaining, c => c.Delete());
+                extended = true;
+            }
+
+            if (extended)
+                caster.SendMessage(0x59, "Your summoned companions feel renewed energy from the harvested spirit.");
+        }
+
+        // ── Dispel resistance helper ────────────────────────────────────────
+        // Returns the chance (0.0–1.0) that this summoned creature resists a
+        // dispel attempt from a hostile caster, based on its master's SS.
+        public static double GetDispelResistChance(BaseCreature bc)
+        {
+            if (bc?.SummonMaster == null) return 0.0;
+            return 0.5 * (bc.SummonMaster.Skills[SkillName.SpiritSpeak].Value / 100.0);
+        }
 
         /// <summary>
         /// Apply Spirit Speak scaling to a freshly summoned creature.
@@ -49,13 +107,19 @@ namespace Server.Custom
             if (creature.HitsMaxSeed > 0)
             {
                 int hpBonus = (int)(creature.HitsMaxSeed * HpMultiplierPerSS * factor);
-                creature.HitsMaxSeed = creature.HitsMaxSeed + hpBonus;
-                creature.Hits = creature.HitsMaxSeed; // full HP on summon
+                creature.HitsMaxSeed += hpBonus;
+                creature.Hits = creature.HitsMaxSeed;
             }
 
             // ── Damage ─────────────────────────────────────────────────────
-            creature.DamageMin = creature.DamageMin + (int)(creature.DamageMin * DamageMultiplierPerSS * factor);
-            creature.DamageMax = creature.DamageMax + (int)(creature.DamageMax * DamageMultiplierPerSS * factor);
+            creature.DamageMin += (int)(creature.DamageMin * DamageMultiplierPerSS * factor);
+            creature.DamageMax += (int)(creature.DamageMax * DamageMultiplierPerSS * factor);
+
+            // ── Attack Speed ───────────────────────────────────────────────
+            // Reduce AI action delay — lower value = faster actions/attacks
+            double speedReduction = 1.0 - (AttackSpeedMultiplierPerSS * factor);
+            creature.ActiveSpeed  = Math.Max(MinActiveSpeed,  creature.ActiveSpeed  * speedReduction);
+            creature.PassiveSpeed = Math.Max(MinPassiveSpeed, creature.PassiveSpeed * speedReduction);
 
             // ── Wrestling ──────────────────────────────────────────────────
             double newWrestling = Math.Min(120.0,
@@ -63,7 +127,7 @@ namespace Server.Custom
             creature.SetSkill(SkillName.Wrestling, newWrestling);
 
             // ── Virtual Armor ──────────────────────────────────────────────
-            creature.VirtualArmor = creature.VirtualArmor + (int)(VirtualArmorBonusPerSS * factor);
+            creature.VirtualArmor += (int)(VirtualArmorBonusPerSS * factor);
 
             // ── Magic Resist ───────────────────────────────────────────────
             double newResist = Math.Min(120.0,

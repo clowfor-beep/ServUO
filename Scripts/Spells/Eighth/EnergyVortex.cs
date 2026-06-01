@@ -53,7 +53,7 @@ namespace Server.Spells.Eighth
             else if (SpellHelper.CheckTown(p, Caster) && CheckSequence())
             {
                 var vortex = new EnergyVortex(true);
-                    BaseCreature.Summon(vortex, false, Caster, new Point3D(p), 0x212, TimeSpan.FromSeconds(90));
+                    BaseCreature.Summon(vortex, false, Caster, new Point3D(p), 0x212, Server.Custom.SummonerSynergySystem.GetSummonDuration(Caster));
                     Server.Custom.SummonerSynergySystem.ApplyBonuses(vortex, Caster);
             }
 

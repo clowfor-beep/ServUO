@@ -38,7 +38,7 @@ namespace Server.Spells.Eighth
         {
             if (CheckSequence())
             {
-                TimeSpan duration = TimeSpan.FromSeconds((2 * Caster.Skills.Magery.Fixed) / 5);
+                TimeSpan duration = Server.Custom.SummonerSynergySystem.GetSummonDuration(Caster);
 
                 BaseCreature m_Daemon = new SummonedDaemon();
                 SpellHelper.Summon(m_Daemon, Caster, 0x216, duration, false, false);

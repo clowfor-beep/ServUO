@@ -164,6 +164,11 @@ namespace Server.SkillHandlers
                         {
                             toChannel.Channeled = true;
                             toChannel.Hue = 0x835;
+
+                            // Extend nearby summon timers on corpse harvest
+                            // Formula: 30s + 30s * (SS/100) — at SS 100 adds 60s, capped at 30 min total
+                            int extension = 30 + (int)(30.0 * (Caster.Skills[SkillName.SpiritSpeak].Value / 100.0));
+                            Server.Custom.SummonerSynergySystem.ExtendNearbyTimers(Caster, extension);
                         }
 
                         Caster.Mana -= mana;

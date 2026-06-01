@@ -57,6 +57,18 @@ namespace Server.Spells.Sixth
                         //Skill Masteries
                         dispelChance -= ((double)SkillMasteries.MasteryInfo.EnchantedSummoningBonus(bc) / 100);
 
+                        // Spirit Speak dispel resistance — only vs. another player's summons
+                        if (bc.SummonMaster != null && bc.SummonMaster != from)
+                        {
+                            double resistChance = Server.Custom.SummonerSynergySystem.GetDispelResistChance(bc);
+                            if (Utility.RandomDouble() < resistChance)
+                            {
+                                m.FixedEffect(0x3779, 10, 20);
+                                from.SendLocalizedMessage(1010084); // The creature resisted the attempt to dispel it!
+                                return;
+                            }
+                        }
+
                         if (dispelChance > Utility.RandomDouble())
                         {
                             Effects.SendLocationParticles(EffectItem.Create(m.Location, m.Map, EffectItem.DefaultDuration), 0x3728, 8, 20, 5042);
