@@ -9,10 +9,7 @@ namespace Server.Items
         {
             Hue = Reward.SatchelHue();
 
-            int count = 1;
-
-            if (0.015 > Utility.RandomDouble())
-                count = 2;
+            int count = ItemCount;
 
             bool equipment = false;
             bool jewlery = false;
@@ -42,6 +39,10 @@ namespace Server.Items
             : base(serial)
         {
         }
+
+        // Override in subclasses to guarantee a specific item count.
+        // Default: 1 item with a 1.5% chance of 2.
+        protected virtual int ItemCount => 0.015 > Utility.RandomDouble() ? 2 : 1;
 
         public virtual Item RandomItem()
         {
@@ -107,20 +108,13 @@ namespace Server.Items
 
     public class FletcherCraftsmanSatchel : BaseCraftsmanSatchel
     {
+        // Always fill both item slots with quality items (talisman / ranged weapon / jewelry).
+        protected override int ItemCount => 2;
+
         [Constructable]
         public FletcherCraftsmanSatchel()
             : base()
         {
-            if (Items.Count < 2)
-            {
-                Item recipe = Reward.FletcherRecipe();
-
-                if (recipe != null)
-                {
-                    DropItem(recipe);
-                }
-            }
-
             Item runic = Reward.FletcherRunic();
 
             if (runic != null)

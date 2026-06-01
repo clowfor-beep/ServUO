@@ -1,5 +1,6 @@
 using Server.Items;
 using System;
+using System.Collections.Generic;
 
 namespace Server.Engines.Quests
 {
@@ -203,15 +204,23 @@ namespace Server.Engines.Quests
         {
         }
 
-        public override Type[] Quests => new Type[]
-                {
-                    typeof(LethalDartsQuest),
-                    typeof(SimpleBowQuest),
-                    typeof(IngeniousArcheryPartOneQuest),
-                    typeof(IngeniousArcheryPartTwoQuest),
-                    typeof(IngeniousArcheryPartThreeQuest),
-                    typeof(StopHarpingOnMeQuest)
-                };
+        // 35% LethalDarts, remaining 65% split equally across the other 5 (13% each).
+        // Uniform random selection requires a weighted array: 35 + 5*13 = 100 entries.
+        private static readonly Type[] m_WeightedQuests = BuildWeightedQuests();
+
+        private static Type[] BuildWeightedQuests()
+        {
+            var list = new List<Type>(100);
+            for (int i = 0; i < 35; i++) list.Add(typeof(LethalDartsQuest));
+            for (int i = 0; i < 13; i++) list.Add(typeof(SimpleBowQuest));
+            for (int i = 0; i < 13; i++) list.Add(typeof(IngeniousArcheryPartOneQuest));
+            for (int i = 0; i < 13; i++) list.Add(typeof(IngeniousArcheryPartTwoQuest));
+            for (int i = 0; i < 13; i++) list.Add(typeof(IngeniousArcheryPartThreeQuest));
+            for (int i = 0; i < 13; i++) list.Add(typeof(StopHarpingOnMeQuest));
+            return list.ToArray();
+        }
+
+        public override Type[] Quests => m_WeightedQuests;
         public override void InitBody()
         {
             InitStats(100, 100, 25);

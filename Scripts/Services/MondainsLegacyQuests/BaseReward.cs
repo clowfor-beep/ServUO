@@ -85,21 +85,22 @@ namespace Server.Engines.Quests
 
         public static Item FletcherRunic()
         {
+            // Thresholds are 6x the original values (0.5% total → 3.0% total).
             double ran = Utility.RandomDouble();
 
-            if (ran <= 0.0001)
+            if (ran <= 0.0006)
             {
                 return new RunicFletcherTool(CraftResource.Heartwood, 15);
             }
-            else if (ran <= 0.0005)
+            else if (ran <= 0.003)
             {
                 return new RunicFletcherTool(CraftResource.YewWood, 25);
             }
-            else if (ran <= 0.0025)
+            else if (ran <= 0.015)
             {
                 return new RunicFletcherTool(CraftResource.AshWood, 35);
             }
-            else if (ran <= 0.005)
+            else if (ran <= 0.03)
             {
                 return new RunicFletcherTool(CraftResource.OakWood, 45);
             }
