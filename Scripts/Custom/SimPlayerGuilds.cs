@@ -1319,9 +1319,9 @@ namespace Server.Custom
             AddItem(new Boots());
             AddItem(new HeaterShield());
 
-            // Longsword with 25% hit fire area — bypasses physical resists on champion spawn creatures
+            // Longsword with hit harm — single-target, no AOE splash on pets
             var sword = new Longsword();
-            sword.WeaponAttributes.HitFireArea  = 25;
+            sword.WeaponAttributes.HitHarm      = 70;
             sword.WeaponAttributes.HitLeechHits = 40; // 40% life leech
             sword.Attributes.WeaponDamage       = 50;
             sword.Attributes.AttackChance       = 15;
@@ -1332,7 +1332,7 @@ namespace Server.Custom
             // Ranged fallback: magic heavy crossbow stored in pack
             // EquipCrossbow() swaps to this when stuck on unreachable targets
             var xbow = new HeavyCrossbow();
-            xbow.WeaponAttributes.HitFireball  = 30; // 30% hit fireball — ranged elemental damage
+            xbow.WeaponAttributes.HitLightning = 70; // single-target, no AOE splash on pets
             xbow.Attributes.WeaponDamage       = 50;
             xbow.Attributes.AttackChance       = 15;
             PackItem(xbow);
