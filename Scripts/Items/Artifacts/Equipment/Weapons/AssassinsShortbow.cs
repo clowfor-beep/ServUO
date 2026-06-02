@@ -15,6 +15,9 @@ namespace Server.Items
         {
         }
 
+        public override WeaponAbility PrimaryAbility   => WeaponAbility.AssassinsStrike;
+        public override WeaponAbility SecondaryAbility => WeaponAbility.MovingShot;
+
         public override int LabelNumber => 1073512;// assassin's shortbow
         public override void Serialize(GenericWriter writer)
         {
