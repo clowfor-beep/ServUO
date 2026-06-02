@@ -5,11 +5,11 @@
 // A travelling bulk-goods merchant who appears at a random town
 // bank for 30 minutes before moving on.
 //
-// - Sells 10 randomly selected crafting resource stacks per visit
-// - Each stack is 1,000 / 5,000 / or 10,000 units (randomised)
-// - Resource type and amount are re-randomised every visit
+// - Sells 10 randomly selected crafting resource deeds per visit
+// - Each deed is redeemable for 500 / 2,500 / or 5,000 units
+// - Double-clicking the deed spawns the resources into your pack
 // - Accepts gold withdrawn directly from the player's bank account
-// - Announces arrival via World.Broadcast
+// - Announces arrival via World.Broadcast (white text)
 //
 // Usage: [add BulkResourceMerchant  (or let system manage it)
 //         [respawnbulkmerchant       (GM command to force respawn)
@@ -26,6 +26,111 @@ using Server.Network;
 
 namespace Server.Custom
 {
+    // ── Resource deed item ────────────────────────────────────────────────────
+
+    public class ResourceDeed : Item
+    {
+        private string _resourceName;
+        private int    _amount;
+
+        [CommandProperty(AccessLevel.GameMaster)]
+        public string ResourceName
+        {
+            get { return _resourceName; }
+            set { _resourceName = value; InvalidateProperties(); }
+        }
+
+        [CommandProperty(AccessLevel.GameMaster)]
+        public int Amount
+        {
+            get { return _amount; }
+            set { _amount = value; InvalidateProperties(); }
+        }
+
+        [Constructable]
+        public ResourceDeed() : this("Iron Ingots", 500) { }
+
+        public ResourceDeed(string resourceName, int amount)
+            : base(0x14F0) // deed graphic
+        {
+            _resourceName = resourceName;
+            _amount       = amount;
+            Hue           = 0x44E; // gold-ish parchment hue
+            Weight        = 1.0;
+            LootType      = LootType.Blessed;
+            Name          = string.Format("a resource deed ({0:N0} {1})", amount, resourceName);
+        }
+
+        public ResourceDeed(Serial serial) : base(serial) { }
+
+        public override void GetProperties(ObjectPropertyList list)
+        {
+            base.GetProperties(list);
+            list.Add(string.Format("Resource: {0}", _resourceName));
+            list.Add(string.Format("Amount: {0:N0} units", _amount));
+            list.Add("Double-click to redeem into your backpack.");
+        }
+
+        public override void OnDoubleClick(Mobile from)
+        {
+            if (!IsChildOf(from.Backpack))
+            {
+                from.SendLocalizedMessage(1042001); // That must be in your pack.
+                return;
+            }
+
+            Func<int, Item> factory = BulkResourcePool.GetFactory(_resourceName);
+            if (factory == null)
+            {
+                from.SendMessage(0x22, "This deed references an unknown resource.");
+                return;
+            }
+
+            // Split into stacks of 60,000 (max stack) if needed — in practice
+            // our max is 5,000 so one stack is always enough.
+            Item stack = factory(_amount);
+            if (stack == null)
+            {
+                from.SendMessage(0x22, "Could not create the resource.");
+                return;
+            }
+
+            if (!from.AddToBackpack(stack))
+            {
+                stack.MoveToWorld(from.Location, from.Map);
+                from.SendMessage("Your backpack is full — the resources were placed at your feet.");
+            }
+            else
+            {
+                from.SendMessage(0x35, string.Format(
+                    "You redeem the deed and receive {0:N0} {1}.", _amount, _resourceName));
+            }
+
+            Effects.SendLocationParticles(
+                EffectItem.Create(from.Location, from.Map, EffectItem.DefaultDuration),
+                0x376A, 9, 20, 5023);
+            from.PlaySound(0x249);
+
+            Delete();
+        }
+
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.Write(0); // version
+            writer.Write(_resourceName);
+            writer.Write(_amount);
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            int version = reader.ReadInt();
+            _resourceName = reader.ReadString();
+            _amount       = reader.ReadInt();
+        }
+    }
+
     // ── Pool entry ────────────────────────────────────────────────────────────
 
     public class BulkResourceEntry
@@ -51,17 +156,14 @@ namespace Server.Custom
         public readonly int             GoldPrice;
         public readonly int             ItemID;
         public readonly int             ItemHue;
-        public readonly Func<int, Item> Factory;
 
-        public BulkResourceSlot(string name, int amount, int goldPerUnit,
-                                int itemID, int itemHue, Func<int, Item> factory)
+        public BulkResourceSlot(string name, int amount, int goldPerUnit, int itemID, int itemHue)
         {
             Name      = name;
             Amount    = amount;
             GoldPrice = amount * goldPerUnit;
             ItemID    = itemID;
             ItemHue   = itemHue;
-            Factory   = factory;
         }
     }
 
@@ -132,6 +234,22 @@ namespace Server.Custom
             new BulkResourceEntry("Tourmaline",          10, amt => new Tourmaline(amt)),
         };
 
+        // Lookup by name — used by ResourceDeed on redemption
+        private static Dictionary<string, Func<int, Item>> _factoryCache;
+
+        public static Func<int, Item> GetFactory(string name)
+        {
+            if (_factoryCache == null)
+            {
+                _factoryCache = new Dictionary<string, Func<int, Item>>();
+                foreach (var entry in Pool)
+                    _factoryCache[entry.Name] = entry.Create;
+            }
+
+            Func<int, Item> factory;
+            return _factoryCache.TryGetValue(name, out factory) ? factory : null;
+        }
+
         public static List<BulkResourceSlot> GetRandomStock(int count = 10)
         {
             var pool   = new List<BulkResourceEntry>(Pool);
@@ -146,13 +264,14 @@ namespace Server.Custom
 
                 int amount = Amounts[Utility.Random(Amounts.Length)];
 
+                // Create a temp item just to get the icon/hue for the gump
                 Item temp = entry.Create(1);
                 int  iid  = temp.ItemID;
                 int  hue  = temp.Hue;
                 temp.Delete();
 
                 result.Add(new BulkResourceSlot(
-                    entry.Name, amount, (int)Math.Round(entry.GoldPerUnit * 1.5), iid, hue, entry.Create));
+                    entry.Name, amount, (int)Math.Round(entry.GoldPerUnit * 1.5), iid, hue));
             }
 
             return result;
@@ -216,8 +335,8 @@ namespace Server.Custom
             _current.SayArrival();
 
             World.Broadcast(0xFFFF, true,
-                $"[Trade] A bulk goods merchant has set up stall at the {entry.town} bank. " +
-                "Crafting materials in bulk — gold withdrawn from your bank — 30 minutes only.");
+                string.Format("[Trade] A bulk goods merchant has set up stall at the {0} bank. " +
+                "Resource deeds in bulk — gold withdrawn from your bank — 30 minutes only.", entry.town));
 
             Timer.DelayCall(StayDuration, SpawnNext);
         }
@@ -275,8 +394,8 @@ namespace Server.Custom
 
         public void SayArrival()
         {
-            Say($"*sets out crates at the {_townName} bank* " +
-                "Bulk crafting supplies — gold drawn from your bank account!");
+            Say(string.Format("*sets out crates at the {0} bank* " +
+                "Resource deeds — redeem them anywhere for bulk crafting supplies!", _townName));
         }
 
         public void SayFarewell()
@@ -302,12 +421,13 @@ namespace Server.Custom
             pm.SendGump(new BulkResourceGump(pm, this));
         }
 
+        // Returns a ResourceDeed — lightweight, blessed, redeemable anywhere
         public Item PurchaseSlot(int index)
         {
             if (index < 0 || index >= _stock.Count) return null;
             var slot = _stock[index];
             _stock.RemoveAt(index);
-            return slot.Factory(slot.Amount);
+            return new ResourceDeed(slot.Name, slot.Amount);
         }
 
         public override void OnDelete()
@@ -357,7 +477,7 @@ namespace Server.Custom
             var stock   = npc.Stock;
             int rows    = (int)Math.Ceiling(stock.Count / 2.0);
             int GH      = GridTop + rows * RowH + 44;
-            int balance = Banker.GetBalance(player); // bank account balance
+            int balance = Banker.GetBalance(player);
 
             AddBackground(0, 0, GW, GH, 9200);
             AddAlphaRegion(4, 4, GW - 8, GH - 8);
@@ -367,12 +487,13 @@ namespace Server.Custom
             AddAlphaRegion(4, 4, GW - 8, HeaderH);
 
             AddLabel(GW / 2 - 130, 10, 0x9C2, "~ Bulk Goods Merchant ~");
-            AddLabel(GW / 2 - 130, 28, 1152,  "Crafting supplies — gold drawn from bank");
-            AddLabel(GW / 2 - 85,  46, 0x848, "Stock refreshes each visit");
+            AddLabel(GW / 2 - 145, 28, 1152,  "Resource deeds — gold drawn from bank");
+            AddLabel(GW / 2 - 120, 46, 0x848, "Redeem deeds anywhere for bulk supplies");
 
             // Bank balance (top right)
             AddItem(GW - 135, 8,  0xEED, 0);
-            AddLabel(GW - 115, 10, balance > 0 ? 0x35 : 33, $"Bank: {balance:N0}g");
+            AddLabel(GW - 115, 10, balance > 0 ? 0x35 : 33,
+                string.Format("Bank: {0:N0}g", balance));
 
             // Separator
             AddImageTiled(4, HeaderH + 2, GW - 8, 2, 9264);
@@ -386,45 +507,39 @@ namespace Server.Custom
 
                 bool canAfford = balance >= slot.GoldPrice;
 
-                // Cell background
                 int cellBg = (i / 2) % 2 == 0 ? 9274 : 9200;
                 AddImageTiled(col, row, ColW, RowH - 3, cellBg);
                 AddAlphaRegion(col, row, ColW, RowH - 3);
 
-                // Left accent bar
                 AddImageTiled(col, row, 3, RowH - 3, canAfford ? 0x9C2 : 33);
 
-                // Item icon
-                AddItem(col + 8, row + 8, slot.ItemID, slot.ItemHue);
+                // Show deed icon (0x14F0), hued gold, next to resource icon
+                AddItem(col + 8, row + 8, 0x14F0, 0x44E);  // deed
+                AddItem(col + 28, row + 16, slot.ItemID, slot.ItemHue); // resource preview
 
-                // Resource name
-                string dispName = slot.Name.Length > 24
-                    ? slot.Name.Substring(0, 23) + "…"
+                string dispName = slot.Name.Length > 22
+                    ? slot.Name.Substring(0, 21) + "..."
                     : slot.Name;
-                AddLabel(col + 55, row + 8, canAfford ? 1152 : 0x848, dispName);
+                AddLabel(col + 60, row + 8, canAfford ? 1152 : 0x848, dispName);
 
-                // Amount — colour-coded by size
-                int amtHue = slot.Amount == 10000 ? 0x21 :
-                             slot.Amount == 5000  ? 0x4F : 0x9C2;
-                AddLabel(col + 55, row + 26, amtHue, $"x {slot.Amount:N0}");
+                int amtHue = slot.Amount == 5000 ? 0x21 :
+                             slot.Amount == 2500 ? 0x4F : 0x9C2;
+                AddLabel(col + 60, row + 26, amtHue, string.Format("x {0:N0}", slot.Amount));
 
-                // Gold price
-                AddLabel(col + 55, row + 44, canAfford ? 0x35 : 33,
-                    $"{slot.GoldPrice:N0} gold");
+                AddLabel(col + 60, row + 44, canAfford ? 0x35 : 33,
+                    string.Format("{0:N0} gold", slot.GoldPrice));
 
-                // Buy button or can't afford label
                 if (canAfford)
                 {
-                    AddButton(col + 190, row + 26, 4005, 4007,
+                    AddButton(col + 195, row + 26, 4005, 4007,
                         BtnBuyBase + i, GumpButtonType.Reply, 0);
-                    AddLabel(col + 225, row + 28, 0x35, "Buy");
+                    AddLabel(col + 230, row + 28, 0x35, "Buy");
                 }
                 else
                 {
-                    AddLabel(col + 185, row + 28, 33, "Can't afford");
+                    AddLabel(col + 190, row + 28, 33, "Can't afford");
                 }
 
-                // Column divider
                 if (i % 2 == 0)
                     AddImageTiled(GridRight - 2, row, 2, RowH - 3, 9264);
             }
@@ -474,34 +589,38 @@ namespace Server.Custom
             _npc       = npc;
             _slotIndex = slotIndex;
 
-            var slot    = npc.Stock[slotIndex];
-            int balance = Banker.GetBalance(player);
+            var slot      = npc.Stock[slotIndex];
+            int balance   = Banker.GetBalance(player);
             int remaining = balance - slot.GoldPrice;
 
-            AddBackground(0, 0, 340, 210, 9200);
-            AddAlphaRegion(5, 5, 330, 200);
+            AddBackground(0, 0, 340, 220, 9200);
+            AddAlphaRegion(5, 5, 330, 210);
             AddImageTiled(5, 5, 330, 44, 9304);
 
             AddLabel(170 - 70, 14, 0x9C2, "Confirm Purchase");
 
-            AddItem(20, 58, slot.ItemID, slot.ItemHue);
+            // Deed icon + resource icon side by side
+            AddItem(20, 58, 0x14F0, 0x44E);
+            AddItem(40, 66, slot.ItemID, slot.ItemHue);
 
-            int amtHue = slot.Amount == 10000 ? 0x21 :
-                         slot.Amount == 5000  ? 0x4F : 0x9C2;
-            AddLabel(75, 56, 1152,   slot.Name);
-            AddLabel(75, 74, amtHue, $"Amount:      {slot.Amount:N0} units");
-            AddLabel(75, 92, 0x35,   $"Cost:        {slot.GoldPrice:N0} gold");
-            AddLabel(75, 110, 0x848, $"Bank before: {balance:N0} gold");
-            AddLabel(75, 128, remaining >= 0 ? 0x35 : 33,
-                $"Bank after:  {remaining:N0} gold");
+            int amtHue = slot.Amount == 5000 ? 0x21 :
+                         slot.Amount == 2500 ? 0x4F : 0x9C2;
 
-            AddImageTiled(10, 148, 320, 1, 9264);
-            AddLabel(25, 158, 1152, "Gold will be withdrawn from your bank.");
+            AddLabel(80, 56, 1152,   slot.Name);
+            AddLabel(80, 74, amtHue, string.Format("Amount:      {0:N0} units", slot.Amount));
+            AddLabel(80, 92, 0x35,   string.Format("Cost:        {0:N0} gold", slot.GoldPrice));
+            AddLabel(80, 110, 0x848, string.Format("Bank before: {0:N0} gold", balance));
+            AddLabel(80, 128, remaining >= 0 ? 0x35 : 33,
+                string.Format("Bank after:  {0:N0} gold", remaining));
 
-            AddButton(60,  182, 4005, 4007, BtnConfirm, GumpButtonType.Reply, 0);
-            AddLabel(95,  184, 0x35, "Confirm");
-            AddButton(200, 182, 4017, 4019, BtnCancel, GumpButtonType.Reply, 0);
-            AddLabel(235, 184, 33, "Cancel");
+            AddImageTiled(10, 152, 320, 1, 9264);
+            AddLabel(20, 162, 1152, "You will receive a deed — redeem it");
+            AddLabel(20, 178, 1152, "anywhere to claim your resources.");
+
+            AddButton(60,  200, 4005, 4007, BtnConfirm, GumpButtonType.Reply, 0);
+            AddLabel(95,  202, 0x35, "Confirm");
+            AddButton(200, 200, 4017, 4019, BtnCancel, GumpButtonType.Reply, 0);
+            AddLabel(235, 202, 33, "Cancel");
         }
 
         public override void OnResponse(NetState sender, RelayInfo info)
@@ -540,7 +659,6 @@ namespace Server.Custom
                 return;
             }
 
-            // Withdraw from bank and deliver items
             if (!Banker.Withdraw(_player, slot.GoldPrice))
             {
                 _player.SendMessage(0x22, "The bank was unable to process the withdrawal.");
@@ -550,19 +668,21 @@ namespace Server.Custom
 
             string name   = slot.Name;
             int    amount = slot.Amount;
+            int    price  = slot.GoldPrice;
 
-            Item purchased = _npc.PurchaseSlot(_slotIndex);
-            if (purchased != null)
-                _player.AddToBackpack(purchased);
+            Item deed = _npc.PurchaseSlot(_slotIndex);
+            if (deed != null)
+                _player.AddToBackpack(deed);
 
-            _npc.Say($"Pleasure doing business. Enjoy your {name.ToLower()}.");
-            _player.SendMessage(0x35,
-                $"You purchased {amount:N0} {name} for {slot.GoldPrice:N0} gold (withdrawn from bank).");
+            _npc.Say(string.Format("Pleasure doing business. Your deed for {0} is ready.", name.ToLower()));
+            _player.SendMessage(0x35, string.Format(
+                "You purchased a deed for {0:N0} {1} — {2:N0} gold withdrawn from bank.",
+                amount, name, price));
 
             Effects.SendLocationParticles(
                 EffectItem.Create(_player.Location, _player.Map, EffectItem.DefaultDuration),
                 0x376A, 9, 20, 5023);
-            _player.PlaySound(0x2E6);
+            _player.PlaySound(0x249);
 
             _player.SendGump(new BulkResourceGump(_player, _npc));
         }
