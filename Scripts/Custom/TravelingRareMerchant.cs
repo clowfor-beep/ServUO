@@ -210,8 +210,8 @@ namespace Server.Custom
         };
 
         // Tier → coin cost
-        private static readonly int[] PSTiers     = { 105, 110, 115, 120 };
-        private static readonly int[] PSTierCosts  = {  20,  45,  70,  90 };
+        private static readonly int[] PSTiers    = { 105, 110, 115, 120 };
+        private static readonly int[] PSTierCosts = {  20,  45,  70,  90 };
 
         /// <summary>
         /// Builds a pool of PS entries where every skill has exactly equal
@@ -233,7 +233,7 @@ namespace Server.Custom
                     // Capture for closure — both display item and factory use the same skill+tier
                     SkillName capturedSkill = skill;
                     double    capturedTier  = tier;
-                    string    name          = $"PS +{tier}: {display}";
+                    string    name          = string.Format("PS +{0}: {1}", tier, display);
 
                     pool.Add(new RareMerchantEntry(name, cost,
                         () => new PowerScroll(capturedSkill, capturedTier)));
@@ -318,8 +318,8 @@ namespace Server.Custom
             _current.SayArrival();
 
             World.Broadcast(0x8C4, true,
-                $"[Rumour] A mysterious merchant has appeared at the {entry.town} bank. " +
-                "He accepts only Merchant Coins and stays just 30 minutes.");
+                string.Format("[Rumour] A mysterious merchant has appeared at the {0} bank. " +
+                "He accepts only Merchant Coins and stays just 30 minutes.", entry.town));
 
             Timer.DelayCall(StayDuration, SpawnNext);
         }
@@ -329,7 +329,7 @@ namespace Server.Custom
 
     public class TravelingRareMerchant : BaseCreature
     {
-        private readonly string             _townName;
+        private readonly string                  _townName;
         public string TownName => _townName;
         private readonly List<RareMerchantSlot> _stock = new List<RareMerchantSlot>();
 
@@ -411,8 +411,7 @@ namespace Server.Custom
 
         public void SayArrival()
         {
-            Say($"*sets out wares at the {_townName} bank* " +
-                "I have rare goods — Merchant Coins only.");
+            Say(string.Format("*sets out wares at the {0} bank* I have rare goods — Merchant Coins only.", _townName));
         }
 
         public void SayFarewell()
@@ -474,7 +473,7 @@ namespace Server.Custom
     public static class RareMerchantDiscount
     {
         /// <summary>
-        /// Returns the total discount fraction (0.0–1.0) for a player:
+        /// Returns the total discount fraction (0.0-1.0) for a player:
         ///   +1% per Paladin Order reputation tier (max 4% at Allied)
         ///   +1% per 20 points of Begging skill (max 6% at skill 120)
         /// </summary>
@@ -505,7 +504,7 @@ namespace Server.Custom
             int    total   = repTier + begTier;
 
             if (total == 0) return string.Empty;
-            return $"{total}% off  (Paladin: {repTier}%  Begging: {begTier}%)";
+            return string.Format("{0}% off  (Paladin: {1}%  Begging: {2}%)", total, repTier, begTier);
         }
     }
 
@@ -517,13 +516,13 @@ namespace Server.Custom
         private readonly TravelingRareMerchant _npc;
 
         // Layout
-        private const int GW         = 640;
-        private const int ColW       = 305;
-        private const int RowH       = 95;
-        private const int GridLeft   = 8;
-        private const int GridRight  = 324;
-        private const int GridTop    = 80;
-        private const int HeaderH    = 72;
+        private const int GW        = 640;
+        private const int ColW      = 305;
+        private const int RowH      = 95;
+        private const int GridLeft  = 8;
+        private const int GridRight = 324;
+        private const int GridTop   = 80;
+        private const int HeaderH   = 72;
 
         private const int BtnClose   = 0;
         private const int BtnBuyBase = 100;
@@ -554,7 +553,7 @@ namespace Server.Custom
             int coins = player.Backpack != null
                 ? player.Backpack.GetAmount(typeof(MerchantCoin)) : 0;
             AddItem(GW - 155, 8, 0xEED, 1153);
-            AddLabel(GW - 135, 10, coins > 0 ? 0x35 : 33, $"Coins: {coins}");
+            AddLabel(GW - 135, 10, coins > 0 ? 0x35 : 33, string.Format("Coins: {0}", coins));
 
             // Discount (below coin balance)
             string discSummary = RareMerchantDiscount.Summary(player);
@@ -588,20 +587,20 @@ namespace Server.Custom
 
                 // Item name
                 string name = slot.Name.Length > 30
-                    ? slot.Name.Substring(0, 29) + "…"
+                    ? slot.Name.Substring(0, 29) + "..."
                     : slot.Name;
                 AddLabel(col + 62, row + 8, canAfford ? 1152 : 0x848, name);
 
                 // Pricing row
                 if (disc)
                 {
-                    AddLabel(col + 62, row + 28, 0x3B2, $"{slot.Cost}c  →");
-                    AddLabel(col + 108, row + 28, 0x8A5, $"{finalCost} coins");
+                    AddLabel(col + 62, row + 28, 0x3B2, string.Format("{0}c  ->", slot.Cost));
+                    AddLabel(col + 108, row + 28, 0x8A5, string.Format("{0} coins", finalCost));
                 }
                 else
                 {
                     AddLabel(col + 62, row + 28, canAfford ? 0x8A5 : 0x3B2,
-                        $"{finalCost} Merchant Coins");
+                        string.Format("{0} Merchant Coins", finalCost));
                 }
 
                 // Buy button or "insufficient funds" note
@@ -698,23 +697,23 @@ namespace Server.Custom
             AddItemProperty(slot.Item.Serial);
 
             // Item name + pricing
-            string name = slot.Name.Length > 26 ? slot.Name.Substring(0, 25) + "…" : slot.Name;
+            string name = slot.Name.Length > 26 ? slot.Name.Substring(0, 25) + "..." : slot.Name;
             AddLabel(80, 58, 1152, name);
 
             if (finalCost < slot.Cost)
             {
-                AddLabel(80, 76, 33,    $"Base: {slot.Cost}c");
-                AddLabel(80, 94, 0x8A5, $"Your price: {finalCost}c  ({discSummary})");
+                AddLabel(80, 76, 33,    string.Format("Base: {0}c", slot.Cost));
+                AddLabel(80, 94, 0x8A5, string.Format("Your price: {0}c  ({1})", finalCost, discSummary));
             }
             else
             {
-                AddLabel(80, 76, 0x8A5, $"Cost: {finalCost} Merchant Coins");
+                AddLabel(80, 76, 0x8A5, string.Format("Cost: {0} Merchant Coins", finalCost));
             }
 
             int remaining = coins - finalCost;
             int noteY = finalCost < slot.Cost ? 112 : 94;
             AddLabel(80, noteY, remaining >= 0 ? 0x35 : 33,
-                $"Balance after: {remaining} coins");
+                string.Format("Balance after: {0} coins", remaining));
 
             // Separator + confirm question
             int sepY = gumpH - 80;
@@ -775,9 +774,9 @@ namespace Server.Custom
             if (purchased != null)
                 _player.AddToBackpack(purchased);
 
-            _npc.Say($"A fine choice. Enjoy your {slot.Name.Split(':')[0].Trim()}.");
+            _npc.Say(string.Format("A fine choice. Enjoy your {0}.", slot.Name.Split(':')[0].Trim()));
             _player.SendMessage(0x35,
-                $"You purchased {slot.Name} for {finalCost} Merchant Coins.");
+                string.Format("You purchased {0} for {1} Merchant Coins.", slot.Name, finalCost));
 
             // Effects
             Effects.SendLocationParticles(
@@ -796,4 +795,3 @@ namespace Server.Custom
         }
     }
 }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
