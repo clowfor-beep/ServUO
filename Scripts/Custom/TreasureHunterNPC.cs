@@ -142,8 +142,7 @@ namespace Server.Custom
 
             SetStr(100); SetDex(100); SetInt(100);
             SetHits(200);
-
-            SetSkill(SkillName.Cartography, 100.0, 100.0);
+            SetSkill(SkillName.Cartography, 100.0, 100.0); // guarantees Gold chest quality
 
             // Weathered explorer / treasure hunter outfit
             int leather = Utility.RandomList(1109, 2117, 2213, 2306); // earthy leather browns
