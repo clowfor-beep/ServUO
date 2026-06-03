@@ -242,35 +242,60 @@ namespace Server.Custom
 
         /// <summary>
         /// Controls who the AI considers an enemy at the champ spawn.
-        /// — Uncontrolled non-SimPlayer creatures (spawn monsters): always enemy.
-        /// — Innocent (blue) players and their pets: never enemy.
-        /// — Red players (murderers): enemy via base logic.
+        /// — Uncontrolled non-SimPlayer creatures (spawn monsters): always enemy (grey or blue).
+        /// — Red players (murderers): always enemy at spawn.
+        /// — Any player/pet who attacked us first: enemy for 30s retaliation window.
+        /// — Innocent (blue) players who haven't attacked us: never enemy.
         /// Outside the spawn phase falls back to base behaviour.
         /// </summary>
         public override bool IsEnemy(Mobile m)
         {
-            // Never attack innocent player pets regardless of phase or location.
-            // A pet owned by a blue player is only fair game if it or its owner
-            // attacked us first (retaliation window).
+            // Retaliation targets are always fair game regardless of notoriety.
+            if (IsRetaliationTarget(m))
+                return true;
+
+            // If a retaliation target owns the pet, fight the pet too.
+            if (m is BaseCreature retPet && retPet.Controlled
+                && IsRetaliationTarget(retPet.ControlMaster))
+                return true;
+
+            // Never attack innocent player pets unless they or their owner attacked us first.
             if (m is BaseCreature petCheck && petCheck.Controlled
                 && petCheck.ControlMaster is PlayerMobile petOwner
-                && petOwner.Kills < 5
-                && !IsRetaliationTarget(petCheck)
-                && !IsRetaliationTarget(petOwner))
+                && petOwner.Kills < 5)
                 return false;
 
             if (_champPhase == ChampPhase.AtSpawn)
             {
-                // At spawn: target uncontrolled non-SimPlayer creatures (spawn monsters)
+                // All uncontrolled non-SimPlayer creatures are enemies — grey or blue.
                 if (m is BaseCreature bc && !bc.Controlled && !bc.Summoned && !(m is SimPlayer))
                     return true;
 
-                // At spawn: never auto-attack innocent (blue) players
-                if (m is PlayerMobile pm && pm.Kills < 5 && !IsRetaliationTarget(pm))
+                // Always fight red players (murderers) at spawn.
+                if (m is PlayerMobile redPm && redPm.Kills >= 5)
+                    return true;
+
+                // Never auto-attack innocent (blue) players who haven't hit us.
+                if (m is PlayerMobile pm && pm.Kills < 5)
                     return false;
             }
 
             return base.IsEnemy(m);
+        }
+
+        /// <summary>
+        /// Allow attacking uncontrolled spawn creatures regardless of their notoriety.
+        /// Base CanBeHarmful rejects blue innocents — without this override the target
+        /// scan skips blue Lord of Oaks creatures entirely.
+        /// </summary>
+        public override bool CanBeHarmful(Mobile target, bool message, bool ignoreEvilType)
+        {
+            if (_champPhase == ChampPhase.AtSpawn
+                && target is BaseCreature spawnBc
+                && !spawnBc.Controlled && !spawnBc.Summoned && !(target is SimPlayer))
+                return true;
+
+            return base.CanBeHarmful(target, message, ignoreEvilType);
         }
 
         /// <summary>
@@ -389,51 +414,22 @@ namespace Server.Custom
         /// This is the only way an innocent player can become our combatant.
         /// </summary>
 
-        /// <summary>
-        /// Intercept damage before HP is reduced. At a champion spawn, all damage
-        /// from innocent (blue) players and their pets is silently absorbed —
-        /// this covers direct hits, AoE weapons, and AoE spells.
-        /// </summary>
-        public override int Damage(int amount, Mobile from)
-        {
-            if (_champPhase == ChampPhase.AtSpawn && from != null)
-            {
-                // Blue player — absorb all damage including AoE
-                if (from is PlayerMobile pm && pm.Kills < 5)
-                    return 0;
-
-                // Blue player's pet — absorb all damage including AoE
-                if (from is BaseCreature bc && bc.Controlled
-                    && bc.ControlMaster is PlayerMobile petOwner
-                    && petOwner.Kills < 5)
-                    return 0;
-            }
-
-            return base.Damage(amount, from);
-        }
-
         public override void OnDamage(int amount, Mobile from, bool willKill)
         {
             base.OnDamage(amount, from, willKill);
 
-            if (_champPhase == ChampPhase.AtSpawn && from != null && from.Alive && from != this)
-            {
-                // Never retaliate against innocent player pets at a champion spawn.
-                // Pets in Guard mode frequently hit us by mistake while we fight spawn
-                // monsters — retaliating starts an unintended fight loop with the player.
-                if (from is BaseCreature aggPet && aggPet.Controlled
-                    && aggPet.ControlMaster is PlayerMobile aggOwner
-                    && aggOwner.Kills < 5)
-                    return;
+            if (from == null || !from.Alive || from == this) return;
 
-                // Also ignore if the damage came from a blue player directly
-                if (from is PlayerMobile attPm && attPm.Kills < 5)
-                    return;
+            // Register the responsible party as a retaliation target for 30 seconds.
+            // If a pet attacked us, register the owner — that way both the pet combatant
+            // check (IsRetaliationTarget(petOwner)) and the blue player combatant check
+            // (IsRetaliationTarget(bluePm)) in OnThink pass correctly.
+            Mobile responsible = from;
+            if (from is BaseCreature attackPet && attackPet.Controlled && attackPet.ControlMaster != null)
+                responsible = attackPet.ControlMaster;
 
-                // Red player or actual enemy — register for retaliation
-                _retaliateSerial  = from.Serial;
-                _retaliateExpires = DateTime.UtcNow + TimeSpan.FromSeconds(30);
-            }
+            _retaliateSerial  = responsible.Serial;
+            _retaliateExpires = DateTime.UtcNow + TimeSpan.FromSeconds(30);
         }
 
         /// <summary>
