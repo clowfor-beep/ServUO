@@ -622,7 +622,7 @@ namespace Server.Custom
                 Mobile owner = RootParent as Mobile;
                 if (owner?.Backpack == null) return;
 
-                if (owner.Backpack.FindItemsByType<BaseBagOfHolding>(true).Length > 1)
+                if (owner.Backpack.FindItemsByType<BaseBagOfHolding>(true).Count > 1)
                 {
                     owner.SendMessage(0x22, "You may only carry one bag of holding at a time.");
                     MoveToWorld(owner.Location, owner.Map);
