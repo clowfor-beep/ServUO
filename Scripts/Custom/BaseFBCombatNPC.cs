@@ -36,6 +36,12 @@ namespace Server.Custom
         protected virtual string[] AggroLines => new string[0];
         protected virtual string[] KillLines  => new string[0];
 
+        // ── Primary target ────────────────────────────────────────────────
+        // Not serialized — encounter NPCs are session-only and auto-delete.
+        // Stored here so OnThink can always re-lock onto the intended player
+        // rather than drifting to nearby champ spawn creatures or other mobs.
+        private Mobile _primaryTarget;
+
         // ── Constructor ───────────────────────────────────────────────────
         protected BaseFBCombatNPC(AIType ai, FightMode mode, int range)
             : base(ai, mode, range, 1, 0.1, 0.2)
@@ -64,6 +70,8 @@ namespace Server.Custom
         // Sets combatant, fires aggro speech, and starts 5-min auto-delete.
         public void InitEncounter(Mobile target)
         {
+            _primaryTarget = target;
+
             Timer.DelayCall(TimeSpan.FromMilliseconds(500), () =>
             {
                 if (Deleted || target == null || !target.Alive)
@@ -85,17 +93,19 @@ namespace Server.Custom
         }
 
         // ── AI ────────────────────────────────────────────────────────────
-        // Keep combatant locked — some AI paths clear it on the base call.
-        // Guards treat this NPC as always attackable — same as any hostile creature
+        // Guards treat this NPC as always attackable — same as any hostile creature.
         public override bool AlwaysAttackable => true;
 
         public override void OnThink()
         {
-            Mobile target = Combatant as Mobile;
             base.OnThink();
             if (Deleted || !Alive) return;
-            if (target != null && !target.Deleted && target.Alive && Combatant == null)
-                Combatant = target;
+
+            // Always re-lock onto the primary target if it is still alive.
+            // Without this, FightMode.Closest lets the AI drift onto nearby
+            // champ spawn creatures (or other blue mobs) and abandon the player.
+            if (_primaryTarget != null && !_primaryTarget.Deleted && _primaryTarget.Alive)
+                Combatant = _primaryTarget;
         }
 
         // ── Combat speech hooks ───────────────────────────────────────────
