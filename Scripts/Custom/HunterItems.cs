@@ -536,14 +536,6 @@ namespace Server.Custom
     }
 
     // ============================================================
-    // BAG OF HOLDING
-    // ============================================================
-    //
-    // Blessed container. Holds up to 5 items.
-    // All items stored inside have their weight reduced by 50%.
-    // Purchased from the Hunter Token Shop for 10 tokens.
-    // ============================================================
-
     // ============================================================
     // BAGS OF HOLDING — base class + 4 tiers
     //
@@ -560,7 +552,6 @@ namespace Server.Custom
 
     public abstract class BaseBagOfHolding : Bag
     {
-        // Subclasses set these
         protected abstract int    WeightReductionPct { get; }
         protected abstract int    BagMaxItems        { get; }
         protected abstract string BagDisplayName     { get; }
@@ -575,115 +566,68 @@ namespace Server.Custom
         protected BaseBagOfHolding(Serial serial) : base(serial) { }
 
         // ── Weight reduction ──────────────────────────────────────────────
-        // Runtime path: intercept weight deltas and propagate only the reduced
-        // share upward so the player's carry weight reflects the discount.
-        public override void UpdateTotal(Item sender, TotalType type, int delta)
+        // Override GetTotal() so the reduction is applied at query time from
+        // the stored full m_TotalWeight.  This is identical to how BaseQuiver
+        // implements weight reduction and is the correct ServUO pattern.
+        //
+        // Why not UpdateTotal(): UpdateTotals() (called on every world load)
+        // resets m_TotalWeight from scratch by summing children, bypassing
+        // UpdateTotal entirely — causing the doubled-weight-on-login bug.
+        // GetTotal() is called by the TotalWeight property everywhere, so it
+        // works correctly both at runtime and after load without any extra hook.
+        public override int GetTotal(TotalType type)
         {
-            if (type == TotalType.Weight && sender != this)
-            {
-                int reducedDelta = (int)Math.Round(delta * (100 - WeightReductionPct) / 100.0);
-                base.UpdateTotal(sender, type, reducedDelta);
-            }
-            else
-            {
-                base.UpdateTotal(sender, type, delta);
-            }
+            int total = base.GetTotal(type);
+
+            if (type == TotalType.Weight && WeightReductionPct > 0)
+                total = (int)Math.Round(total * (100 - WeightReductionPct) / 100.0, MidpointRounding.AwayFromZero);
+
+            return total;
         }
 
-        // World-load path: Container.UpdateTotals() resets m_TotalWeight from
-        // scratch, bypassing UpdateTotal entirely.  BagOfHoldingSystem.Initialize()
-        // hooks EventSink.WorldLoad and calls this on every bag after load to
-        // subtract the excess weight from both the bag and its parent chain.
-        public void CorrectWeightAfterLoad()
+        // Force the owning mobile to recalculate totals on every content change
+        // so carried weight stays accurate (same pattern as BaseQuiver).
+        private void InvalidateWeight()
         {
-            if (WeightReductionPct <= 0 || Deleted) return;
-
-            int fullWeight  = TotalWeight; // m_TotalWeight as set by UpdateTotals = full weight
-            int reducedWeight = (int)Math.Round(fullWeight * (100.0 - WeightReductionPct) / 100.0);
-            int excess = fullWeight - reducedWeight;
-
-            if (excess > 0)
-                UpdateTotal(this, TotalType.Weight, -excess);
+            if (RootParent is Mobile m)
+                m.UpdateTotals();
         }
 
-        // ── CheckHold override ────────────────────────────────────────────
-        // The base CheckHold propagates item.TotalWeight unchanged to parent
-        // containers.  This means the weight check against the player's carry
-        // limit always uses the FULL item weight, even though items stored here
-        // benefit from WeightReductionPct once inside.
-        //
-        // Fix: when propagating upward, offset plusWeight by the reduction so
-        // the parent sees the post-reduction effective weight instead.
-        //
-        // Math:  parent checks (TotalWeight + plusWeight + item.TotalWeight) > cap
-        //        We pass plusWeight += (reducedItemWeight - fullItemWeight)
-        //        → parent effectively checks reducedItemWeight instead of fullItemWeight.
-        public override bool CheckHold(Mobile m, Item item, bool message, bool checkItems, int plusItems, int plusWeight)
+        public override void AddItem(Item item)
         {
-            if (!m.IsStaff())
-            {
-                // Item-slot limit of this bag
-                int maxItems = MaxItems;
-                if (checkItems && maxItems != 0 &&
-                    (TotalItems + plusItems + item.TotalItems + (item.IsVirtualItem ? 0 : 1)) > maxItems)
-                {
-                    if (message) SendFullItemsMessage(m, item);
-                    return false;
-                }
+            base.AddItem(item);
+            InvalidateWeight();
+        }
 
-                // This bag's own weight capacity — checked against full item weight
-                int maxWeight = MaxWeight;
-                if (maxWeight != 0 && (TotalWeight + plusWeight + item.TotalWeight + item.PileWeight) > maxWeight)
-                {
-                    if (message) SendFullWeightMessage(m, item);
-                    return false;
-                }
-            }
-
-            // Walk up to parent containers, injecting the weight reduction offset
-            // so the player's carry limit check uses the reduced weight.
-            var parent = Parent;
-            while (parent != null)
-            {
-                if (parent is Container parentContainer)
-                {
-                    int fullItemWeight    = item.TotalWeight + item.PileWeight;
-                    int reducedItemWeight = (int)Math.Round(fullItemWeight * (100 - WeightReductionPct) / 100.0);
-                    int weightOffset      = reducedItemWeight - fullItemWeight; // negative (reduction)
-
-                    return parentContainer.CheckHold(m, item, message, checkItems,
-                        plusItems, plusWeight + weightOffset);
-                }
-                else if (parent is Item parentItem)
-                {
-                    parent = parentItem.Parent;
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            return true;
+        public override void RemoveItem(Item item)
+        {
+            base.RemoveItem(item);
+            InvalidateWeight();
         }
 
         // ── One bag per player ────────────────────────────────────────────
-        // Called after the item is added to a parent container.
-        // If the player now has two bags of holding, eject this one.
+        // Defer to Timer.DelayCall so the item is fully parented before we
+        // inspect the pack — calling MoveToWorld directly inside OnAdded is
+        // unsafe (item is mid-add, parent chain not yet finalized).
+        // Use FindItemsByType<BaseBagOfHolding> (generic, uses 'is T' check)
+        // so all subclass instances are found correctly.
         public override void OnAdded(object parent)
         {
             base.OnAdded(parent);
 
-            Mobile owner = RootParent as Mobile;
-            if (owner == null || owner.Backpack == null) return;
-
-            // Count how many bags of holding are anywhere in the pack
-            var bags = owner.Backpack.FindItemsByType(typeof(BaseBagOfHolding));
-            if (bags.Length > 1)
+            Timer.DelayCall(TimeSpan.Zero, () =>
             {
-                owner.SendMessage(0x22, "You may only carry one bag of holding at a time.");
-                MoveToWorld(owner.Location, owner.Map);
-            }
+                if (Deleted) return;
+
+                Mobile owner = RootParent as Mobile;
+                if (owner?.Backpack == null) return;
+
+                if (owner.Backpack.FindItemsByType<BaseBagOfHolding>(true).Length > 1)
+                {
+                    owner.SendMessage(0x22, "You may only carry one bag of holding at a time.");
+                    MoveToWorld(owner.Location, owner.Map);
+                }
+            });
         }
 
         public override void GetProperties(ObjectPropertyList list)
@@ -708,27 +652,6 @@ namespace Server.Custom
         }
     }
 
-    // ── Post-load weight correction ───────────────────────────────────────
-    // Container.UpdateTotals() (called on every world load) bypasses our
-    // UpdateTotal delta reduction and resets m_TotalWeight to the full item
-    // weight.  We hook WorldLoad to subtract the excess once loading is done.
-    public static class BagOfHoldingSystem
-    {
-        public static void Initialize()
-        {
-            EventSink.WorldLoad += OnWorldLoad;
-        }
-
-        private static void OnWorldLoad()
-        {
-            foreach (Item item in World.Items.Values)
-            {
-                if (item is BaseBagOfHolding bag)
-                    bag.CorrectWeightAfterLoad();
-            }
-        }
-    }
-
     // ── Lesser Bag of Holding ──────────────────────────────────────────────
     public class LesserBagOfHolding : BaseBagOfHolding
     {
@@ -740,7 +663,7 @@ namespace Server.Custom
         public LesserBagOfHolding() : base()
         {
             Name = BagDisplayName;
-            Hue  = 0x47D; // pale blue
+            Hue  = 0x47D;
         }
 
         public LesserBagOfHolding(Serial serial) : base(serial) { }
@@ -757,7 +680,7 @@ namespace Server.Custom
         public BagOfHolding() : base()
         {
             Name = BagDisplayName;
-            Hue  = 0x4B5; // blue-purple
+            Hue  = 0x4B5;
         }
 
         public BagOfHolding(Serial serial) : base(serial) { }
@@ -774,7 +697,7 @@ namespace Server.Custom
         public GreaterBagOfHolding() : base()
         {
             Name = BagDisplayName;
-            Hue  = 0x4AA; // bright teal
+            Hue  = 0x4AA;
         }
 
         public GreaterBagOfHolding(Serial serial) : base(serial) { }
@@ -791,13 +714,10 @@ namespace Server.Custom
         public SupremeBagOfHolding() : base()
         {
             Name = BagDisplayName;
-            Hue  = 0x497; // gold
+            Hue  = 0x497;
         }
 
         public SupremeBagOfHolding(Serial serial) : base(serial) { }
-
-        public override void Serialize(GenericWriter writer) { base.Serialize(writer); writer.Write(0); }
-        public override void Deserialize(GenericReader reader) { base.Deserialize(reader); reader.ReadInt(); }
     }
 
     // ============================================================
