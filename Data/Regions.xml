@@ -1000,6 +1000,9 @@
       <rect x="4529" y="2296" width="45" height="112" />
       <go x="4550" y="2317" z="-2" />
     </region>
+    <region priority="50" name="Bravehorn's drinking pool">
+      <rect x="1302" y="2331" width="38" height="22" />
+    </region>
   </Facet>
   <Facet name="Trammel">
     <region type="DungeonRegion" priority="50" name="Khaldun">

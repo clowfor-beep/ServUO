@@ -687,7 +687,8 @@ namespace Server.Engines.Quests
         {
             base.Serialize(writer);
 
-            writer.WriteEncodedInt(0); // version
+            writer.WriteEncodedInt(1); // version
+            writer.Write(Region);
         }
 
         public override void Deserialize(GenericReader reader)
@@ -695,6 +696,9 @@ namespace Server.Engines.Quests
             base.Deserialize(reader);
 
             int version = reader.ReadEncodedInt();
+
+            if (version >= 1)
+                Region = reader.ReadString();
         }
     }
 
