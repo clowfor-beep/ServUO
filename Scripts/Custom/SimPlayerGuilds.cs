@@ -288,7 +288,7 @@ namespace Server.Custom
         /// Base CanBeHarmful rejects blue innocents — without this override the target
         /// scan skips blue Lord of Oaks creatures entirely.
         /// </summary>
-        public override bool CanBeHarmful(Mobile target, bool message, bool ignoreEvilType)
+        public override bool CanBeHarmful(IDamageable target, bool message, bool ignoreEvilType)
         {
             if (_champPhase == ChampPhase.AtSpawn
                 && target is BaseCreature spawnBc
