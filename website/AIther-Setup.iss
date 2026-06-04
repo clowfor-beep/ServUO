@@ -187,9 +187,9 @@ begin
   RunSQLite(LauncherDB, 'CREATE TABLE IF NOT EXISTS profile_plugins (id INTEGER PRIMARY KEY AUTOINCREMENT, profile_id INTEGER NOT NULL, path TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(profile_id) REFERENCES profiles(id) ON DELETE CASCADE);');
   RunSQLite(LauncherDB, 'CREATE TABLE IF NOT EXISTS web_server_history (server_id INTEGER PRIMARY KEY, last_played_at INTEGER NOT NULL);');
 
-  // Remove old profiles (AIther or any Fun Stuff UO leftovers)
-  RunSQLite(LauncherDB, 'DELETE FROM profile_plugins WHERE profile_id IN (SELECT id FROM profiles WHERE name IN (''AIther'',''Fun Stuff UO'',''FunStuffUO''));');
-  RunSQLite(LauncherDB, 'DELETE FROM profiles WHERE name IN (''AIther'',''Fun Stuff UO'',''FunStuffUO'');');
+  // Wipe all existing profiles for a clean slate
+  RunSQLite(LauncherDB, 'DELETE FROM profile_plugins;');
+  RunSQLite(LauncherDB, 'DELETE FROM profiles;');
 
   // Insert fresh AIther profile — cuo_path = InstallDir (where launcher exe is)
   RunSQLite(LauncherDB,
