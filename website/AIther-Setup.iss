@@ -195,9 +195,8 @@ begin
     '& $sq $db "CREATE TABLE IF NOT EXISTS profile_plugins (id INTEGER PRIMARY KEY AUTOINCREMENT, profile_id INTEGER NOT NULL, path TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(profile_id) REFERENCES profiles(id) ON DELETE CASCADE);"' + #13#10 +
     '& $sq $db "CREATE TABLE IF NOT EXISTS web_server_history (server_id INTEGER PRIMARY KEY, last_played_at INTEGER NOT NULL);"' + #13#10 +
     '' + #13#10 +
-    '# Wipe all profiles' + #13#10 +
-    '& $sq $db "DELETE FROM profile_plugins;"' + #13#10 +
-    '& $sq $db "DELETE FROM profiles;"' + #13#10 +
+    '# Delete old DB entirely so there are no leftover profiles' + #13#10 +
+    'if (Test-Path $db) { Remove-Item $db -Force }' + #13#10 +
     '' + #13#10 +
     '# Insert AIther profile' + #13#10 +
     '& $sq $db "INSERT INTO profiles (name, sort_order, cuo_path, server, port, client_version, uo_path, encryption_type, last_server_name) VALUES (''AIther'', 0, ''$cuo'', ''aither-uo.com'', ''2593'', ''7.0.115.0'', ''$uo'', 0, ''AIther'');"' + #13#10 +
