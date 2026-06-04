@@ -181,37 +181,34 @@ begin
 
   ForceDirectories(ExpandConstant('{userappdata}') + '\ClassicUOLauncher');
 
-  // Write a single PS1 that does all DB work — avoids all inline quoting issues
-  SaveStringToFile(TmpPath + '\setup_db.ps1',
+  // Write SQL file — cleanest way to run multiple statements reliably
+  SaveStringToFile(TmpPath + '\aither.sql',
+    'CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);' + #13#10 +
+    'CREATE TABLE IF NOT EXISTS profiles (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort_order INTEGER NOT NULL, cuo_path TEXT, username TEXT, password TEXT, server TEXT, port TEXT, charname TEXT, client_version TEXT, uo_path TEXT, server_type INTEGER DEFAULT 0, last_server_index INTEGER DEFAULT 0, last_server_name TEXT, debug INTEGER DEFAULT 0, profiler INTEGER DEFAULT 0, save_account INTEGER DEFAULT 0, skip_login_screen INTEGER DEFAULT 0, autologin INTEGER DEFAULT 0, reconnect INTEGER DEFAULT 0, reconnect_time INTEGER DEFAULT 1000, has_music INTEGER DEFAULT 1, high_dpi INTEGER DEFAULT 0, use_verdata INTEGER DEFAULT 0, uo_protocol INTEGER DEFAULT 0, music_volume INTEGER DEFAULT 50, encryption_type INTEGER DEFAULT 0, force_driver INTEGER DEFAULT 0, packet_log INTEGER DEFAULT 0, args TEXT DEFAULT "");' + #13#10 +
+    'CREATE TABLE IF NOT EXISTS profile_plugins (id INTEGER PRIMARY KEY AUTOINCREMENT, profile_id INTEGER NOT NULL, path TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(profile_id) REFERENCES profiles(id) ON DELETE CASCADE);' + #13#10 +
+    'CREATE TABLE IF NOT EXISTS web_server_history (server_id INTEGER PRIMARY KEY, last_played_at INTEGER NOT NULL);' + #13#10 +
+    'DELETE FROM profile_plugins;' + #13#10 +
+    'DELETE FROM profiles;' + #13#10 +
+    'INSERT INTO profiles (name, sort_order, cuo_path, server, port, client_version, uo_path, encryption_type, last_server_name) VALUES ("AIther", 0, "' + CUOPath + '", "aither-uo.com", "2593", "7.0.115.0", "' + UOPath + '", 0, "AIther");' + #13#10 +
+    'INSERT OR REPLACE INTO settings (key, value) VALUES ("selected_profile_index", "0");' + #13#10 +
+    'INSERT OR REPLACE INTO settings (key, value) VALUES ("last_profile_name", "AIther");',
+    False);
+
+  // Run sqlite3 with .read to execute the SQL file
+  Exec(SqlitePath, '"' + LauncherDB + '" ".read ' + TmpPath + '\aither.sql"',
+    '', SW_HIDE, ewWaitUntilTerminated, Code);
+
+  // Now wire up the Razor plugin via PS (needs the profile id)
+  SaveStringToFile(TmpPath + '\setup_plugin.ps1',
     '$sq  = "' + SqlitePath + '"' + #13#10 +
     '$db  = "' + LauncherDB + '"' + #13#10 +
-    '$cuo = "' + CUOPath + '"' + #13#10 +
-    '$uo  = "' + UOPath + '"' + #13#10 +
     '$plg = "' + PluginPath + '"' + #13#10 +
-    '' + #13#10 +
-    '# Schema' + #13#10 +
-    '& $sq $db "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);"' + #13#10 +
-    '& $sq $db "CREATE TABLE IF NOT EXISTS profiles (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort_order INTEGER NOT NULL, cuo_path TEXT, username TEXT, password TEXT, server TEXT, port TEXT, charname TEXT, client_version TEXT, uo_path TEXT, server_type INTEGER DEFAULT 0, last_server_index INTEGER DEFAULT 0, last_server_name TEXT, debug INTEGER DEFAULT 0, profiler INTEGER DEFAULT 0, save_account INTEGER DEFAULT 0, skip_login_screen INTEGER DEFAULT 0, autologin INTEGER DEFAULT 0, reconnect INTEGER DEFAULT 0, reconnect_time INTEGER DEFAULT 1000, has_music INTEGER DEFAULT 1, high_dpi INTEGER DEFAULT 0, use_verdata INTEGER DEFAULT 0, uo_protocol INTEGER DEFAULT 0, music_volume INTEGER DEFAULT 50, encryption_type INTEGER DEFAULT 0, force_driver INTEGER DEFAULT 0, packet_log INTEGER DEFAULT 0, args TEXT DEFAULT '''');"' + #13#10 +
-    '& $sq $db "CREATE TABLE IF NOT EXISTS profile_plugins (id INTEGER PRIMARY KEY AUTOINCREMENT, profile_id INTEGER NOT NULL, path TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(profile_id) REFERENCES profiles(id) ON DELETE CASCADE);"' + #13#10 +
-    '& $sq $db "CREATE TABLE IF NOT EXISTS web_server_history (server_id INTEGER PRIMARY KEY, last_played_at INTEGER NOT NULL);"' + #13#10 +
-    '' + #13#10 +
-    '# Delete old DB entirely so there are no leftover profiles' + #13#10 +
-    'if (Test-Path $db) { Remove-Item $db -Force }' + #13#10 +
-    '' + #13#10 +
-    '# Insert AIther profile' + #13#10 +
-    '& $sq $db "INSERT INTO profiles (name, sort_order, cuo_path, server, port, client_version, uo_path, encryption_type, last_server_name) VALUES (''AIther'', 0, ''$cuo'', ''aither-uo.com'', ''2593'', ''7.0.115.0'', ''$uo'', 0, ''AIther'');"' + #13#10 +
-    '' + #13#10 +
-    '# Get new profile id and wire up plugin + settings' + #13#10 +
-    '$id = (& $sq $db "SELECT id FROM profiles WHERE name = ''AIther'' ORDER BY id DESC LIMIT 1;").Trim()' + #13#10 +
-    'if ($id) {' + #13#10 +
-    '  & $sq $db "INSERT INTO profile_plugins (profile_id, path, enabled) VALUES ($id, ''$plg'', 1);"' + #13#10 +
-    '  & $sq $db "INSERT OR REPLACE INTO settings (key, value) VALUES (''selected_profile_index'', ''0'');"' + #13#10 +
-    '  & $sq $db "INSERT OR REPLACE INTO settings (key, value) VALUES (''last_profile_name'', ''AIther'');"' + #13#10 +
-    '}',
+    '$id  = (& $sq $db "SELECT id FROM profiles ORDER BY id DESC LIMIT 1;").Trim()' + #13#10 +
+    'if ($id) { & $sq $db "INSERT OR REPLACE INTO profile_plugins (profile_id, path, enabled) VALUES ($id, ''$plg'', 1);" }',
     False);
 
   Exec('powershell.exe',
-    '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + TmpPath + '\setup_db.ps1"',
+    '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + TmpPath + '\setup_plugin.ps1"',
     '', SW_HIDE, ewWaitUntilTerminated, Code);
 
   SetStatus('Done!');
