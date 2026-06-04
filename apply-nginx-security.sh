@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================
 # apply-nginx-security.sh
-# Fun Stuff UO -- nginx security hardening
+# AIther -- nginx security hardening
 #
 # Run on the VPS as root:
 #   bash apply-nginx-security.sh
@@ -16,7 +16,7 @@ err()  { echo -e "${RED}[ERR]${NC}  $1"; }
 info() { echo -e "${CYAN}[..]${NC}   $1"; }
 
 echo ""
-echo "  Fun Stuff UO -- nginx security hardening"
+echo "  AIther -- nginx security hardening"
 echo "  -----------------------------------------"
 echo ""
 
@@ -26,13 +26,13 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # -- Step 1: Rate-limit zone (http context, auto-included via conf.d) ----------
-RATELIMIT_FILE="/etc/nginx/conf.d/funsuffuo-ratelimit.conf"
+RATELIMIT_FILE="/etc/nginx/conf.d/aither-ratelimit.conf"
 
 if grep -rq "submit_limit" /etc/nginx/ 2>/dev/null; then
     warn "Rate limit zone already present -- skipping."
 else
     cat > "$RATELIMIT_FILE" << 'ENDCONF'
-# Fun Stuff UO -- submission rate limit zone
+# AIther -- submission rate limit zone
 # 5 POST requests per minute per IP address
 limit_req_zone $binary_remote_addr zone=submit_limit:10m rate=5r/m;
 ENDCONF
@@ -66,7 +66,7 @@ fi
 ok "Found site config: $SITE_CONF"
 
 # -- Step 3: Idempotency check -------------------------------------------------
-if grep -q "FUNSUFFUO_SECURITY" "$SITE_CONF"; then
+if grep -q "AITHER_SECURITY" "$SITE_CONF"; then
     warn "Security config already applied -- nothing to patch."
     info "Testing and reloading nginx..."
     nginx -t 2>&1 && nginx -s reload
@@ -75,7 +75,10 @@ if grep -q "FUNSUFFUO_SECURITY" "$SITE_CONF"; then
 fi
 
 # -- Step 4: Backup ------------------------------------------------------------
-BACKUP="${SITE_CONF}.bak.$(date +%Y%m%d_%H%M%S)"
+# Store backup in /etc/nginx/ not alongside the config — if the config
+# lives in sites-enabled/, a .bak there would be loaded by nginx as a
+# second server block and cause a duplicate default_server conflict.
+BACKUP="/etc/nginx/$(basename "$SITE_CONF").bak.$(date +%Y%m%d_%H%M%S)"
 cp "$SITE_CONF" "$BACKUP"
 ok "Backed up to: $BACKUP"
 
@@ -109,7 +112,7 @@ with open(conf_path, 'r') as f:
 inject = (
     "\n"
     "    # ============================================================\n"
-    "    # FUNSUFFUO_SECURITY -- applied by apply-nginx-security.sh\n"
+    "    # AITHER_SECURITY -- applied by apply-nginx-security.sh\n"
     "    # ============================================================\n"
     "\n"
     "    server_tokens off;\n"
@@ -145,7 +148,7 @@ inject = (
     "    }\n"
     "\n"
     "    # ============================================================\n"
-    "    # END FUNSUFFUO_SECURITY\n"
+    "    # END AITHER_SECURITY\n"
     "    # ============================================================\n"
     "\n"
 )
@@ -189,6 +192,7 @@ else
     err "nginx config test FAILED. Restoring backup."
     cp "$BACKUP" "$SITE_CONF"
     warn "Original restored from: $BACKUP"
+    info "Backup kept at: $BACKUP"
     exit 1
 fi
 
