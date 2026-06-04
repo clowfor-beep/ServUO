@@ -431,7 +431,7 @@ namespace Server.Custom
         private SimState _lastTrackedState   = SimState.OnCooldown;
 
         [CommandProperty(AccessLevel.GameMaster)]
-        public Point3D Home => _homeLocation;
+        public new Point3D Home => _homeLocation;
 
         [CommandProperty(AccessLevel.GameMaster)]
         public DateTime LastStateChange => _lastStateChangedAt;

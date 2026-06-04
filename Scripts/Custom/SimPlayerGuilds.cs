@@ -326,19 +326,6 @@ namespace Server.Custom
             return base_;
         }
 
-        public override string GetStatusDetail()
-        {
-            if (_champPhase != ChampPhase.None)
-                return string.Format("Champ:{0}", _champPhase);
-            if (_dungeonPhase != DungeonPhase.None)
-                return string.Format("Dungeon:{0}", _dungeonPhase);
-            if (_hqPhase == HQPhase.AtHQ)
-                return "AtHQ";
-            if (_isDowned)
-                return "DOWNED";
-            return string.Empty;
-        }
-
         public override void AutoFix()
         {
             // Reset all guild-specific phases before calling base
@@ -1580,19 +1567,27 @@ namespace Server.Custom
 
         public override string GetStatusDetail()
         {
-            if (_champPhase == ChampPhase.None)
+            if (_isDowned)
+                return "DOWNED";
+
+            if (_champPhase != ChampPhase.None)
             {
-                TimeSpan remaining = _nextChampRun - DateTime.UtcNow;
-                return remaining > TimeSpan.Zero
-                    ? $"ChampPhase: None — next run in {(int)remaining.TotalMinutes}m {remaining.Seconds}s"
-                    : "ChampPhase: None — ready (waiting for Idle)";
+                string spawnInfo = (_targetSpawn != null && !_targetSpawn.Deleted)
+                    ? string.Format(" spawn={0} lvl={1}/4", _targetSpawn.SpawnName ?? "?", _targetSpawn.Level)
+                    : " (no spawn ref)";
+                return string.Format("Champ:{0}{1}", _champPhase, spawnInfo);
             }
 
-            string spawnInfo = (_targetSpawn != null && !_targetSpawn.Deleted)
-                ? $" spawn={_targetSpawn.SpawnName ?? "?"} lvl={_targetSpawn.Level}/4"
-                : " (no spawn ref)";
+            if (_dungeonPhase != DungeonPhase.None)
+                return string.Format("Dungeon:{0}", _dungeonPhase);
 
-            return $"ChampPhase: {_champPhase}{spawnInfo}";
+            if (_hqPhase == HQPhase.AtHQ)
+                return "AtHQ";
+
+            TimeSpan remaining = _nextChampRun - DateTime.UtcNow;
+            return remaining > TimeSpan.Zero
+                ? string.Format("Idle — champ in {0}m {1}s", (int)remaining.TotalMinutes, remaining.Seconds)
+                : "Idle — champ ready";
         }
 
         public override string TriggerNextEvent()
