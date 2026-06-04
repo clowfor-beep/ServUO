@@ -39,7 +39,14 @@ namespace Server.Items
             SkillName.Spellweaving,
             SkillName.Throwing,
             SkillName.Mysticism,
-            SkillName.Imbuing
+            SkillName.Imbuing,
+            SkillName.Cartography,
+            SkillName.Fishing,
+            SkillName.Tracking,
+            SkillName.Herding,
+            SkillName.DetectHidden,
+            SkillName.Hiding,
+            SkillName.Snooping
         };
 
         private static readonly List<SkillName> _Skills = new List<SkillName>();

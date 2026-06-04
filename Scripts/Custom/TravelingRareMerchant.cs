@@ -207,6 +207,13 @@ namespace Server.Custom
             (SkillName.Stealing,     "Stealing"),
             (SkillName.Stealth,      "Stealth"),
             (SkillName.Throwing,     "Throwing"),
+            (SkillName.Cartography,  "Cartography"),
+            (SkillName.Fishing,      "Fishing"),
+            (SkillName.Tracking,     "Tracking"),
+            (SkillName.Herding,      "Herding"),
+            (SkillName.DetectHidden, "Detect Hidden"),
+            (SkillName.Hiding,       "Hiding"),
+            (SkillName.Snooping,     "Snooping"),
         };
 
         // Tier → coin cost
