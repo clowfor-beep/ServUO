@@ -108,27 +108,29 @@ begin
 
   // ── Step 1: Download ClassicUO Launcher ───────────────────────────────────
   SetStatus('Downloading ClassicUO Launcher (this may take a minute)...');
-  Code := RunPS(
-    '[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;' +
-    'try {' +
-    '  $url = "https://github.com/ClassicUO/deploy/releases/download/launcher-release/ClassicUOLauncher-win-x64-release.zip";' +
-    '  $dest = "' + InstallDir + '";' +
-    '  $zip = "$env:TEMP\cuo.zip";' +
-    '  $wc = New-Object System.Net.WebClient;' +
-    '  $wc.Headers.Add("User-Agent", "Mozilla/5.0");' +
-    '  $wc.DownloadFile($url, $zip);' +
-    '  Expand-Archive -Path $zip -DestinationPath $dest -Force;' +
-    '  Remove-Item $zip -Force;' +
-    // If zip extracted into a single subfolder, flatten it
-    '  $items = Get-ChildItem -Path $dest;' +
-    '  if ($items.Count -eq 1 -and $items[0].PSIsContainer) {' +
-    '    $sub = $items[0].FullName;' +
-    '    Get-ChildItem -Path $sub | Move-Item -Destination $dest -Force;' +
-    '    Remove-Item $sub -Force -Recurse;' +
-    '  };' +
-    '  exit 0' +
-    '} catch { exit 1 }'
-  );
+
+  // Write PS1 script to temp file to avoid inline escaping issues
+  SaveStringToFile(TmpPath + '\dl_cuo.ps1',
+    '[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12' + #13#10 +
+    '$url  = "https://github.com/ClassicUO/deploy/releases/download/launcher-release/ClassicUOLauncher-win-x64-release.zip"' + #13#10 +
+    '$dest = "' + InstallDir + '"' + #13#10 +
+    '$zip  = "$env:TEMP\cuo.zip"' + #13#10 +
+    '$wc   = New-Object System.Net.WebClient' + #13#10 +
+    '$wc.Headers.Add("User-Agent", "Mozilla/5.0")' + #13#10 +
+    '$wc.DownloadFile($url, $zip)' + #13#10 +
+    'Expand-Archive -Path $zip -DestinationPath $dest -Force' + #13#10 +
+    'Remove-Item $zip -Force' + #13#10 +
+    '$items = Get-ChildItem -Path $dest' + #13#10 +
+    'if ($items.Count -eq 1 -and $items[0].PSIsContainer) {' + #13#10 +
+    '  $sub = $items[0].FullName' + #13#10 +
+    '  Get-ChildItem -Path $sub | Move-Item -Destination $dest -Force' + #13#10 +
+    '  Remove-Item $sub -Force -Recurse' + #13#10 +
+    '}',
+    False);
+
+  Exec('powershell.exe',
+    '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + TmpPath + '\dl_cuo.ps1"',
+    '', SW_HIDE, ewWaitUntilTerminated, Code);
 
   if Code <> 0 then begin
     MsgBox('Failed to download ClassicUO Launcher. Please check your internet connection and try again.' + #13#10 +
@@ -144,21 +146,24 @@ begin
 
   // ── Step 2: Download Razor Enhanced ───────────────────────────────────────
   SetStatus('Downloading Razor Enhanced (this may take a minute)...');
-  Code := RunPS(
-    '[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;' +
-    'try {' +
-    '  New-Item -ItemType Directory -Path "' + PluginsDir + '" -Force | Out-Null;' +
-    '  $r = Invoke-RestMethod -Uri "https://api.github.com/repos/RazorEnhanced/RazorEnhanced/releases/latest";' +
-    '  $a = $r.assets | Where-Object { $_.name -like "RazorEnhanced-*.zip" } | Select-Object -First 1;' +
-    '  $wc = New-Object System.Net.WebClient;' +
-    '  $wc.DownloadFile($a.browser_download_url, "$env:TEMP\razor.zip");' +
-    '  Expand-Archive -Path "$env:TEMP\razor.zip" -DestinationPath "' + PluginsDir + '" -Force;' +
-    '  Remove-Item "$env:TEMP\razor.zip" -Force;' +
-    '  $exe = (Get-ChildItem -Path "' + PluginsDir + '" -Filter "RazorEnhanced.exe" -Recurse | Select-Object -First 1).FullName;' +
-    '  if ($exe) { $exe | Set-Content -Path "' + TmpPath + '\razorpath.txt" -Encoding UTF8 };' +
-    '  exit 0' +
-    '} catch { exit 1 }'
-  );
+
+  SaveStringToFile(TmpPath + '\dl_razor.ps1',
+    '[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12' + #13#10 +
+    'New-Item -ItemType Directory -Path "' + PluginsDir + '" -Force | Out-Null' + #13#10 +
+    '$wc = New-Object System.Net.WebClient' + #13#10 +
+    '$wc.Headers.Add("User-Agent", "Mozilla/5.0")' + #13#10 +
+    '$r = Invoke-RestMethod -Uri "https://api.github.com/repos/RazorEnhanced/RazorEnhanced/releases/latest"' + #13#10 +
+    '$a = $r.assets | Where-Object { $_.name -like "RazorEnhanced-*.zip" } | Select-Object -First 1' + #13#10 +
+    '$wc.DownloadFile($a.browser_download_url, "$env:TEMP\razor.zip")' + #13#10 +
+    'Expand-Archive -Path "$env:TEMP\razor.zip" -DestinationPath "' + PluginsDir + '" -Force' + #13#10 +
+    'Remove-Item "$env:TEMP\razor.zip" -Force' + #13#10 +
+    '$exe = (Get-ChildItem -Path "' + PluginsDir + '" -Filter "RazorEnhanced.exe" -Recurse | Select-Object -First 1).FullName' + #13#10 +
+    'if ($exe) { $exe | Set-Content -Path "' + TmpPath + '\razorpath.txt" -Encoding UTF8 }',
+    False);
+
+  Exec('powershell.exe',
+    '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + TmpPath + '\dl_razor.ps1"',
+    '', SW_HIDE, ewWaitUntilTerminated, Code);
 
   if Code <> 0 then begin
     MsgBox('Failed to download Razor Enhanced. The launcher will still work but Razor Enhanced will not be installed.' + #13#10 +
