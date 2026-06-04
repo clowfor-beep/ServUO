@@ -111,10 +111,11 @@ begin
   Code := RunPS(
     '[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;' +
     'try {' +
-    '  $url = "https://github.com/ClassicUO/deploy/releases/latest/download/ClassicUOLauncher-win-x64-release.zip";' +
+    '  $url = "https://github.com/ClassicUO/deploy/releases/download/launcher-release/ClassicUOLauncher-win-x64-release.zip";' +
     '  $dest = "' + InstallDir + '";' +
     '  $zip = "$env:TEMP\cuo.zip";' +
     '  $wc = New-Object System.Net.WebClient;' +
+    '  $wc.Headers.Add("User-Agent", "Mozilla/5.0");' +
     '  $wc.DownloadFile($url, $zip);' +
     '  Expand-Archive -Path $zip -DestinationPath $dest -Force;' +
     '  Remove-Item $zip -Force;' +
