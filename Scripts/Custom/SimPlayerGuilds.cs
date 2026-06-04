@@ -306,6 +306,56 @@ namespace Server.Custom
 
         public IronCompanySimPlayer(Serial serial) : base(serial) { }
 
+        // -- Health / monitor overrides --------------------------------
+
+        public override SimPlayer.SimHealthStatus GetHealth()
+        {
+            // Inherit base checks (Map.Internal, travel timeout, etc.)
+            SimPlayer.SimHealthStatus base_ = base.GetHealth();
+            if (base_ == SimPlayer.SimHealthStatus.Stuck) return base_;
+
+            // Orphaned champ phase: AtSpawn but spawn is gone
+            if (_champPhase == ChampPhase.AtSpawn
+                && (_targetSpawn == null || _targetSpawn.Deleted))
+                return SimPlayer.SimHealthStatus.Stuck;
+
+            // Downed for > 10 min (rez should have come)
+            if (_isDowned && DateTime.UtcNow - LastStateChange > TimeSpan.FromMinutes(10))
+                return SimPlayer.SimHealthStatus.Warning;
+
+            return base_;
+        }
+
+        public override string GetStatusDetail()
+        {
+            if (_champPhase != ChampPhase.None)
+                return string.Format("Champ:{0}", _champPhase);
+            if (_dungeonPhase != DungeonPhase.None)
+                return string.Format("Dungeon:{0}", _dungeonPhase);
+            if (_hqPhase == HQPhase.AtHQ)
+                return "AtHQ";
+            if (_isDowned)
+                return "DOWNED";
+            return string.Empty;
+        }
+
+        public override void AutoFix()
+        {
+            // Reset all guild-specific phases before calling base
+            StopBossBattlecryTimer();
+            _champPhase      = ChampPhase.None;
+            _targetSpawn     = null;
+            _dungeonPhase    = DungeonPhase.None;
+            _dungeonAnchor   = Point3D.Zero;
+            _dungeonAnchorMap = Map.Felucca;
+            _hqPhase         = HQPhase.None;
+            _isDowned        = false;
+            FightMode        = FightMode.None;
+            Combatant        = null;
+
+            base.AutoFix();
+        }
+
         // -- Serialization ---------------------------------------------
 
         public override void Serialize(GenericWriter writer)

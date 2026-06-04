@@ -170,6 +170,8 @@ namespace Server.Custom
         {
             base.OnThink();
 
+            TickHealthTracking();
+
             if (Map == Map.Internal) return; // inactive - skip
 
             // Combat-capable subclasses (BloodPact, etc.) set this true
@@ -417,6 +419,77 @@ namespace Server.Custom
             base.GetProperties(list);
             if (!string.IsNullOrEmpty(_guildName))
                 list.Add($"[{_guildName}]");
+        }
+
+        // -- Health monitoring -----------------------------------------
+        // Tracks how long the SimPlayer has been in the current state,
+        // so the watchdog and monitor gump can detect stuck players.
+
+        public enum SimHealthStatus { Healthy, Warning, Stuck }
+
+        private DateTime _lastStateChangedAt = DateTime.UtcNow;
+        private SimState _lastTrackedState   = SimState.OnCooldown;
+
+        [CommandProperty(AccessLevel.GameMaster)]
+        public Point3D Home => _homeLocation;
+
+        [CommandProperty(AccessLevel.GameMaster)]
+        public DateTime LastStateChange => _lastStateChangedAt;
+
+        /// <summary>Returns a health indicator used by the monitor gump and watchdog.</summary>
+        public virtual SimHealthStatus GetHealth()
+        {
+            if (Deleted)                                          return SimHealthStatus.Stuck;
+            if (Map == null || Map == Map.Internal)              return SimHealthStatus.Stuck;
+            if (State == SimState.Dead)                          return SimHealthStatus.Warning;
+
+            TimeSpan stateAge = DateTime.UtcNow - _lastStateChangedAt;
+
+            // Stuck in travel for > 15 min — pathfinding froze
+            if (State == SimState.Travelling && stateAge > TimeSpan.FromMinutes(15))
+                return SimHealthStatus.Stuck;
+
+            // Any non-terminal state held > 45 min is suspicious
+            if (stateAge > TimeSpan.FromMinutes(45)
+                && State != SimState.Idle && State != SimState.OnCooldown)
+                return SimHealthStatus.Warning;
+
+            return SimHealthStatus.Healthy;
+        }
+
+        /// <summary>
+        /// Called by the watchdog and the monitor gump Fix button.
+        /// Teleports home, resurrects if dead, and resets state to Idle.
+        /// Override in subclasses to also reset guild-specific phases.
+        /// </summary>
+        public virtual void AutoFix()
+        {
+            if (Deleted) return;
+
+            if (!Alive)
+            {
+                Resurrect();
+                Hits = HitsMax;
+                Stam = StamMax;
+                Mana = ManaMax;
+            }
+
+            // Return to home map/location if lost
+            if (Map == null || Map == Map.Internal || GetDistanceToSqrt(_homeLocation) > 300)
+                MoveToWorld(_homeLocation, Map.Felucca);
+
+            ForceIdle();
+            _lastStateChangedAt = DateTime.UtcNow;
+        }
+
+        // Called each OnThink to keep _lastStateChangedAt current
+        private void TickHealthTracking()
+        {
+            if (_state != _lastTrackedState)
+            {
+                _lastTrackedState   = _state;
+                _lastStateChangedAt = DateTime.UtcNow;
+            }
         }
 
         // -- Staff hooks -----------------------------------------------

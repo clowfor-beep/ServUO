@@ -51,6 +51,8 @@ namespace Server.Custom
             CommandSystem.Register("siminfo",    AccessLevel.GameMaster, e => SimInfo(e.Mobile, e.ArgString?.Trim()));
             CommandSystem.Register("simchamp",   AccessLevel.GameMaster, e => SimChamp(e.Mobile));
             CommandSystem.Register("simpanel",   AccessLevel.GameMaster, e => e.Mobile.SendGump(new SimPlayerGump(e.Mobile)));
+            CommandSystem.Register("simmonitor", AccessLevel.GameMaster, e => e.Mobile.SendGump(new SimMonitorGump(e.Mobile, 0)));
+            CommandSystem.Register("simfixall",  AccessLevel.GameMaster, e => SimFixAll(e.Mobile));
 
             // Find existing singleton in world
             if (_instance == null)
@@ -78,6 +80,9 @@ namespace Server.Custom
 
             // Start management tick (every minute)
             Timer.DelayCall(TimeSpan.FromMinutes(1.0), _instance.OnManageTick);
+
+            // Start watchdog (every 5 minutes — auto-fixes stuck players)
+            Timer.DelayCall(TimeSpan.FromMinutes(5.0), _instance.RunWatchdog);
         }
 
         // -- Constructors ---------------------------------------------
@@ -482,7 +487,62 @@ namespace Server.Custom
             Timer.DelayCall(TimeSpan.FromMinutes(1.0), OnManageTick);
         }
 
+        // -- Watchdog -------------------------------------------------
+        // Runs every 5 minutes. Automatically fixes any SimPlayer whose
+        // GetHealth() returns Stuck, and logs a note to the server console.
+
+        private static DateTime _lastWatchdogRun = DateTime.MinValue;
+
+        private void RunWatchdog()
+        {
+            if (Deleted) return;
+
+            int fixed_ = 0;
+            foreach (SimPlayer sp in _allSimPlayers)
+            {
+                if (sp == null || sp.Deleted) continue;
+                if (sp.GetHealth() == SimPlayer.SimHealthStatus.Stuck)
+                {
+                    Console.WriteLine(
+                        string.Format("[SimWatchdog] Auto-fixing stuck SimPlayer: {0} ({1})", sp.MemberName, sp.GuildName));
+                    sp.AutoFix();
+                    fixed_++;
+                }
+            }
+
+            if (fixed_ > 0)
+                Console.WriteLine(string.Format("[SimWatchdog] Fixed {0} stuck SimPlayer(s).", fixed_));
+
+            _lastWatchdogRun = DateTime.UtcNow;
+            Timer.DelayCall(TimeSpan.FromMinutes(5.0), RunWatchdog);
+        }
+
         // -- Staff commands -------------------------------------------
+
+        /// <summary>[simfixall — auto-fixes every stuck SimPlayer immediately.</summary>
+        public static void SimFixAll(Mobile from)
+        {
+            if (_instance == null) { from.SendMessage(0x22, "No manager instance."); return; }
+
+            int fixed_ = 0, warned = 0;
+            foreach (SimPlayer sp in _instance._allSimPlayers)
+            {
+                if (sp == null || sp.Deleted) continue;
+                SimPlayer.SimHealthStatus h = sp.GetHealth();
+                if (h == SimPlayer.SimHealthStatus.Stuck)
+                {
+                    sp.AutoFix();
+                    from.SendMessage(0x22, string.Format("Fixed (stuck): {0}", sp.MemberName));
+                    fixed_++;
+                }
+                else if (h == SimPlayer.SimHealthStatus.Warning)
+                {
+                    warned++;
+                }
+            }
+
+            from.SendMessage(0x35, string.Format("SimFixAll: fixed {0} stuck, {1} warning(s) untouched.", fixed_, warned));
+        }
 
         /// <summary>
         /// [simreset -- wipe all SimPlayers and rebuild the full roster from scratch.

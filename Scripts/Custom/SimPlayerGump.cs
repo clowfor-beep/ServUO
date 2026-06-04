@@ -28,6 +28,7 @@ namespace Server.Custom
         private const int BTN_STATUS       = 1;
         private const int BTN_CHAMP        = 2;
         private const int BTN_RESET        = 3;
+        private const int BTN_MONITOR      = 4;
         private const int BTN_GOTO_BASE    = 100;   // 100 + guild index
         private const int BTN_TRIGGER_BASE = 200;   // 200 + guild index
         private const int BTN_INFO_BASE    = 300;   // 300 + guild index
@@ -112,6 +113,10 @@ namespace Server.Custom
 
             AddButton(bx, by, 4005, 4007, BTN_RESET, GumpButtonType.Reply, 0);
             AddLabel(bx + 22, by + 3, 0x22, "Reset Roster");
+            bx += 120;
+
+            AddButton(bx, by, 4005, 4007, BTN_MONITOR, GumpButtonType.Reply, 0);
+            AddLabel(bx + 22, by + 3, 0x35, "Monitor");
 
             // ── Divider ──────────────────────────────────────────────
             AddImageTiled(PadX, 88, W - PadX * 2, 2, 9304);
@@ -185,6 +190,12 @@ namespace Server.Custom
             {
                 PlayerSimulatorManager.SimReset(from);
                 from.SendGump(new SimPlayerGump(from));
+                return;
+            }
+
+            if (btn == BTN_MONITOR)
+            {
+                from.SendGump(new SimMonitorGump(from, 0));
                 return;
             }
 
