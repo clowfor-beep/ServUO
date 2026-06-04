@@ -2505,16 +2505,13 @@ namespace Server.Custom
 
         // ── Constructor ────────────────────────────────────────
         public WandererSimPlayer(string memberName, Point3D home, SpawnZone zone, ScheduleProfile schedule)
-            : base(memberName, home, zone, schedule)
+            : base(FBGuilds.Wanderers, memberName, home, zone, schedule)
         {
         }
 
         public WandererSimPlayer(Serial serial) : base(serial) { }
 
         // ── Overrides ──────────────────────────────────────────
-        public override string GuildName  => FBGuilds.Wanderers;
-        public override string GuildAbbr  => "WoB";
-
         protected override bool SkipStateTick =>
             base.SkipStateTick || _recalling;
 
@@ -2523,7 +2520,7 @@ namespace Server.Custom
             _wanderPhase == WanderPhase.None && base.CanBank;
 
         // ── OnThink ────────────────────────────────────────────
-        protected override void OnThink()
+        public override void OnThink()
         {
             base.OnThink();
             if (Deleted || Map == Map.Internal) return;
