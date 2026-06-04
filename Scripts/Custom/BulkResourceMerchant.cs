@@ -41,7 +41,7 @@ namespace Server.Custom
         }
 
         [CommandProperty(AccessLevel.GameMaster)]
-        public int Amount
+        public new int Amount
         {
             get { return _amount; }
             set { _amount = value; InvalidateProperties(); }

@@ -19,6 +19,7 @@ using Server.Custom;
 using Server.Engines.CannedEvil;
 using Server.Items;
 using Server.Mobiles;
+using Server.Network;
 
 namespace Server.Custom
 {
