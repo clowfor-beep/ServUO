@@ -2,7 +2,7 @@
 // OrbAndCurrencySystem.cs
 // Scripts/Custom/OrbAndCurrencySystem.cs
 //
-// Implements the Orb and Currency system for the Fun Stuff shard.
+// Implements the Orb and Currency system for the AIther shard.
 //
 // Contents:
 //   EssenceShard           — 3rd currency, stackable

@@ -511,8 +511,8 @@ Map.Felucca / Map.Trammel / Map.Ilshenar / Map.Malas / Map.Tokuno / Map.TerMur
 ## Server Infrastructure (Operations)
 
 **Host**: Ubuntu VPS at `178.105.173.80`  
-**Prod container**: `servuo` — external port 2593, shard name "Fun Stuff"  
-**Test container**: `servuo-test` — external port 2594, shard name "Fun Stuff test"  
+**Prod container**: `servuo` — external port 2593, shard name "AIther"  
+**Test container**: `servuo-test` — external port 2594, shard name "AIther test"  
 **Git repo on server**: `/home/servuo/` (also the prod server files)  
 **Test server files**: `/home/servuo-test/`  
 **UO game data**: `/home/servuo/uodata/`  

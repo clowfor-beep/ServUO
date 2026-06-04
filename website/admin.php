@@ -67,7 +67,7 @@ $suggestionStatuses = ['open', 'planned', 'implemented', 'rejected'];
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fun Stuff UO — Admin</title>
+<title>AIther — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -137,7 +137,7 @@ $suggs   = array_filter($submissions, fn($s) => $s['type'] === 'suggestion');
 $open    = array_filter($submissions, fn($s) => ($s['status'] ?? 'open') === 'open');
 ?>
 <div class="topbar">
-  <h1>Fun Stuff UO — Submissions</h1>
+  <h1>AIther — Submissions</h1>
   <form method="POST"><button class="logout-btn" name="logout" value="1">Log out</button></form>
 </div>
 
