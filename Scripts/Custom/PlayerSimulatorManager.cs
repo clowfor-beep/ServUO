@@ -119,11 +119,11 @@ namespace Server.Custom
             // IRON COMPANY -- 6 members (Britain chapter)
             Point3D ironHome = FBZones.IronCompany_Home;
             _allSimPlayers.Add(new IronCompanySimPlayer("Sergeant Vale",
-                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(0)));
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(0),   dungeonGroupId: 1));
             _allSimPlayers.Add(new IronCompanySimPlayer("Brother Kael",
-                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(10)));
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(10),  dungeonGroupId: 1));
             _allSimPlayers.Add(new IronCompanySimPlayer("Ironhide",
-                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(-10)));
+                ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(-10), dungeonGroupId: 1));
             _allSimPlayers.Add(new IronCompanySimPlayer("Stonewall Brec",
                 ironHome, SpawnZone.Britain_Roads, ScheduleProfile.IronCompany(5)));
             _allSimPlayers.Add(new IronCompanySimPlayer("Shield Maiden Rova",
@@ -240,11 +240,11 @@ namespace Server.Custom
 
             // Iron Company (6) -- Trinsic chapter, still runs champ spawns
             _allSimPlayers.Add(new IronCompanySimPlayer("Vanguard Petra",
-                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(0)));
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(0),    dungeonGroupId: 2));
             _allSimPlayers.Add(new IronCompanySimPlayer("Shield Wall Dorn",
-                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(15)));
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(15),   dungeonGroupId: 2));
             _allSimPlayers.Add(new IronCompanySimPlayer("Tactician Yeln",
-                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(-10)));
+                ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(-10),  dungeonGroupId: 2));
             _allSimPlayers.Add(new IronCompanySimPlayer("Bladewarden Cass",
                 ironTrinsic, SpawnZone.Trinsic_City, ScheduleProfile.IronCompany(5)));
             _allSimPlayers.Add(new IronCompanySimPlayer("Hardened Oryn",

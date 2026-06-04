@@ -95,6 +95,94 @@ namespace Server.Custom
         private bool          _champAnnounced   = false;
         private Timer         _bossBattlecryTimer = null;
 
+        // -- Dungeon patrol (persistent: _dungeonGroupId) -----------------
+        // Groups 1 and 2 each contain 3 members.  When idle (no champ run),
+        // each group picks a dungeon together, travels there, fights for
+        // ~90 minutes, then withdraws back home.  Group 0 = no dungeon patrol.
+        private int            _dungeonGroupId      = 0;  // saved
+
+        private enum DungeonPhase { None, Traveling, Fighting, Withdrawing }
+        private DungeonPhase   _dungeonPhase        = DungeonPhase.None;
+        private bool           _dungeonScheduleSet  = false;
+        private DateTime       _nextDungeonRun      = DateTime.MinValue;
+        private DateTime       _leaveDungeonAt      = DateTime.MinValue;
+        private Point3D        _dungeonAnchor       = Point3D.Zero;
+        private Map            _dungeonAnchorMap    = Map.Felucca;
+
+        // Shared state: group ID → dungeon target (picked once per cycle, shared by group)
+        private class DungeonTarget
+        {
+            public Point3D  Loc;
+            public Map      DMap;
+            public string   Name;
+            public DateTime SetAt;
+            public DungeonTarget(Point3D loc, Map map, string name)
+            {
+                Loc = loc; DMap = map; Name = name; SetAt = DateTime.UtcNow;
+            }
+        }
+        private static readonly Dictionary<int, DungeonTarget> _groupDungeonTarget
+            = new Dictionary<int, DungeonTarget>();
+
+        private struct DungeonEntry
+        {
+            public Point3D Loc;
+            public Map     DMap;
+            public string  Name;
+            public DungeonEntry(Point3D loc, Map map, string name)
+            { Loc = loc; DMap = map; Name = name; }
+        }
+        private static readonly DungeonEntry[] DungeonLocations =
+        {
+            new DungeonEntry(new Point3D(354,  110,  -1), Map.Malas,   "Doom"),
+            new DungeonEntry(new Point3D(2509, 997,   0), Map.Felucca, "Covetous"),
+            new DungeonEntry(new Point3D(2004, 145,  -1), Map.Felucca, "the Ice Dungeon"),
+            new DungeonEntry(new Point3D(2929, 3430, -1), Map.Felucca, "the Fire Dungeon"),
+            new DungeonEntry(new Point3D(1170, 1663, -25), Map.Felucca, "the Orc Cave"),
+            new DungeonEntry(new Point3D(2817, 1130, -20), Map.Felucca, "Terathan Keep"),
+        };
+
+        // -- Headquarters idle hangout ------------------------------------
+        // When both champ and dungeon phases are None, members periodically
+        // visit the Iron Company castle HQ near Luna to rest and gossip.
+        private static readonly Point3D IronCompanyHQ     = new Point3D(854, 557, -90);
+        private static readonly Map     IronCompanyHQMap  = Map.Malas;
+
+        private enum HQPhase { None, AtHQ }
+        private HQPhase  _hqPhase       = HQPhase.None;
+        private DateTime _nextHQVisit   = DateTime.MinValue;  // when to next travel to HQ
+        private DateTime _leaveHQAt     = DateTime.MinValue;  // when to head home
+        private DateTime _nextHQSpeech  = DateTime.MinValue;  // throttle gossip lines
+        private bool     _hqInitialized = false;
+
+        private static readonly string[] HQGossip =
+        {
+            // Dungeon victories
+            "You should've seen the Doom run — we wiped the floor with three Lich Lords.",
+            "Covetous Level 5 was crawling with mongbats. We cleared it in under an hour.",
+            "Three Balrons down in the Fire Dungeon. Still got the burns to prove it.",
+            "The Ice Dungeon nearly cost us Kael — Frost Liche got him good. He made it.",
+            "Orc Cave stunk worse than usual. Thirty dead Orcs by the time we left.",
+            "Terathan Keep's queens are no joke. Had to pull back twice before we broke through.",
+            "Doom's gauntlet rooms are mine now. Go ahead — test me.",
+            "We've cleared every floor of Covetous this month. Nobody else can say that.",
+            // Champion spawn victories
+            "The Abyss spawn tried to turn us. Four waves — we held every one.",
+            "Trammel lord fell in under twenty minutes. Iron Company efficiency.",
+            "The spawn last week barely had a chance. We were organised, they weren't.",
+            "Two Blood Pact players tried to muscle in on our spawn. They regretted it.",
+            "Champion's crown went to Sergeant Vale. Rightfully earned.",
+            "We ran three spawns back-to-back last week. Nobody does that but us.",
+            "I counted forty-eight kills at the last champion. Personal record.",
+            // General HQ banter
+            "Good to be back at the castle. My feet needed the rest.",
+            "Luna market's just down the road. Grab reagents while you can.",
+            "Next run in a few hours. Get comfortable while it lasts.",
+            "Anyone want to spar in the courtyard? Kael's been getting sloppy.",
+            "This castle's worth every bit of gold we spent on it.",
+            "Fill your flasks. We ride again soon.",
+        };
+
         // -- Combat healing + mobility (transient) ------------------------
         private DateTime _nextHealAt          = DateTime.MinValue;
         private Point3D  _spawnEntryPoint     = Point3D.Zero;
@@ -208,8 +296,12 @@ namespace Server.Custom
 
         // -- Constructors ----------------------------------------------
         public IronCompanySimPlayer(string memberName, Point3D home,
-                                    SpawnZone zone, ScheduleProfile schedule)
-            : base(FBGuilds.IronCompany, memberName, home, zone, schedule) { }
+                                    SpawnZone zone, ScheduleProfile schedule,
+                                    int dungeonGroupId = 0)
+            : base(FBGuilds.IronCompany, memberName, home, zone, schedule)
+        {
+            _dungeonGroupId = dungeonGroupId;
+        }
 
         public IronCompanySimPlayer(Serial serial) : base(serial) { }
 
@@ -218,13 +310,17 @@ namespace Server.Custom
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
-            writer.Write(0); // version — IronCompany has no extra persistent fields
+            writer.Write(1); // version
+            writer.Write(_dungeonGroupId);
         }
 
         public override void Deserialize(GenericReader reader)
         {
             base.Deserialize(reader);
-            reader.ReadInt(); // version
+            int version = reader.ReadInt();
+
+            if (version >= 1)
+                _dungeonGroupId = reader.ReadInt();
 
             // Transient combat state must not persist across restarts.
             // If the world was saved mid-champ-run, FightMode could be
@@ -322,10 +418,13 @@ namespace Server.Custom
         /// <summary>Pause SimState movement ticks while fighting, rallying at bank, or fighting at spawn.</summary>
         protected override bool SkipStateTick => Combatant != null
             || _champPhase == ChampPhase.WaitingAtBank
-            || _champPhase == ChampPhase.AtSpawn;
+            || _champPhase == ChampPhase.AtSpawn
+            || _dungeonPhase == DungeonPhase.Fighting;
 
         /// <summary>No banking while on a champ run.</summary>
-        protected override bool CanBank => _champPhase == ChampPhase.None;
+        protected override bool CanBank => _champPhase == ChampPhase.None
+            && _dungeonPhase == DungeonPhase.None
+            && _hqPhase == HQPhase.None;
 
         public override void OnThink()
         {
@@ -343,6 +442,14 @@ namespace Server.Custom
 
             // Champ state machine always runs — even during combat / SkipStateTick
             ManageChampPhase();
+
+            // Dungeon patrol state machine — only when idle from champ runs
+            if (_dungeonGroupId > 0 && _champPhase == ChampPhase.None)
+                ManageDungeonPhase();
+
+            // HQ hangout — all Iron Company members, when both other phases are idle
+            if (_champPhase == ChampPhase.None && _dungeonPhase == DungeonPhase.None)
+                ManageHQIdle();
 
             // Self-heal when fighting at the spawn
             if (_champPhase == ChampPhase.AtSpawn && Alive)
@@ -538,6 +645,200 @@ namespace Server.Custom
                     break;
             }
         }
+
+        // ----------------------------------------------------------------
+        // Dungeon patrol state machine
+        // ----------------------------------------------------------------
+
+        private void ManageDungeonPhase()
+        {
+            if (Map == Map.Internal) return;
+
+            // One-time init: stagger first dungeon run 10-30 min after activation
+            if (!_dungeonScheduleSet)
+            {
+                _dungeonScheduleSet = true;
+                _nextDungeonRun = DateTime.UtcNow
+                    + TimeSpan.FromMinutes(Utility.RandomMinMax(10, 30));
+            }
+
+            switch (_dungeonPhase)
+            {
+                case DungeonPhase.None:
+                    if (State == SimState.Idle && DateTime.UtcNow >= _nextDungeonRun)
+                        StartDungeonRun();
+                    break;
+
+                case DungeonPhase.Traveling:
+                    // Wait until we're close enough to the dungeon anchor
+                    if (_dungeonAnchor != Point3D.Zero
+                        && Map == _dungeonAnchorMap
+                        && InRange(_dungeonAnchor, 8))
+                    {
+                        _dungeonPhase   = DungeonPhase.Fighting;
+                        _leaveDungeonAt = DateTime.UtcNow
+                            + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
+                        FightMode  = FightMode.Closest;
+                        CurrentSpeed = ActiveSpeed;
+                    }
+                    break;
+
+                case DungeonPhase.Fighting:
+                    TickAtDungeon();
+                    break;
+
+                case DungeonPhase.Withdrawing:
+                    if (Map == Map.Felucca && InRange(Home, 10))
+                    {
+                        _dungeonPhase     = DungeonPhase.None;
+                        _dungeonAnchor    = Point3D.Zero;
+                        _dungeonAnchorMap = Map.Felucca;
+                        FightMode         = FightMode.None;
+                        Combatant         = null;
+                        _nextDungeonRun   = DateTime.UtcNow
+                            + TimeSpan.FromMinutes(Utility.RandomMinMax(30, 60));
+                    }
+                    break;
+            }
+        }
+
+        private void StartDungeonRun()
+        {
+            // Check if our group already has a target picked this cycle (within 3 hours)
+            DungeonTarget target;
+            DungeonTarget existing;
+
+            if (_groupDungeonTarget.TryGetValue(_dungeonGroupId, out existing)
+                && DateTime.UtcNow - existing.SetAt < TimeSpan.FromHours(3))
+            {
+                target = existing;
+            }
+            else
+            {
+                DungeonEntry pick = DungeonLocations[Utility.Random(DungeonLocations.Length)];
+                target = new DungeonTarget(pick.Loc, pick.DMap, pick.Name);
+                _groupDungeonTarget[_dungeonGroupId] = target;
+            }
+
+            _dungeonAnchor    = target.Loc;
+            _dungeonAnchorMap = target.DMap;
+            _dungeonPhase     = DungeonPhase.Traveling;
+
+            // Leave HQ if we're currently there
+            if (_hqPhase != HQPhase.None)
+            {
+                _hqPhase     = HQPhase.None;
+                _nextHQVisit = DateTime.UtcNow + TimeSpan.FromMinutes(60);
+            }
+
+            string[] lines =
+            {
+                string.Format("Time to move out — we're heading to {0}.", target.Name),
+                string.Format("Brothers, to {0}! Let's hunt.", target.Name),
+                string.Format("The Iron Company rides to {0}!", target.Name),
+                string.Format("Fall in — {0} awaits.", target.Name),
+            };
+            PublicOverheadMessage(MessageType.Regular, 0x3B2, false,
+                lines[Utility.Random(lines.Length)]);
+
+            MoveToWorld(target.Loc, target.DMap);
+        }
+
+        private void TickAtDungeon()
+        {
+            if (DateTime.UtcNow >= _leaveDungeonAt)
+            {
+                BeginDungeonWithdraw();
+                return;
+            }
+
+            // If we drifted far from our anchor, teleport back
+            if (Map != _dungeonAnchorMap || !InRange(_dungeonAnchor, 20))
+                MoveToWorld(_dungeonAnchor, _dungeonAnchorMap);
+
+            // Base AI handles combat with FightMode.Closest
+        }
+
+        private void BeginDungeonWithdraw()
+        {
+            string[] lines =
+            {
+                "That's enough — we're withdrawing.",
+                "Time to head back. Good fight.",
+                "Pull out! We return to the city.",
+                "Withdrawal — move back to the roads.",
+            };
+            PublicOverheadMessage(MessageType.Regular, 0x3B2, false,
+                lines[Utility.Random(lines.Length)]);
+
+            _dungeonPhase = DungeonPhase.Withdrawing;
+            FightMode     = FightMode.None;
+            Combatant     = null;
+            MoveToWorld(Home, Map.Felucca);
+        }
+
+        // ----------------------------------------------------------------
+        // HQ idle hangout
+        // ----------------------------------------------------------------
+
+        private void ManageHQIdle()
+        {
+            if (Map == Map.Internal) return;
+
+            // One-time stagger: first HQ visit 5-20 min after spawn
+            if (!_hqInitialized)
+            {
+                _hqInitialized = true;
+                _nextHQVisit   = DateTime.UtcNow
+                    + TimeSpan.FromMinutes(Utility.RandomMinMax(5, 20));
+            }
+
+            switch (_hqPhase)
+            {
+                case HQPhase.None:
+                    if (State == SimState.Idle && DateTime.UtcNow >= _nextHQVisit)
+                    {
+                        _hqPhase    = HQPhase.AtHQ;
+                        _leaveHQAt  = DateTime.UtcNow
+                            + TimeSpan.FromMinutes(Utility.RandomMinMax(20, 40));
+                        MoveToWorld(IronCompanyHQ, IronCompanyHQMap);
+                    }
+                    break;
+
+                case HQPhase.AtHQ:
+                    // Gossip while hanging out
+                    if (DateTime.UtcNow >= _nextHQSpeech)
+                    {
+                        bool anyoneNearby = false;
+                        foreach (Mobile m in GetMobilesInRange(8))
+                        {
+                            if (m != this && !m.Deleted && m.Alive)
+                            { anyoneNearby = true; break; }
+                        }
+
+                        if (anyoneNearby)
+                            Say(HQGossip[Utility.Random(HQGossip.Length)]);
+
+                        _nextHQSpeech = DateTime.UtcNow
+                            + TimeSpan.FromSeconds(Utility.RandomMinMax(25, 70));
+                    }
+
+                    // Leave when time is up or a champ/dungeon run starts
+                    if (DateTime.UtcNow >= _leaveHQAt)
+                        ReturnFromHQ();
+                    break;
+            }
+        }
+
+        private void ReturnFromHQ()
+        {
+            _hqPhase     = HQPhase.None;
+            _nextHQVisit = DateTime.UtcNow
+                + TimeSpan.FromMinutes(Utility.RandomMinMax(30, 90));
+            MoveToWorld(Home, Map.Felucca);
+        }
+
+        // ----------------------------------------------------------------
 
         private void StartChampRun()
         {
@@ -1050,6 +1351,24 @@ namespace Server.Custom
             _isDowned   = false;    // ensure clean state
             FightMode   = FightMode.None; // in case we were downed mid-fight
             _nextChampRun = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(60, 120));
+
+            // Also abort any active dungeon run so movement is restored cleanly
+            if (_dungeonPhase != DungeonPhase.None)
+            {
+                _dungeonPhase       = DungeonPhase.None;
+                _dungeonAnchor      = Point3D.Zero;
+                _dungeonAnchorMap   = Map.Felucca;
+                FightMode           = FightMode.None;
+                Combatant           = null;
+            }
+
+            // Abort HQ visit if active
+            if (_hqPhase != HQPhase.None)
+            {
+                _hqPhase     = HQPhase.None;
+                _nextHQVisit = DateTime.UtcNow
+                    + TimeSpan.FromMinutes(Utility.RandomMinMax(30, 60));
+            }
 
             // Restore normal movement speed and team
             if (_baseActiveSpeed > 0.0)
