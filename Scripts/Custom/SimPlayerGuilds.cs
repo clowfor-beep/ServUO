@@ -2534,7 +2534,14 @@ namespace Server.Custom
             switch (_wanderPhase)
             {
                 case WanderPhase.None:
-                    StartBankPhase();
+                    StartHuntPhase();
+                    break;
+
+                case WanderPhase.Hunting:
+                    if (DateTime.UtcNow >= _phaseEndsAt)
+                        RecallToBritain();
+                    else
+                        TrySpeakAmbient(HuntLines);
                     break;
 
                 case WanderPhase.Banking:
@@ -2549,34 +2556,9 @@ namespace Server.Custom
                         StartHuntPhase();
                     break;
 
-                case WanderPhase.Hunting:
-                    if (DateTime.UtcNow >= _phaseEndsAt)
-                        RecallToBritain();
-                    else
-                        TrySpeakAmbient(HuntLines);
-                    break;
-
                 case WanderPhase.Recalling:
                     // DoRecall timer is running; nothing to do until callback fires
                     break;
-            }
-        }
-
-        private void StartBankPhase()
-        {
-            _wanderPhase = WanderPhase.Banking;
-            _phaseEndsAt = DateTime.UtcNow + TimeSpan.FromMinutes(10.0);
-
-            // First activation: place directly into world; subsequent loops: recall in
-            if (Map == Map.Internal)
-            {
-                MoveToWorld(BritBankLoc, BritMap);
-                Say("Back to Britain.");
-            }
-            else
-            {
-                Say("Time to head back to Britain.");
-                DoRecall(BritBankLoc, BritMap, () => { });
             }
         }
 
@@ -2592,15 +2574,26 @@ namespace Server.Custom
             _currentHuntIdx = Utility.Random(HuntSpots.Length);
             HuntSpot spot   = HuntSpots[_currentHuntIdx];
 
-            _wanderPhase = WanderPhase.Recalling;  // guard during cast delay
             _phaseEndsAt = DateTime.UtcNow + TimeSpan.FromMinutes(40.0);
 
-            SayIfVisible(string.Format("*prepares a Recall scroll for {0}*", spot.Name));
-            DoRecall(spot.Loc, spot.HMap, () =>
+            if (Map == Map.Internal)
             {
-                _wanderPhase = WanderPhase.Hunting; // now the 40-min clock starts
-                SayIfVisible(string.Format("Made it to {0}.", spot.Name));
-            });
+                // First activation — place directly into the hunt spot
+                MoveToWorld(spot.Loc, spot.HMap);
+                _wanderPhase = WanderPhase.Hunting;
+                SayIfVisible(string.Format("Heading out to {0}.", spot.Name));
+            }
+            else
+            {
+                // Subsequent loops — Recall from Britain to hunt spot
+                _wanderPhase = WanderPhase.Recalling;  // guard during cast delay
+                SayIfVisible(string.Format("*prepares a Recall scroll for {0}*", spot.Name));
+                DoRecall(spot.Loc, spot.HMap, () =>
+                {
+                    _wanderPhase = WanderPhase.Hunting; // 40-min clock starts on arrival
+                    SayIfVisible(string.Format("Made it to {0}.", spot.Name));
+                });
+            }
         }
 
         private void RecallToBritain()
@@ -2611,7 +2604,10 @@ namespace Server.Custom
             Say("That's enough hunting for now.");
             DoRecall(BritBankLoc, BritMap, () =>
             {
-                _wanderPhase = WanderPhase.None;    // loop restarts on next OnThink
+                // Arrive at bank — start the 10 min bank hang-out
+                _wanderPhase = WanderPhase.Banking;
+                _phaseEndsAt = DateTime.UtcNow + TimeSpan.FromMinutes(10.0);
+                Say("Back to Britain.");
             });
         }
 
