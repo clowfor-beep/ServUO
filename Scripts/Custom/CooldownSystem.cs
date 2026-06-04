@@ -46,13 +46,21 @@ namespace Server.Custom
         // -------------------------------------------------------
         // Hook into Skills.cs delegate on startup
         // -------------------------------------------------------
+        // Skills whose cooldown is managed externally (e.g. server resets NextSkillTime
+        // long before the OnUse return value expires, so we track them ourselves).
+        private static readonly HashSet<string> ExternallyManaged = new HashSet<string>
+        {
+            "Animal Taming",
+        };
+
         public static void Initialize()
         {
             // Skills.OnSkillUsed fires for every player skill activation.
             // We only show the HUD for cooldowns >= 1 second.
+            // Externally-managed skills supply their own Start/Clear calls.
             Skills.OnSkillUsed = (m, name, seconds) =>
             {
-                if (seconds >= 1.0)
+                if (seconds >= 1.0 && !ExternallyManaged.Contains(name))
                     Start(m, name, seconds);
             };
         }
