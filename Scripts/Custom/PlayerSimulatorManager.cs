@@ -446,8 +446,13 @@ namespace Server.Custom
         private void CreateSimPlayer(string guild, string memberName, Point3D home,
                                      SpawnZone zone, int scheduleDriftMinutes)
         {
-            var sp = new SimPlayer(guild, memberName, home, zone,
-                                   ScheduleProfile.Wanderers(scheduleDriftMinutes));
+            SimPlayer sp;
+            if (guild == FBGuilds.Wanderers)
+                sp = new WandererSimPlayer(memberName, home, zone,
+                         ScheduleProfile.Wanderers(scheduleDriftMinutes));
+            else
+                sp = new SimPlayer(guild, memberName, home, zone,
+                         ScheduleProfile.Wanderers(scheduleDriftMinutes));
             _allSimPlayers.Add(sp);
         }
 
