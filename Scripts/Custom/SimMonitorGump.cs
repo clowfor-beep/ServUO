@@ -251,12 +251,15 @@ namespace Server.Custom
 
             if (btn == BTN_REFRESH)
             {
+                from.CloseGump(typeof(SimMonitorGump));
                 from.SendGump(new SimMonitorGump(from, _page, _guildFilter));
                 return;
             }
 
             if (btn == BTN_BACK)
             {
+                from.CloseGump(typeof(SimMonitorGump));
+                from.CloseGump(typeof(SimPlayerGump));
                 from.SendGump(new SimPlayerGump(from));
                 return;
             }
@@ -264,18 +267,21 @@ namespace Server.Custom
             if (btn == BTN_FIX_ALL && isGM)
             {
                 PlayerSimulatorManager.SimFixAll(from);
+                from.CloseGump(typeof(SimMonitorGump));
                 from.SendGump(new SimMonitorGump(from, _page, _guildFilter));
                 return;
             }
 
             if (btn == BTN_PREV)
             {
+                from.CloseGump(typeof(SimMonitorGump));
                 from.SendGump(new SimMonitorGump(from, _page - 1, _guildFilter));
                 return;
             }
 
             if (btn == BTN_NEXT)
             {
+                from.CloseGump(typeof(SimMonitorGump));
                 from.SendGump(new SimMonitorGump(from, _page + 1, _guildFilter));
                 return;
             }
@@ -283,6 +289,7 @@ namespace Server.Custom
             // Guild filter — All
             if (btn == BTN_FILTER_ALL)
             {
+                from.CloseGump(typeof(SimMonitorGump));
                 from.SendGump(new SimMonitorGump(from, 0, null));
                 return;
             }
@@ -291,8 +298,8 @@ namespace Server.Custom
             if (btn >= BTN_FILTER_BASE && btn < BTN_FILTER_BASE + FBGuilds.All.Length)
             {
                 string selected = FBGuilds.All[btn - BTN_FILTER_BASE];
-                // Toggle off if already selected
                 string next = (selected == _guildFilter) ? null : selected;
+                from.CloseGump(typeof(SimMonitorGump));
                 from.SendGump(new SimMonitorGump(from, 0, next));
                 return;
             }
@@ -305,6 +312,7 @@ namespace Server.Custom
                     from.MoveToWorld(sp.Location, sp.Map);
                 else
                     from.SendMessage(0x22, string.Format("{0} is not in the world.", sp.MemberName));
+                from.CloseGump(typeof(SimMonitorGump));
                 from.SendGump(new SimMonitorGump(from, _page, _guildFilter));
                 return;
             }
@@ -315,6 +323,7 @@ namespace Server.Custom
                 SimPlayer sp = _snapshot[btn - BTN_FIX_BASE];
                 sp.AutoFix();
                 from.SendMessage(0x35, string.Format("Fixed: {0} ({1})", sp.MemberName, sp.GuildName));
+                from.CloseGump(typeof(SimMonitorGump));
                 from.SendGump(new SimMonitorGump(from, _page, _guildFilter));
                 return;
             }

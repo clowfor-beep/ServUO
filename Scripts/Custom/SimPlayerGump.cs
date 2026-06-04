@@ -183,6 +183,7 @@ namespace Server.Custom
             if (btn == BTN_STATUS && isGM)
             {
                 PlayerSimulatorManager.SimStatus(from);
+                from.CloseGump(typeof(SimPlayerGump));
                 from.SendGump(new SimPlayerGump(from));
                 return;
             }
@@ -190,6 +191,7 @@ namespace Server.Custom
             if (btn == BTN_CHAMP && isGM)
             {
                 PlayerSimulatorManager.SimChamp(from);
+                from.CloseGump(typeof(SimPlayerGump));
                 from.SendGump(new SimPlayerGump(from));
                 return;
             }
@@ -197,12 +199,15 @@ namespace Server.Custom
             if (btn == BTN_RESET && isGM)
             {
                 PlayerSimulatorManager.SimReset(from);
+                from.CloseGump(typeof(SimPlayerGump));
                 from.SendGump(new SimPlayerGump(from));
                 return;
             }
 
             if (btn == BTN_MONITOR)
             {
+                from.CloseGump(typeof(SimPlayerGump));
+                from.CloseGump(typeof(SimMonitorGump));
                 from.SendGump(new SimMonitorGump(from, 0));
                 return;
             }
@@ -211,6 +216,7 @@ namespace Server.Custom
             if (btn >= BTN_GOTO_BASE && btn < BTN_GOTO_BASE + FBGuilds.All.Length)
             {
                 PlayerSimulatorManager.SimGoto(from, FBGuilds.All[btn - BTN_GOTO_BASE]);
+                from.CloseGump(typeof(SimPlayerGump));
                 from.SendGump(new SimPlayerGump(from));
                 return;
             }
@@ -219,6 +225,7 @@ namespace Server.Custom
             if (isGM && btn >= BTN_TRIGGER_BASE && btn < BTN_TRIGGER_BASE + FBGuilds.All.Length)
             {
                 PlayerSimulatorManager.SimTrigger(from, FBGuilds.All[btn - BTN_TRIGGER_BASE]);
+                from.CloseGump(typeof(SimPlayerGump));
                 from.SendGump(new SimPlayerGump(from));
                 return;
             }
@@ -227,6 +234,7 @@ namespace Server.Custom
             if (btn >= BTN_INFO_BASE && btn < BTN_INFO_BASE + FBGuilds.All.Length)
             {
                 PlayerSimulatorManager.SimInfo(from, FBGuilds.All[btn - BTN_INFO_BASE]);
+                from.CloseGump(typeof(SimPlayerGump));
                 from.SendGump(new SimPlayerGump(from));
                 return;
             }
