@@ -181,37 +181,27 @@ begin
 
   ForceDirectories(ExpandConstant('{userappdata}') + '\ClassicUOLauncher');
 
-  // Write a PS1 that pipes SQL directly to sqlite3 stdin — avoids all path/quoting issues
-  SaveStringToFile(TmpPath + '\setup_db.ps1',
-    '$sq  = "' + SqlitePath + '"' + #13#10 +
-    '$db  = "' + LauncherDB + '"' + #13#10 +
-    '$cuo = "' + CUOPath + '"' + #13#10 +
-    '$uo  = "' + UOPath + '"' + #13#10 +
-    '$plg = "' + PluginPath + '"' + #13#10 +
-    '' + #13#10 +
-    '# Delete old DB so no stale profiles remain' + #13#10 +
-    'if (Test-Path $db) { Remove-Item $db -Force }' + #13#10 +
-    '' + #13#10 +
-    '# Build SQL as a string and pipe to sqlite3 stdin' + #13#10 +
-    '$sql = @"' + #13#10 +
-    'CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);' + #13#10 +
-    'CREATE TABLE IF NOT EXISTS profiles (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort_order INTEGER NOT NULL, cuo_path TEXT, server TEXT, port TEXT, client_version TEXT, uo_path TEXT, encryption_type INTEGER DEFAULT 0, last_server_name TEXT);' + #13#10 +
-    'CREATE TABLE IF NOT EXISTS profile_plugins (id INTEGER PRIMARY KEY AUTOINCREMENT, profile_id INTEGER NOT NULL, path TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1);' + #13#10 +
-    'INSERT INTO profiles (name, sort_order, cuo_path, server, port, client_version, uo_path, encryption_type, last_server_name) VALUES ("AIther", 0, "$cuo", "aither-uo.com", "2593", "7.0.115.0", "$uo", 0, "AIther");' + #13#10 +
-    'INSERT OR REPLACE INTO settings (key, value) VALUES ("selected_profile_index", "0");' + #13#10 +
-    'INSERT OR REPLACE INTO settings (key, value) VALUES ("last_profile_name", "AIther");' + #13#10 +
-    '"@' + #13#10 +
-    '' + #13#10 +
-    '$sql | & $sq $db' + #13#10 +
-    '' + #13#10 +
-    '# Add Razor plugin' + #13#10 +
-    '$id = (& $sq $db "SELECT id FROM profiles ORDER BY id DESC LIMIT 1;").Trim()' + #13#10 +
-    'if ($id) { "INSERT OR REPLACE INTO profile_plugins (profile_id, path, enabled) VALUES ($id, ''$plg'', 1);" | & $sq $db }',
-    False);
+  // Create schema if DB doesn't exist yet
+  RunSQLite(LauncherDB, 'CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+  RunSQLite(LauncherDB, 'CREATE TABLE IF NOT EXISTS profiles (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort_order INTEGER NOT NULL, cuo_path TEXT, username TEXT, password TEXT, server TEXT, port TEXT, charname TEXT, client_version TEXT, uo_path TEXT, server_type INTEGER DEFAULT 0, last_server_index INTEGER DEFAULT 0, last_server_name TEXT, debug INTEGER DEFAULT 0, profiler INTEGER DEFAULT 0, save_account INTEGER DEFAULT 0, skip_login_screen INTEGER DEFAULT 0, autologin INTEGER DEFAULT 0, reconnect INTEGER DEFAULT 0, reconnect_time INTEGER DEFAULT 1000, has_music INTEGER DEFAULT 1, high_dpi INTEGER DEFAULT 0, use_verdata INTEGER DEFAULT 0, uo_protocol INTEGER DEFAULT 0, music_volume INTEGER DEFAULT 50, encryption_type INTEGER DEFAULT 0, force_driver INTEGER DEFAULT 0, packet_log INTEGER DEFAULT 0, args TEXT DEFAULT '''');');
+  RunSQLite(LauncherDB, 'CREATE TABLE IF NOT EXISTS profile_plugins (id INTEGER PRIMARY KEY AUTOINCREMENT, profile_id INTEGER NOT NULL, path TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(profile_id) REFERENCES profiles(id) ON DELETE CASCADE);');
 
-  Exec('powershell.exe',
-    '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + TmpPath + '\setup_db.ps1"',
-    '', SW_HIDE, ewWaitUntilTerminated, Code);
+  // Update any existing profile to AIther — rename + new server in one shot
+  RunSQLite(LauncherDB, 'UPDATE profiles SET name=''AIther'', server=''aither-uo.com'', port=''2593'', cuo_path=''' + CUOPath + ''', uo_path=''' + UOPath + ''', last_server_name=''AIther'' WHERE id=(SELECT MIN(id) FROM profiles);');
+
+  // If no profile existed, insert one fresh
+  RunSQLite(LauncherDB, 'INSERT INTO profiles (name, sort_order, cuo_path, server, port, client_version, uo_path, encryption_type, last_server_name) SELECT ''AIther'', 0, ''' + CUOPath + ''', ''aither-uo.com'', ''2593'', ''7.0.115.0'', ''' + UOPath + ''', 0, ''AIther'' WHERE NOT EXISTS (SELECT 1 FROM profiles);');
+
+  // Delete any extra profiles beyond the first
+  RunSQLite(LauncherDB, 'DELETE FROM profiles WHERE id NOT IN (SELECT MIN(id) FROM profiles);');
+
+  // Select the profile
+  RunSQLite(LauncherDB, 'INSERT OR REPLACE INTO settings (key, value) VALUES (''selected_profile_index'', ''0'');');
+  RunSQLite(LauncherDB, 'INSERT OR REPLACE INTO settings (key, value) VALUES (''last_profile_name'', ''AIther'');');
+
+  // Wire up Razor Enhanced plugin
+  RunSQLite(LauncherDB, 'DELETE FROM profile_plugins;');
+  RunSQLite(LauncherDB, 'INSERT INTO profile_plugins (profile_id, path, enabled) SELECT id, ''' + PluginPath + ''', 1 FROM profiles WHERE name=''AIther'' LIMIT 1;');
 
   SetStatus('Done!');
 end;
