@@ -59,6 +59,7 @@ namespace Server.Custom
         public SimPlayerGump(Mobile from) : base(40, 40)
         {
             _from = from;
+            bool isGM = from.AccessLevel >= AccessLevel.GameMaster;
 
             // ── Gather live stats ─────────────────────────────────────
             int totalRoster = 0, totalActive = 0;
@@ -103,17 +104,20 @@ namespace Server.Custom
             //   [Status]   [Champ Run]   [Reset Roster]
             int bx = PadX, by = 60;
 
-            AddButton(bx, by, 4005, 4007, BTN_STATUS, GumpButtonType.Reply, 0);
-            AddLabel(bx + 22, by + 3, 0x35, "Status (chat)");
-            bx += 130;
+            if (isGM)
+            {
+                AddButton(bx, by, 4005, 4007, BTN_STATUS, GumpButtonType.Reply, 0);
+                AddLabel(bx + 22, by + 3, 0x35, "Status (chat)");
+                bx += 130;
 
-            AddButton(bx, by, 4005, 4007, BTN_CHAMP, GumpButtonType.Reply, 0);
-            AddLabel(bx + 22, by + 3, 1153, "Champ Run");
-            bx += 120;
+                AddButton(bx, by, 4005, 4007, BTN_CHAMP, GumpButtonType.Reply, 0);
+                AddLabel(bx + 22, by + 3, 1153, "Champ Run");
+                bx += 120;
 
-            AddButton(bx, by, 4005, 4007, BTN_RESET, GumpButtonType.Reply, 0);
-            AddLabel(bx + 22, by + 3, 0x22, "Reset Roster");
-            bx += 120;
+                AddButton(bx, by, 4005, 4007, BTN_RESET, GumpButtonType.Reply, 0);
+                AddLabel(bx + 22, by + 3, 0x22, "Reset Roster");
+                bx += 120;
+            }
 
             AddButton(bx, by, 4005, 4007, BTN_MONITOR, GumpButtonType.Reply, 0);
             AddLabel(bx + 22, by + 3, 0x35, "Monitor");
@@ -126,8 +130,8 @@ namespace Server.Custom
             AddLabel(PadX,       hy, 2049, "Guild");
             AddLabel(W - 195,    hy, 2049, "In World");
             AddLabel(W - 145,    hy, 2049, "Goto");
-            AddLabel(W - 105,    hy, 2049, "Trigger");
-            AddLabel(W - 58,     hy, 2049, "Info");
+            if (isGM) AddLabel(W - 105, hy, 2049, "Trigger");
+            if (isGM) AddLabel(W - 58,  hy, 2049, "Info");
 
             AddImageTiled(PadX, hy + 18, W - PadX * 2, 1, 9304);
 
@@ -154,11 +158,13 @@ namespace Server.Custom
                 // Goto
                 AddButton(W - 148, gy + 3, 4005, 4007, BTN_GOTO_BASE + i, GumpButtonType.Reply, 0);
 
-                // Trigger
-                AddButton(W - 104, gy + 3, 4005, 4007, BTN_TRIGGER_BASE + i, GumpButtonType.Reply, 0);
+                // Trigger (GM only)
+                if (isGM)
+                    AddButton(W - 104, gy + 3, 4005, 4007, BTN_TRIGGER_BASE + i, GumpButtonType.Reply, 0);
 
-                // Info
-                AddButton(W - 58, gy + 3, 4005, 4007, BTN_INFO_BASE + i, GumpButtonType.Reply, 0);
+                // Info (GM only)
+                if (isGM)
+                    AddButton(W - 58, gy + 3, 4005, 4007, BTN_INFO_BASE + i, GumpButtonType.Reply, 0);
 
                 gy += RowH;
             }
@@ -171,22 +177,24 @@ namespace Server.Custom
             int btn = info.ButtonID;
             if (btn == BTN_CLOSE) return;
 
+            bool isGM = from.AccessLevel >= AccessLevel.GameMaster;
+
             // ── Global actions ────────────────────────────────────────
-            if (btn == BTN_STATUS)
+            if (btn == BTN_STATUS && isGM)
             {
                 PlayerSimulatorManager.SimStatus(from);
                 from.SendGump(new SimPlayerGump(from));
                 return;
             }
 
-            if (btn == BTN_CHAMP)
+            if (btn == BTN_CHAMP && isGM)
             {
                 PlayerSimulatorManager.SimChamp(from);
                 from.SendGump(new SimPlayerGump(from));
                 return;
             }
 
-            if (btn == BTN_RESET)
+            if (btn == BTN_RESET && isGM)
             {
                 PlayerSimulatorManager.SimReset(from);
                 from.SendGump(new SimPlayerGump(from));
@@ -207,8 +215,8 @@ namespace Server.Custom
                 return;
             }
 
-            // ── Per-guild Trigger ─────────────────────────────────────
-            if (btn >= BTN_TRIGGER_BASE && btn < BTN_TRIGGER_BASE + FBGuilds.All.Length)
+            // ── Per-guild Trigger (GM only) ───────────────────────────
+            if (isGM && btn >= BTN_TRIGGER_BASE && btn < BTN_TRIGGER_BASE + FBGuilds.All.Length)
             {
                 PlayerSimulatorManager.SimTrigger(from, FBGuilds.All[btn - BTN_TRIGGER_BASE]);
                 from.SendGump(new SimPlayerGump(from));

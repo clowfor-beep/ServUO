@@ -50,8 +50,8 @@ namespace Server.Custom
             CommandSystem.Register("simtrigger", AccessLevel.GameMaster, e => SimTrigger(e.Mobile, e.ArgString?.Trim()));
             CommandSystem.Register("siminfo",    AccessLevel.GameMaster, e => SimInfo(e.Mobile, e.ArgString?.Trim()));
             CommandSystem.Register("simchamp",   AccessLevel.GameMaster, e => SimChamp(e.Mobile));
-            CommandSystem.Register("simpanel",   AccessLevel.GameMaster, e => e.Mobile.SendGump(new SimPlayerGump(e.Mobile)));
-            CommandSystem.Register("simmonitor", AccessLevel.GameMaster, e => e.Mobile.SendGump(new SimMonitorGump(e.Mobile, 0)));
+            CommandSystem.Register("simpanel",   AccessLevel.Counselor, e => e.Mobile.SendGump(new SimPlayerGump(e.Mobile)));
+            CommandSystem.Register("simmonitor", AccessLevel.Counselor, e => e.Mobile.SendGump(new SimMonitorGump(e.Mobile, 0)));
             CommandSystem.Register("simfixall",  AccessLevel.GameMaster, e => SimFixAll(e.Mobile));
 
             // Find existing singleton in world
