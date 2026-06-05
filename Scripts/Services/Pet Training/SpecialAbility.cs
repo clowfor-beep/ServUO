@@ -1,3 +1,4 @@
+using Server.Custom;
 using Server.Items;
 using Server.Network;
 using System;
@@ -2217,9 +2218,11 @@ namespace Server.Mobiles
         public bool CanDrainLife(BaseCreature bc, Mobile victim)
         {
             if (bc is Succubus && victim.Female)
-            {
                 return false;
-            }
+
+            // SimPlayers that flag themselves immune (e.g. Iron Company) are unaffected
+            if (victim is SimPlayer sp && sp.IsImmuneToLifeDrain)
+                return false;
 
             return true;
         }

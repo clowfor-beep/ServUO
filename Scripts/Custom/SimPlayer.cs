@@ -436,6 +436,9 @@ namespace Server.Custom
         [CommandProperty(AccessLevel.GameMaster)]
         public DateTime LastStateChange => _lastStateChangedAt;
 
+        /// <summary>Override to true in subclasses that should be immune to Succubus life drain.</summary>
+        public virtual bool IsImmuneToLifeDrain => false;
+
         /// <summary>Returns a health indicator used by the monitor gump and watchdog.</summary>
         public virtual SimHealthStatus GetHealth()
         {

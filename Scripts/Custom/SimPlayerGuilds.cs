@@ -296,6 +296,9 @@ namespace Server.Custom
         };
 
         // -- Constructors ----------------------------------------------
+        // Iron Company are hardened warriors — immune to Succubus life drain
+        public override bool IsImmuneToLifeDrain => true;
+
         public IronCompanySimPlayer(string memberName, Point3D home,
                                     SpawnZone zone, ScheduleProfile schedule,
                                     int dungeonGroupId = 0)
