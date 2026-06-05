@@ -33,7 +33,7 @@ namespace Server.Items
 
                 attacker.Combatant = null;
                 attacker.Warmode = false;
-                attacker.Hidden = true;
+                Server.Custom.SkillSynergies.RequestShadowHide(attacker);
                 return;
             }
 

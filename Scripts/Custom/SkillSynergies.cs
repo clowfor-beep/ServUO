@@ -38,6 +38,27 @@ namespace Server.Custom
         // ============================================================
 
         private static readonly HashSet<Mobile> PendingBackstab = new HashSet<Mobile>();
+        private static readonly HashSet<Mobile> PendingShadowHide = new HashSet<Mobile>();
+
+        /// <summary>Called by ForceArrow shadow mode — suppresses the next RevealingAction in BaseRanged.OnSwing.</summary>
+        public static void RequestShadowHide(Mobile m)
+        {
+            if (m != null) PendingShadowHide.Add(m);
+        }
+
+        /// <summary>Called at end of BaseRanged.OnSwing. Returns true (and hides the mobile) if shadow hide was requested, suppressing RevealingAction.</summary>
+        public static bool ConsumeShadowHide(Mobile m)
+        {
+            if (m == null || !PendingShadowHide.Remove(m))
+                return false;
+
+            m.Hidden = true;
+
+            if (m is PlayerMobile pm)
+                pm.AllowedStealthSteps = (int)(pm.Skills[SkillName.Stealth].Value / 5.0);
+
+            return true;
+        }
 
         /// <summary>
         /// Call this in BaseWeapon.OnSwing BEFORE DisruptiveAction().
@@ -62,25 +83,13 @@ namespace Server.Custom
 
         public static void RegisterBackstab(Mobile attacker)
         {
-            if (attacker == null) return;
-
-            if (!attacker.Hidden)
-            {
-                attacker.SendMessage(0x35, "[BS] Not hidden");
+            if (attacker == null || !attacker.Hidden)
                 return;
-            }
 
-            double hiding  = attacker.Skills[SkillName.Hiding].Value;
-            double stealth = attacker.Skills[SkillName.Stealth].Value;
-
-            if (hiding >= 80.0 && stealth >= 80.0)
+            if (attacker.Skills[SkillName.Hiding].Value  >= 80.0 &&
+                attacker.Skills[SkillName.Stealth].Value >= 80.0)
             {
-                attacker.SendMessage(0x35, $"[BS] Registered (Hiding={hiding}, Stealth={stealth})");
                 PendingBackstab.Add(attacker);
-            }
-            else
-            {
-                attacker.SendMessage(0x35, $"[BS] Skill too low (Hiding={hiding}, Stealth={stealth})");
             }
         }
 

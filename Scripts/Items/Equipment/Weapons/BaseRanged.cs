@@ -94,7 +94,8 @@ namespace Server.Items
                     }
                 }
 
-                attacker.RevealingAction();
+                if (!Server.Custom.SkillSynergies.ConsumeShadowHide(attacker))
+                    attacker.RevealingAction();
 
                 return GetDelay(attacker);
             }
