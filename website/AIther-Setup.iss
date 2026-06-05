@@ -25,7 +25,7 @@ Source: "sqlite3.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
 Name: "{group}\AIther Launcher"; Filename: "{app}\ClassicUOLauncher.exe"
-Name: "{commondesktop}\AIther"; Filename: "{app}\ClassicUOLauncher.exe"
+Name: "{userdesktop}\AIther"; Filename: "{app}\ClassicUOLauncher.exe"
 
 [Run]
 Filename: "{app}\ClassicUOLauncher.exe"; Description: "Launch AIther now"; Flags: postinstall nowait skipifsilent
