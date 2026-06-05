@@ -367,6 +367,15 @@ namespace Server
                 return 0;
             }
 
+            // Anatomy damage reduction: 1% per 10 Anatomy skill (max 12% at 120 Anatomy)
+            if (m is PlayerMobile)
+            {
+                double anatomy = m.Skills[SkillName.Anatomy].Value;
+                double anatomyReduction = System.Math.Floor(anatomy / 10.0) * 0.01;
+                totalDamage = (int)(totalDamage * (1.0 - anatomyReduction));
+                if (totalDamage < 1) totalDamage = 1;
+            }
+
             if (from != null)
             {
                 DoLeech(totalDamage, from, m);
