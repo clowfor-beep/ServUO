@@ -1,9 +1,12 @@
+using Server.Custom;
+
 namespace Server.Items
 {
     public class TreasureLevel1 : BaseDungeonChest
     {
         public override int DefaultGumpID => 0x49;
 
+        // Matches: Average (108-180 gold, 1-2 magic items)
         [Constructable]
         public TreasureLevel1() : base(Utility.RandomList(0xE3C, 0xE3E, 0x9a9)) // Large, Medium and Small Crate
         {
@@ -13,16 +16,25 @@ namespace Server.Items
             TrapType = TrapType.MagicTrap;
             TrapPower = 1 * Utility.Random(1, 25);
 
-            DropItem(new Gold(30, 100));
-            DropItem(new Bolt(10));
+            DropItem(new Gold(Utility.RandomMinMax(108, 180)));
             DropItem(Loot.RandomClothing());
 
-            AddLoot(Loot.RandomWeapon());
+            // 1-2 magic items
             AddLoot(Loot.RandomArmorOrShield());
-            AddLoot(Loot.RandomJewelry());
+            if (Utility.RandomBool())
+                AddLoot(Loot.RandomWeapon());
 
-            for (int i = Utility.Random(3) + 1; i > 0; i--) // random 1 to 3
+            // 1-3 gems
+            for (int i = Utility.RandomMinMax(1, 3); i > 0; i--)
                 DropItem(Loot.RandomGem());
+
+            // 2% chance: random currency orb
+            if (Utility.RandomDouble() < 0.02)
+                DropItem(RandomOrb());
+
+            // 2% chance: 105 or 110 power scroll
+            if (Utility.RandomDouble() < 0.02)
+                DropItem(PowerScroll.CreateRandom(105, 110));
         }
 
         public TreasureLevel1(Serial serial) : base(serial)
@@ -46,8 +58,9 @@ namespace Server.Items
 
     public class TreasureLevel2 : BaseDungeonChest
     {
+        // Matches: Rich (225-375 gold, 2-3 magic items)
         [Constructable]
-        public TreasureLevel2() : base(Utility.RandomList(0xe3c, 0xE3E, 0x9a9, 0xe42, 0x9ab, 0xe40, 0xe7f, 0xe77)) // various container IDs
+        public TreasureLevel2() : base(Utility.RandomList(0xe3c, 0xE3E, 0x9a9, 0xe42, 0x9ab, 0xe40, 0xe7f, 0xe77))
         {
             RequiredSkill = 72;
             LockLevel = RequiredSkill - Utility.Random(1, 10);
@@ -55,22 +68,37 @@ namespace Server.Items
             TrapType = TrapType.MagicTrap;
             TrapPower = 2 * Utility.Random(1, 25);
 
-            DropItem(new Gold(70, 100));
-            DropItem(new Arrow(10));
+            DropItem(new Gold(Utility.RandomMinMax(225, 375)));
             DropItem(Loot.RandomPotion());
-            for (int i = Utility.Random(1, 2); i > 1; i--)
-            {
-                Item ReagentLoot = Loot.RandomReagent();
-                ReagentLoot.Amount = Utility.Random(1, 2);
-                DropItem(ReagentLoot);
-            }
-            if (Utility.RandomBool()) //50% chance
-                for (int i = Utility.Random(8) + 1; i > 0; i--)
+
+            // 1 reagent stack
+            Item reagent = Loot.RandomReagent();
+            reagent.Amount = Utility.RandomMinMax(5, 10);
+            DropItem(reagent);
+
+            // 50% chance: 4-8 low-mid scrolls
+            if (Utility.RandomBool())
+                for (int i = Utility.RandomMinMax(4, 8); i > 0; i--)
                     DropItem(Loot.RandomScroll(0, 39, SpellbookType.Regular));
 
-            if (Utility.RandomBool()) //50% chance
-                for (int i = Utility.Random(6) + 1; i > 0; i--)
+            // 50% chance: 3-6 gems
+            if (Utility.RandomBool())
+                for (int i = Utility.RandomMinMax(3, 6); i > 0; i--)
                     DropItem(Loot.RandomGem());
+
+            // 2-3 magic items
+            AddLoot(Loot.RandomArmorOrShield());
+            AddLoot(Loot.RandomWeapon());
+            if (Utility.RandomBool())
+                AddLoot(Loot.RandomJewelry());
+
+            // 2% chance: random currency orb
+            if (Utility.RandomDouble() < 0.02)
+                DropItem(RandomOrb());
+
+            // 2% chance: 105 or 110 power scroll
+            if (Utility.RandomDouble() < 0.02)
+                DropItem(PowerScroll.CreateRandom(105, 110));
         }
 
         public TreasureLevel2(Serial serial) : base(serial)
@@ -96,6 +124,7 @@ namespace Server.Items
     {
         public override int DefaultGumpID => 0x4A;
 
+        // Matches: FilthyRich (400-600 gold, 3-4 magic items)
         [Constructable]
         public TreasureLevel3() : base(Utility.RandomList(0x9ab, 0xe40, 0xe42)) // Wooden, Metal and Metal Golden Chest
         {
@@ -105,43 +134,45 @@ namespace Server.Items
             TrapType = TrapType.MagicTrap;
             TrapPower = 3 * Utility.Random(1, 25);
 
-            DropItem(new Gold(180, 240));
-            DropItem(new Arrow(10));
+            DropItem(new Gold(Utility.RandomMinMax(400, 600)));
 
-            for (int i = Utility.Random(1, 3); i > 1; i--)
+            // 1-2 reagent stacks
+            for (int i = Utility.RandomMinMax(1, 2); i > 0; i--)
             {
-                Item ReagentLoot = Loot.RandomReagent();
-                ReagentLoot.Amount = Utility.Random(1, 9);
-                DropItem(ReagentLoot);
+                Item reagent = Loot.RandomReagent();
+                reagent.Amount = Utility.RandomMinMax(5, 15);
+                DropItem(reagent);
             }
 
-            for (int i = Utility.Random(1, 3); i > 1; i--)
+            // 1-2 potions
+            for (int i = Utility.RandomMinMax(1, 2); i > 0; i--)
                 DropItem(Loot.RandomPotion());
 
-            if (0.67 > Utility.RandomDouble()) //67% chance = 2/3
-                for (int i = Utility.Random(12) + 1; i > 0; i--)
+            // 67% chance: 6-12 mid scrolls
+            if (0.67 > Utility.RandomDouble())
+                for (int i = Utility.RandomMinMax(6, 12); i > 0; i--)
                     DropItem(Loot.RandomScroll(0, 47, SpellbookType.Regular));
 
-            if (0.67 > Utility.RandomDouble()) //67% chance = 2/3
-                for (int i = Utility.Random(9) + 1; i > 0; i--)
-                    DropItem(Loot.RandomGem());
+            // 5-8 gems guaranteed
+            for (int i = Utility.RandomMinMax(5, 8); i > 0; i--)
+                DropItem(Loot.RandomGem());
 
-            for (int i = Utility.Random(1, 3); i > 1; i--)
-                DropItem(Loot.RandomWand());
+            DropItem(Loot.RandomWand());
 
-            // Magical ArmorOrWeapon
-            for (int i = Utility.Random(1, 3); i > 1; i--)
-            {
-                Item item = Loot.RandomArmorOrShieldOrWeapon();
-
-                AddLoot(item);
-            }
-
-            for (int i = Utility.Random(1, 2); i > 1; i--)
-                AddLoot(Loot.RandomClothing());
-
-            for (int i = Utility.Random(1, 2); i > 1; i--)
+            // 3-4 magic items
+            AddLoot(Loot.RandomArmorOrShieldOrWeapon());
+            AddLoot(Loot.RandomArmorOrShieldOrWeapon());
+            AddLoot(Loot.RandomArmorOrShieldOrWeapon());
+            if (Utility.RandomBool())
                 AddLoot(Loot.RandomJewelry());
+
+            // 2% chance: random currency orb
+            if (Utility.RandomDouble() < 0.02)
+                DropItem(RandomOrb());
+
+            // 2% chance: 105 or 110 power scroll
+            if (Utility.RandomDouble() < 0.02)
+                DropItem(PowerScroll.CreateRandom(105, 110));
         }
 
         public TreasureLevel3(Serial serial) : base(serial)
@@ -165,8 +196,9 @@ namespace Server.Items
 
     public class TreasureLevel4 : BaseDungeonChest
     {
+        // Matches: UltraRich (600-900 gold, 4-6 magic items)
         [Constructable]
-        public TreasureLevel4() : base(Utility.RandomList(0xe40, 0xe42, 0x9ab)) // Wooden, Metal and Metal Golden Chest
+        public TreasureLevel4() : base(Utility.RandomList(0xe40, 0xe42, 0x9ab))
         {
             RequiredSkill = 92;
             LockLevel = RequiredSkill - Utility.Random(1, 10);
@@ -174,43 +206,51 @@ namespace Server.Items
             TrapType = TrapType.MagicTrap;
             TrapPower = 4 * Utility.Random(1, 25);
 
-            DropItem(new Gold(200, 400));
-            DropItem(new BlankScroll(Utility.Random(1, 4)));
+            DropItem(new Gold(Utility.RandomMinMax(600, 900)));
+            DropItem(new BlankScroll(Utility.RandomMinMax(2, 5)));
 
-            for (int i = Utility.Random(1, 4); i > 1; i--)
+            // 2-3 reagent stacks
+            for (int i = Utility.RandomMinMax(2, 3); i > 0; i--)
             {
-                Item ReagentLoot = Loot.RandomReagent();
-                ReagentLoot.Amount = Utility.Random(6, 12);
-                DropItem(ReagentLoot);
+                Item reagent = Loot.RandomReagent();
+                reagent.Amount = Utility.RandomMinMax(8, 15);
+                DropItem(reagent);
             }
 
-            for (int i = Utility.Random(1, 4); i > 1; i--)
+            // 2-3 potions
+            for (int i = Utility.RandomMinMax(2, 3); i > 0; i--)
                 DropItem(Loot.RandomPotion());
 
-            if (0.75 > Utility.RandomDouble()) //75% chance = 3/4
-                for (int i = Utility.RandomMinMax(8, 16); i > 0; i--)
-                    DropItem(Loot.RandomScroll(0, 47, SpellbookType.Regular));
+            // 75% chance: 10-16 high scrolls
+            if (0.75 > Utility.RandomDouble())
+                for (int i = Utility.RandomMinMax(10, 16); i > 0; i--)
+                    DropItem(Loot.RandomScroll(0, 55, SpellbookType.Regular));
 
-            if (0.75 > Utility.RandomDouble()) //75% chance = 3/4
-                for (int i = Utility.RandomMinMax(6, 12) + 1; i > 0; i--)
-                    DropItem(Loot.RandomGem());
+            // 8-12 gems guaranteed
+            for (int i = Utility.RandomMinMax(8, 12); i > 0; i--)
+                DropItem(Loot.RandomGem());
 
-            for (int i = Utility.Random(1, 4); i > 1; i--)
+            // 1-2 wands
+            for (int i = Utility.RandomMinMax(1, 2); i > 0; i--)
                 DropItem(Loot.RandomWand());
 
-            // Magical ArmorOrWeapon
-            for (int i = Utility.Random(1, 4); i > 1; i--)
-            {
-                Item item = Loot.RandomArmorOrShieldOrWeapon();
+            // 4-6 magic items
+            for (int i = Utility.RandomMinMax(4, 6); i > 0; i--)
+                AddLoot(Loot.RandomArmorOrShieldOrWeapon());
 
-                AddLoot(item);
-            }
+            AddLoot(Loot.RandomJewelry());
 
-            for (int i = Utility.Random(1, 2); i > 1; i--)
-                AddLoot(Loot.RandomClothing());
+            // 10% chance: circle 8 scroll
+            if (Utility.RandomDouble() < 0.10)
+                DropItem(Loot.RandomScroll(56, 63, SpellbookType.Regular));
 
-            for (int i = Utility.Random(1, 2); i > 1; i--)
-                AddLoot(Loot.RandomJewelry());
+            // 2% chance: random currency orb
+            if (Utility.RandomDouble() < 0.02)
+                DropItem(RandomOrb());
+
+            // 2% chance: 105 or 110 power scroll
+            if (Utility.RandomDouble() < 0.02)
+                DropItem(PowerScroll.CreateRandom(105, 110));
         }
 
         public TreasureLevel4(Serial serial) : base(serial)
@@ -243,37 +283,53 @@ namespace Server.Items
             TrapType = TrapType.MagicTrap;
             TrapPower = 5 * Utility.Random(1, 25);
 
-            DropItem(new Gold(400, 800));
-            DropItem(new BlankScroll(Utility.RandomMinMax(2, 6)));
+            // Matches: SuperBoss (800-1400 gold, 6-10 magic items)
+            DropItem(new Gold(Utility.RandomMinMax(800, 1400)));
+            DropItem(new BlankScroll(Utility.RandomMinMax(3, 8)));
 
-            for (int i = Utility.RandomMinMax(2, 4); i > 0; i--)
+            // 3-4 reagent stacks
+            for (int i = Utility.RandomMinMax(3, 4); i > 0; i--)
             {
                 Item reagent = Loot.RandomReagent();
-                reagent.Amount = Utility.RandomMinMax(10, 20);
+                reagent.Amount = Utility.RandomMinMax(12, 20);
                 DropItem(reagent);
             }
 
-            for (int i = Utility.RandomMinMax(2, 4); i > 0; i--)
+            // 3-4 potions
+            for (int i = Utility.RandomMinMax(3, 4); i > 0; i--)
                 DropItem(Loot.RandomPotion());
 
-            // 90% chance: 12-20 high-circle scrolls
+            // 90% chance: 14-20 max-circle scrolls
             if (0.90 > Utility.RandomDouble())
-                for (int i = Utility.RandomMinMax(12, 20); i > 0; i--)
+                for (int i = Utility.RandomMinMax(14, 20); i > 0; i--)
                     DropItem(Loot.RandomScroll(0, 63, SpellbookType.Regular));
 
-            // Always: 10-16 gems
-            for (int i = Utility.RandomMinMax(10, 16); i > 0; i--)
+            // 12-18 gems guaranteed
+            for (int i = Utility.RandomMinMax(12, 18); i > 0; i--)
                 DropItem(Loot.RandomGem());
 
-            for (int i = Utility.RandomMinMax(2, 4); i > 0; i--)
+            // 2-3 wands
+            for (int i = Utility.RandomMinMax(2, 3); i > 0; i--)
                 DropItem(Loot.RandomWand());
 
-            // 3-5 magic items
-            for (int i = Utility.RandomMinMax(3, 5); i > 0; i--)
+            // 6-10 magic items
+            for (int i = Utility.RandomMinMax(6, 10); i > 0; i--)
                 AddLoot(Loot.RandomArmorOrShieldOrWeapon());
 
             AddLoot(Loot.RandomJewelry());
             AddLoot(Loot.RandomJewelry());
+
+            // 10% chance: circle 8 scroll
+            if (Utility.RandomDouble() < 0.10)
+                DropItem(Loot.RandomScroll(56, 63, SpellbookType.Regular));
+
+            // 2% chance: random currency orb
+            if (Utility.RandomDouble() < 0.02)
+                DropItem(RandomOrb());
+
+            // 2% chance: 105 or 110 power scroll
+            if (Utility.RandomDouble() < 0.02)
+                DropItem(PowerScroll.CreateRandom(105, 110));
         }
 
         public TreasureLevel5(Serial serial) : base(serial)

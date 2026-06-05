@@ -1,4 +1,5 @@
 using System;
+using Server.Custom;
 using Server.Items;
 using Server.Mobiles;
 
@@ -7,6 +8,21 @@ namespace Server.Items
     public abstract class BaseDungeonChest : LockableContainer
     {
         public static readonly string m_DeleteTimerID = "DungeonChest";
+
+        private static readonly Type[] _orbTypes = new Type[]
+        {
+            typeof(OrbOfEnhancement), typeof(OrbOfMastery),   typeof(OrbOfExpansion),
+            typeof(OrbOfFortitude),   typeof(OrbOfAlacrity),  typeof(OrbOfInsight),
+            typeof(OrbOfBalance),     typeof(OrbOfCorruption), typeof(OrbOfResonance),
+            typeof(OrbOfCleansing),   typeof(OrbOfTempering), typeof(OrbOfEnchantment),
+            typeof(OrbOfReforging)
+        };
+
+        /// <summary>Returns a random currency orb instance.</summary>
+        public static Item RandomOrb()
+        {
+            return (Item)Activator.CreateInstance(Utility.RandomList(_orbTypes));
+        }
 
         // True once the opener's luck has been applied to equipment inside.
         // Items are added plain at spawn; properties are rolled on first open
