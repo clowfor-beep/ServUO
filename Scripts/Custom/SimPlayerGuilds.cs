@@ -2703,15 +2703,20 @@ namespace Server.Custom
 
         public override SimHealthStatus GetHealth()
         {
-            if (Map == Map.Internal)                     return SimHealthStatus.Stuck;
-            if (Hits < HitsMax / 4 && Alive)            return SimHealthStatus.Warning;
+            if (Deleted)                        return SimHealthStatus.Stuck;
+            if (Map == Map.Internal)            return SimHealthStatus.Stuck;
+            if (!Alive)                         return SimHealthStatus.Warning;
+            if (Hits < HitsMax / 4 && Alive)   return SimHealthStatus.Warning;
 
-            // Stuck hunting for more than 50 min (should be 40 max)
+            // Stuck hunting for more than 50 min (phase should last 40 max)
             if (_wanderPhase == WanderPhase.Hunting &&
                 DateTime.UtcNow > _phaseEndsAt + TimeSpan.FromMinutes(10.0))
                 return SimHealthStatus.Stuck;
 
-            return base.GetHealth();
+            // Do NOT call base.GetHealth() — the base checks SimState.Travelling
+            // which stays set permanently because SkipStateTick suppresses the
+            // state machine. That would cause the watchdog to AutoFix every 15 min.
+            return SimHealthStatus.Healthy;
         }
 
         public override void AutoFix()
