@@ -28,6 +28,10 @@ namespace Server.Items
             for (int i = Utility.RandomMinMax(1, 3); i > 0; i--)
                 DropItem(Loot.RandomGem());
 
+            // 5% chance: tattered treasure map (level 1)
+            if (Utility.RandomDouble() < 0.05)
+                DropItem(new TreasureMap(1, Map.Felucca));
+
             // 1% chance: random currency orb
             if (Utility.RandomDouble() < 0.01)
                 DropItem(RandomOrb());
@@ -72,10 +76,10 @@ namespace Server.Items
             reagent.Amount = Utility.RandomMinMax(5, 10);
             DropItem(reagent);
 
-            // 50% chance: 4-8 low-mid scrolls
+            // 50% chance: 4-8 mid scrolls (circles 4-5 only — circles 1-3 sold by vendors)
             if (Utility.RandomBool())
                 for (int i = Utility.RandomMinMax(4, 8); i > 0; i--)
-                    DropItem(Loot.RandomScroll(0, 39, SpellbookType.Regular));
+                    DropItem(Loot.RandomScroll(24, 39, SpellbookType.Regular));
 
             // 50% chance: 3-6 gems
             if (Utility.RandomBool())
@@ -87,6 +91,10 @@ namespace Server.Items
             AddLoot(Loot.RandomWeapon());
             if (Utility.RandomBool())
                 AddLoot(Loot.RandomJewelry());
+
+            // 5% chance: treasure map (level 2)
+            if (Utility.RandomDouble() < 0.05)
+                DropItem(new TreasureMap(2, Map.Felucca));
 
             // 1% chance: random currency orb
             if (Utility.RandomDouble() < 0.01)
@@ -140,10 +148,10 @@ namespace Server.Items
             for (int i = Utility.RandomMinMax(1, 2); i > 0; i--)
                 DropItem(Loot.RandomPotion());
 
-            // 67% chance: 6-12 mid scrolls
+            // 67% chance: 6-12 mid scrolls (circles 4-6 only)
             if (0.67 > Utility.RandomDouble())
                 for (int i = Utility.RandomMinMax(6, 12); i > 0; i--)
-                    DropItem(Loot.RandomScroll(0, 47, SpellbookType.Regular));
+                    DropItem(Loot.RandomScroll(24, 47, SpellbookType.Regular));
 
             // 5-8 gems guaranteed
             for (int i = Utility.RandomMinMax(5, 8); i > 0; i--)
@@ -157,6 +165,10 @@ namespace Server.Items
             AddLoot(Loot.RandomArmorOrShieldOrWeapon());
             if (Utility.RandomBool())
                 AddLoot(Loot.RandomJewelry());
+
+            // 5% chance: treasure map (level 3)
+            if (Utility.RandomDouble() < 0.05)
+                DropItem(new TreasureMap(3, Map.Felucca));
 
             // 1% chance: random currency orb
             if (Utility.RandomDouble() < 0.01)
@@ -209,10 +221,10 @@ namespace Server.Items
             for (int i = Utility.RandomMinMax(2, 3); i > 0; i--)
                 DropItem(Loot.RandomPotion());
 
-            // 75% chance: 10-16 high scrolls
+            // 75% chance: 10-16 high scrolls (circles 4-7 only)
             if (0.75 > Utility.RandomDouble())
                 for (int i = Utility.RandomMinMax(10, 16); i > 0; i--)
-                    DropItem(Loot.RandomScroll(0, 55, SpellbookType.Regular));
+                    DropItem(Loot.RandomScroll(24, 55, SpellbookType.Regular));
 
             // 8-12 gems guaranteed
             for (int i = Utility.RandomMinMax(8, 12); i > 0; i--)
@@ -235,6 +247,10 @@ namespace Server.Items
             // 1% chance: random currency orb
             if (Utility.RandomDouble() < 0.01)
                 DropItem(RandomOrb());
+
+            // 5% chance: treasure map (level 4)
+            if (Utility.RandomDouble() < 0.05)
+                DropItem(new TreasureMap(4, Map.Felucca));
 
             // 2% chance: 105 or 110 power scroll
             if (Utility.RandomDouble() < 0.02)
@@ -287,10 +303,10 @@ namespace Server.Items
             for (int i = Utility.RandomMinMax(3, 4); i > 0; i--)
                 DropItem(Loot.RandomPotion());
 
-            // 90% chance: 14-20 max-circle scrolls
+            // 90% chance: 14-20 max-circle scrolls (circles 4-8 only)
             if (0.90 > Utility.RandomDouble())
                 for (int i = Utility.RandomMinMax(14, 20); i > 0; i--)
-                    DropItem(Loot.RandomScroll(0, 63, SpellbookType.Regular));
+                    DropItem(Loot.RandomScroll(24, 63, SpellbookType.Regular));
 
             // 12-18 gems guaranteed
             for (int i = Utility.RandomMinMax(12, 18); i > 0; i--)
@@ -314,6 +330,10 @@ namespace Server.Items
             // 1% chance: random currency orb
             if (Utility.RandomDouble() < 0.01)
                 DropItem(RandomOrb());
+
+            // 5% chance: treasure map (level 5)
+            if (Utility.RandomDouble() < 0.05)
+                DropItem(new TreasureMap(5, Map.Felucca));
 
             // 2% chance: 105 or 110 power scroll
             if (Utility.RandomDouble() < 0.02)
