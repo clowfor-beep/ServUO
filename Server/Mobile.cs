@@ -1950,7 +1950,7 @@ namespace Server
 				if (InLOS(combatant))
 				{
 					weapon.OnBeforeSwing(this, combatant);
-					Server.Custom.SkillSynergies.RegisterBackstab(this);
+					OnBeforeCombatReveal();
 					RevealingAction();
 					m_NextCombatTime = Core.TickCount + (int)weapon.OnSwing(this, combatant).TotalMilliseconds;
 				}
@@ -6650,6 +6650,9 @@ namespace Server
 
 		public virtual void OnKarmaChange(int oldValue)
 		{ }
+
+		/// <summary>Called by the combat timer immediately before RevealingAction(). Override in scripts to capture hidden state.</summary>
+		public virtual void OnBeforeCombatReveal() { }
 
 		// Mobile did something which should unhide him
 		public virtual void RevealingAction()

@@ -1668,6 +1668,11 @@ namespace Server.Mobiles
             DisguiseTimers.StopTimer(from);
         }
 
+        public override void OnBeforeCombatReveal()
+        {
+            Server.Custom.SkillSynergies.RegisterBackstab(this);
+        }
+
         public override void RevealingAction()
         {
             if (m_DesignContext != null)
