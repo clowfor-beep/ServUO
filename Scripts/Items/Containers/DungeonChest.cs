@@ -254,7 +254,7 @@ namespace Server.Items
 
             // 2% chance: 105 or 110 power scroll
             if (Utility.RandomDouble() < 0.02)
-                DropItem(PowerScroll.CreateRandom(105, 110));
+                DropItem(PowerScroll.CreateRandom(5, 10)); // 105 or 110
         }
 
         public TreasureLevel4(Serial serial) : base(serial)
@@ -337,7 +337,7 @@ namespace Server.Items
 
             // 2% chance: 105 or 110 power scroll
             if (Utility.RandomDouble() < 0.02)
-                DropItem(PowerScroll.CreateRandom(105, 110));
+                DropItem(PowerScroll.CreateRandom(5, 10)); // 105 or 110
         }
 
         public TreasureLevel5(Serial serial) : base(serial)
