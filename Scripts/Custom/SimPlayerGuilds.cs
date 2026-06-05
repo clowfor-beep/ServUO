@@ -2515,18 +2515,29 @@ namespace Server.Custom
         public WandererSimPlayer(Serial serial) : base(serial) { }
 
         // ── Overrides ──────────────────────────────────────────
+        // Suppress the base state machine (Idle/Travelling) whenever the wander
+        // loop is running. WanderPhase.None is only a transient state that
+        // immediately transitions to Hunting, so this covers all active phases.
         protected override bool SkipStateTick =>
-            base.SkipStateTick || _recalling;
+            base.SkipStateTick || _wanderPhase != WanderPhase.None;
 
-        // While hunting the sim should not start a bank run on top of the wander loop
-        protected override bool CanBank =>
-            _wanderPhase == WanderPhase.None && base.CanBank;
+        // Wanderers manage their own banking inside the wander loop — never
+        // let the base SimPlayer banking logic fire on top of it.
+        protected override bool CanBank => false;
 
         // ── OnThink ────────────────────────────────────────────
         public override void OnThink()
         {
             base.OnThink();
             if (Deleted || Map == Map.Internal) return;
+
+            // Snap back to hunt anchor if combat pushed us away
+            if (_wanderPhase == WanderPhase.Hunting && _currentHuntIdx >= 0)
+            {
+                HuntSpot spot = HuntSpots[_currentHuntIdx];
+                if (Map != spot.HMap || !InRange(spot.Loc, 20))
+                    MoveToWorld(spot.Loc, spot.HMap);
+            }
 
             ManageWanderLoop();
         }
