@@ -76,10 +76,10 @@ namespace Server.Items
             reagent.Amount = Utility.RandomMinMax(5, 10);
             DropItem(reagent);
 
-            // 50% chance: 4-8 mid scrolls (circles 4-5 only — circles 1-3 sold by vendors)
+            // 50% chance: 4-8 mid scrolls (circles 4-5 only)
             if (Utility.RandomBool())
                 for (int i = Utility.RandomMinMax(4, 8); i > 0; i--)
-                    DropItem(Loot.RandomScroll(24, 39, SpellbookType.Regular));
+                    DropItem(Loot.RandomScroll(24, 39, SpellbookType.Regular)); // circles 4-5
 
             // 50% chance: 3-6 gems
             if (Utility.RandomBool())
@@ -148,10 +148,10 @@ namespace Server.Items
             for (int i = Utility.RandomMinMax(1, 2); i > 0; i--)
                 DropItem(Loot.RandomPotion());
 
-            // 67% chance: 6-12 mid scrolls (circles 4-6 only)
+            // 67% chance: 6-12 mid scrolls (circles 5-6 only)
             if (0.67 > Utility.RandomDouble())
                 for (int i = Utility.RandomMinMax(6, 12); i > 0; i--)
-                    DropItem(Loot.RandomScroll(24, 47, SpellbookType.Regular));
+                    DropItem(Loot.RandomScroll(32, 47, SpellbookType.Regular)); // circles 5-6
 
             // 5-8 gems guaranteed
             for (int i = Utility.RandomMinMax(5, 8); i > 0; i--)
@@ -221,10 +221,10 @@ namespace Server.Items
             for (int i = Utility.RandomMinMax(2, 3); i > 0; i--)
                 DropItem(Loot.RandomPotion());
 
-            // 75% chance: 10-16 high scrolls (circles 4-7 only)
+            // 75% chance: 10-16 high scrolls (circles 6-7 only)
             if (0.75 > Utility.RandomDouble())
                 for (int i = Utility.RandomMinMax(10, 16); i > 0; i--)
-                    DropItem(Loot.RandomScroll(24, 55, SpellbookType.Regular));
+                    DropItem(Loot.RandomScroll(40, 55, SpellbookType.Regular)); // circles 6-7
 
             // 8-12 gems guaranteed
             for (int i = Utility.RandomMinMax(8, 12); i > 0; i--)
@@ -303,10 +303,10 @@ namespace Server.Items
             for (int i = Utility.RandomMinMax(3, 4); i > 0; i--)
                 DropItem(Loot.RandomPotion());
 
-            // 90% chance: 14-20 max-circle scrolls (circles 4-8 only)
+            // 90% chance: 14-20 max-circle scrolls (circles 6-8 only)
             if (0.90 > Utility.RandomDouble())
                 for (int i = Utility.RandomMinMax(14, 20); i > 0; i--)
-                    DropItem(Loot.RandomScroll(24, 63, SpellbookType.Regular));
+                    DropItem(Loot.RandomScroll(40, 63, SpellbookType.Regular)); // circles 6-8
 
             // 12-18 gems guaranteed
             for (int i = Utility.RandomMinMax(12, 18); i > 0; i--)

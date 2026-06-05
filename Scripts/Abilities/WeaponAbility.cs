@@ -390,6 +390,11 @@ namespace Server.Items
                 m_Table[m] = a;
 
                 SkillMasterySpell.CancelWeaponAbility(m);
+
+                // Tell the client the ability is active so the button turns red
+                int abilityIndex = Array.IndexOf(m_Abilities, a);
+                if (abilityIndex > 0 && m.NetState != null)
+                    m.Send(new Server.Network.ToggleSpecialAbility(abilityIndex, true));
             }
 
             return true;

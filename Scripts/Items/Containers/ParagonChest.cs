@@ -142,7 +142,7 @@ namespace Server.Items
             DropItem(new Gold(level * 200));
 
             for (int i = 0; i < level; ++i)
-                DropItem(Loot.RandomScroll(0, 63, SpellbookType.Regular));
+                DropItem(Loot.RandomScroll(24, 63, SpellbookType.Regular)); // circles 4-8 only (1-3 sold by vendors)
 
             for (int i = 0; i < level * 2; ++i)
             {
