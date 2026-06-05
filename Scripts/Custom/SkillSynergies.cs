@@ -43,6 +43,23 @@ namespace Server.Custom
         /// Call this in BaseWeapon.OnSwing BEFORE DisruptiveAction().
         /// Captures the hidden state before the attacker is revealed.
         /// </summary>
+        public static void CancelBackstab(Mobile attacker)
+        {
+            if (attacker != null)
+                PendingBackstab.Remove(attacker);
+        }
+
+        /// <summary>
+        /// Returns 0.50 if a backstab is pending for this attacker (i.e. they were hidden
+        /// at swing start and meet the skill requirements), otherwise 0.0.
+        /// Does NOT consume the pending state — use GetBackstabBonus for that.
+        /// </summary>
+        public static double GetBackstabHitBonus(Mobile attacker)
+        {
+            if (attacker == null) return 0.0;
+            return PendingBackstab.Contains(attacker) ? 0.50 : 0.0;
+        }
+
         public static void RegisterBackstab(Mobile attacker)
         {
             if (attacker == null || !attacker.Hidden)

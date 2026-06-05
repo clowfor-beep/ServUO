@@ -1190,6 +1190,9 @@ namespace Server.Items
                 chance = 0.02;
             }
 
+            // Backstab hit bonus: +50% to hit chance when attacking from stealth
+            chance *= 1.0 + Server.Custom.SkillSynergies.GetBackstabHitBonus(attacker);
+
             if (m_AosWeaponAttributes.MageWeapon > 0 && attacker.Skills[SkillName.Magery].Value > atkSkill.Value)
                 return attacker.CheckSkill(SkillName.Magery, chance);
 
@@ -3045,6 +3048,9 @@ namespace Server.Items
             }
 
             SkillMasterySpell.OnMiss(attacker, defender);
+
+            // Cancel any pending backstab — a miss burns the hidden-state window
+            Server.Custom.SkillSynergies.CancelBackstab(attacker);
         }
 
         public virtual void GetBaseDamageRange(Mobile attacker, out int min, out int max)
