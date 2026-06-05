@@ -2183,6 +2183,11 @@ namespace Server.Items
 
             damage += WhirlwindAttack.DamageBonus(attacker, defender);
 
+            // Scroll effects: Warding absorbs damage, Execution boosts at low HP,
+            // Deathtouch instant-kills, Leeching drains stats
+            damage = Server.Custom.ScrollCombatHooks.ProcessScrollEffects(attacker, defender, damage);
+            if (defender.Deleted) return;
+
             damageGiven = AOS.Damage(
                 defender,
                 attacker,

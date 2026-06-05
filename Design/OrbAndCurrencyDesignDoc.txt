@@ -152,15 +152,15 @@
 #
 # Effect    : Permanently increases the character's total
 #             stat cap. Standard total stat cap is 225.
-# Ceiling   : Total stat cap may never exceed 250.
+# Ceiling   : Total stat cap may never exceed 300.
 #
 # Tier 1 (Rare)      : +1 to total stat cap
 # Tier 2 (Very Rare) : +2 to total stat cap
 #
 # Design Note:
-# Only two tiers, both rare. The ceiling of 250 over standard
-# 225 provides a modest but noticeable edge for veteran
-# players who have invested heavily.
+# Only two tiers, both rare. The ceiling of 300 over standard
+# 225 provides up to +75 extra stat points for veteran players
+# who have invested heavily in Orbs of Fortitude.
 #
 # ============================================================
 # ORB OF ALACRITY

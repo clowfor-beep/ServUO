@@ -644,7 +644,11 @@ namespace Server.Engines.VeteranRewards
             else if (level < 0)
                 level = 0;
 
-            e.Mobile.SkillsCap = SkillCap + SkillCapBonus;
+            // Only apply vet reward baseline if the player hasn't already exceeded it
+            // (e.g. via OrbOfExpansion). Don't overwrite a higher cap they earned.
+            int vetSkillCap = SkillCap + SkillCapBonus;
+            if (e.Mobile.SkillsCap < vetSkillCap)
+                e.Mobile.SkillsCap = vetSkillCap;
 
             if (e.Mobile is PlayerMobile && !((PlayerMobile)e.Mobile).HasStatReward && HasHalfLevel(e.Mobile))
             {

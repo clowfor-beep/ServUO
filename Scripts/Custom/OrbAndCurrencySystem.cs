@@ -12,8 +12,8 @@
 //     OrbOfMastery         — +stat points (2 tiers)
 //     OrbOfExpansion       — +total skill cap (3 tiers)
 //     OrbOfFortitude       — +total stat cap (2 tiers)
-//     OrbOfAlacrity        — doubles all skill gains for 10/20/30 min (3 tiers)
-//     OrbOfBalance         — redistribute skill/stat points (3 tiers)
+//     OrbOfAlacrity        — doubles all skill gains for 15/30/60 min (3 tiers)
+//     OrbOfBalance         — skill vessel: absorb up to 80/100/120 pts, grant to any player
 //
 //   Category 2 — Item Orbs (modify an item)
 //     OrbOfCorruption      — risky random enhancement, 50% destroy
@@ -74,7 +74,7 @@ namespace Server.Custom
         public const double MaxEnhancedSkill    = 130.0;   // individual skill ceiling
         public const int    MaxSkillCap         = 9000;    // total skill cap in ServUO units (900.0)
         public const int    MaxStatValue        = 150;     // individual stat ceiling
-        public const int    MaxStatCap          = 250;     // total stat cap
+        public const int    MaxStatCap          = 300;     // total stat cap
     }
 
     // ============================================================
@@ -280,6 +280,14 @@ namespace Server.Custom
                 return;
             }
 
+            // Also enforce total stat cap
+            int totalAfter = from.RawStr + from.RawDex + from.RawInt + StatBonus;
+            if (totalAfter > from.StatCap)
+            {
+                from.SendMessage(0x22, $"Raising that stat would exceed your total stat cap ({from.StatCap}). Use an Orb of Fortitude to raise your cap first.");
+                return;
+            }
+
             int newVal = Math.Min(current + StatBonus, OrbCeilings.MaxStatValue);
 
             switch (stat)
@@ -469,9 +477,9 @@ namespace Server.Custom
 
     // ----------------------------------------------------------
     // ORB OF ALACRITY — doubles all skill gains for a duration
-    //   Tier 1 (uncommon):  10 minutes
-    //   Tier 2 (rare):      20 minutes
-    //   Tier 3 (very rare): 30 minutes
+    //   Tier 1 (uncommon):  15 minutes
+    //   Tier 2 (rare):      30 minutes
+    //   Tier 3 (very rare): 60 minutes
     //
     // Implementation: hooks EventSink.SkillGain and applies a second
     // gain equal to the first — effectively doubling every tick.
@@ -489,7 +497,7 @@ namespace Server.Custom
             set { _tier = Math.Max(1, Math.Min(3, value)); InvalidateProperties(); }
         }
 
-        public TimeSpan Duration => TimeSpan.FromMinutes(_tier == 1 ? 10 : _tier == 2 ? 20 : 40);
+        public TimeSpan Duration => TimeSpan.FromMinutes(_tier == 1 ? 15 : _tier == 2 ? 30 : 60);
 
         // mobile → buff expiry time
         private static readonly Dictionary<Mobile, DateTime> _activeBuffs = new Dictionary<Mobile, DateTime>();
@@ -860,15 +868,23 @@ namespace Server.Custom
     }
 
     // ----------------------------------------------------------
-    // ORB OF BALANCE — redistribute skill or stat points
-    //   Tier 1: transfer up to 10 skill points
-    //   Tier 2: transfer up to 50 skill points
-    //   Tier 3: transfer up to 20 stat points
+    // ORB OF BALANCE — skill vessel: absorb a skill from one
+    // character and grant it to another (or yourself).
+    //
+    // Empty  → player zeroes a skill; orb stores up to MaxPoints.
+    // Charged → any player gains the stored skill (needs free cap).
+    //
+    //   Tier 1 (uncommon):  max  80 skill points
+    //   Tier 2 (rare):      max 100 skill points
+    //   Tier 3 (very rare): max 120 skill points
     // ----------------------------------------------------------
 
     public class OrbOfBalance : Item
     {
-        private int _tier;
+        private int       _tier;
+        private bool      _charged;
+        private SkillName _storedSkill;
+        private double    _storedAmount;
 
         [CommandProperty(AccessLevel.GameMaster)]
         public int Tier
@@ -876,6 +892,11 @@ namespace Server.Custom
             get => _tier;
             set { _tier = Math.Max(1, Math.Min(3, value)); InvalidateProperties(); }
         }
+
+        [CommandProperty(AccessLevel.GameMaster)]
+        public bool Charged => _charged;
+
+        public double MaxPoints => _tier == 1 ? 80.0 : _tier == 2 ? 100.0 : 120.0;
 
         [Constructable]
         public OrbOfBalance() : this(1) { }
@@ -886,31 +907,33 @@ namespace Server.Custom
             _tier  = Math.Max(1, Math.Min(3, tier));
             Hue    = 1165;
             Weight = 1.0;
-            Name   = $"an orb of balance ({TierLabel()})";
+            UpdateName();
         }
 
         public OrbOfBalance(Serial serial) : base(serial) { }
 
-        private string TierLabel()
+        private string TierLabel() => _tier == 1 ? "uncommon" : _tier == 2 ? "rare" : "very rare";
+
+        private void UpdateName()
         {
-            switch (_tier)
-            {
-                case 1:  return "skill retraining";
-                case 2:  return "skill mastery transfer";
-                default: return "stat retraining";
-            }
+            Name = _charged
+                ? $"an orb of balance [{_storedSkill}: {_storedAmount:0.0} pts]"
+                : $"an orb of balance ({TierLabel()}, max {MaxPoints:0} pts)";
         }
 
         public override void GetProperties(ObjectPropertyList list)
         {
             base.GetProperties(list);
-            switch (_tier)
+            if (_charged)
             {
-                case 1: list.Add("Transfer up to 10 skill points between skills"); break;
-                case 2: list.Add("Transfer up to 50 skill points between skills"); break;
-                case 3: list.Add("Transfer up to 20 stat points between stats");   break;
+                list.Add($"Contains {_storedAmount:0.0} points of {_storedSkill}");
+                list.Add("Double-click to absorb — requires free skill cap space");
             }
-            list.Add("Single character only — cannot transfer between characters");
+            else
+            {
+                list.Add($"Absorbs up to {MaxPoints:0} points from one skill (zeroes it out)");
+                list.Add("Double-click to charge the orb with a skill");
+            }
         }
 
         public override void OnDoubleClick(Mobile from)
@@ -921,21 +944,95 @@ namespace Server.Custom
                 return;
             }
 
-            from.SendGump(new BalanceOrbGump(from, this));
+            if (_charged)
+                GrantToCharacter(from);
+            else
+                from.SendGump(new BalanceAbsorbGump(from, this));
+        }
+
+        // Called by BalanceAbsorbConfirmGump after player confirms
+        public void AbsorbSkill(Mobile from, SkillName skillName)
+        {
+            Skill skill = from.Skills[skillName];
+
+            if (skill == null || skill.Base <= 0)
+            {
+                from.SendMessage(0x22, "That skill has no points to absorb.");
+                return;
+            }
+
+            double absorbed = Math.Min(skill.Base, MaxPoints);
+            skill.Base = 0;
+
+            _storedSkill  = skillName;
+            _storedAmount = absorbed;
+            _charged      = true;
+            Hue           = 1285; // golden/charged hue
+
+            UpdateName();
+            InvalidateProperties();
+
+            from.SendMessage(0x35, $"The orb absorbed {absorbed:0.0} points of {skill.Name}. Your {skill.Name} has been set to 0.");
+            from.PlaySound(0x1F7);
+            from.FixedParticles(0x375A, 9, 20, 5016, 1285, 0, EffectLayer.Waist);
+        }
+
+        private void GrantToCharacter(Mobile from)
+        {
+            // Check free cap space
+            int needed    = (int)(_storedAmount * 10); // fixed-point
+            int available = from.Skills.Cap - from.Skills.Total;
+
+            if (available < needed)
+            {
+                from.SendMessage(0x22,
+                    $"You need {_storedAmount:0.0} free skill points to absorb this orb, but only have {available / 10.0:0.0} available.");
+                return;
+            }
+
+            Skill dest = from.Skills[_storedSkill];
+            double gain = Math.Min(_storedAmount, dest.Cap - dest.Base);
+            if (gain <= 0)
+            {
+                from.SendMessage(0x22, $"Your {_storedSkill} is already at its cap.");
+                return;
+            }
+
+            dest.Base += gain;
+            from.SendMessage(0x35, $"You have gained {gain:0.0} points of {_storedSkill}!");
+            from.PlaySound(0x1F7);
+            from.FixedParticles(0x375A, 9, 20, 5016, Hue, 0, EffectLayer.Waist);
+            Delete();
         }
 
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
-            writer.Write(0);
+            writer.Write(1); // version
             writer.Write(_tier);
+            writer.Write(_charged);
+            if (_charged)
+            {
+                writer.Write((int)_storedSkill);
+                writer.Write(_storedAmount);
+            }
         }
 
         public override void Deserialize(GenericReader reader)
         {
             base.Deserialize(reader);
-            reader.ReadInt();
+            int version = reader.ReadInt();
             _tier = reader.ReadInt();
+            if (version >= 1)
+            {
+                _charged = reader.ReadBool();
+                if (_charged)
+                {
+                    _storedSkill   = (SkillName)reader.ReadInt();
+                    _storedAmount  = reader.ReadDouble();
+                }
+            }
+            UpdateName();
         }
     }
 
@@ -1046,21 +1143,52 @@ namespace Server.Custom
 
             private static void ApplyCorruption(Mobile from, Item item, int tier)
             {
-                // Apply a skill bonus to the item based on tier
-                // In ServUO this is done via AosSkillBonuses on equipment
-                AosSkillBonuses bonuses;
-                if (EquipHelper.TryGetSkillBonuses(item, out bonuses))
-                {
-                    int bonus = tier == 1 ? 2 : tier == 2 ? 5 : 10;
-                    SkillName[] skills = (SkillName[])Enum.GetValues(typeof(SkillName));
-                    SkillName randSkill = skills[Utility.Random(skills.Length)];
+                // Three possible outcomes: positive, neutral, negative
+                int roll = Utility.Random(3);
 
-                    bonuses.SetValues(0, randSkill, bonus);
-                    from.SendMessage(0x35, $"The item now grants +{bonus} to {randSkill}.");
-                }
-                else
+                if (roll == 0) // Positive — skill bonus
                 {
-                    from.SendMessage(0x35, $"A strange energy lingers in the item.");
+                    AosSkillBonuses bonuses;
+                    if (EquipHelper.TryGetSkillBonuses(item, out bonuses))
+                    {
+                        int bonus = tier == 1 ? 2 : tier == 2 ? 5 : 10;
+                        SkillName[] skills = (SkillName[])Enum.GetValues(typeof(SkillName));
+                        SkillName randSkill = skills[Utility.Random(skills.Length)];
+                        // Find an empty slot, or use slot 0
+                        int slot = 0;
+                        for (int i = 0; i < 5; i++) { SkillName sk; double bv; bonuses.GetValues(i, out sk, out bv); if (bv == 0) { slot = i; break; } }
+                        bonuses.SetValues(slot, randSkill, bonus);
+                        from.SendMessage(0x35, $"The corruption empowers the item! It now grants +{bonus} to {randSkill}.");
+                    }
+                    else
+                    {
+                        from.SendMessage(0x35, "A strange energy pulses through the item.");
+                    }
+                }
+                else if (roll == 1) // Neutral — cosmetic only
+                {
+                    item.Hue = Utility.RandomList(1109, 1175, 1266, 1285, 0);
+                    from.SendMessage(0x59, "The item shimmers with chaotic energy... but nothing else changes.");
+                }
+                else // Negative — durability penalty
+                {
+                    int penalty = tier == 1 ? 10 : tier == 2 ? 25 : 50;
+                    if (item is BaseWeapon w)
+                    {
+                        w.MaxHitPoints = Math.Max(1, w.MaxHitPoints - penalty);
+                        w.HitPoints    = Math.Min(w.HitPoints, w.MaxHitPoints);
+                        from.SendMessage(0x22, $"The corruption weakens the item! Max durability reduced by {penalty}.");
+                    }
+                    else if (item is BaseArmor a)
+                    {
+                        a.MaxHitPoints = Math.Max(1, a.MaxHitPoints - penalty);
+                        a.HitPoints    = Math.Min(a.HitPoints, a.MaxHitPoints);
+                        from.SendMessage(0x22, $"The corruption weakens the item! Max durability reduced by {penalty}.");
+                    }
+                    else
+                    {
+                        from.SendMessage(0x22, "The corruption leaves the item tainted and brittle.");
+                    }
                 }
             }
 
@@ -1292,33 +1420,35 @@ namespace Server.Custom
 
                 if (_orb.Tier == 1)
                 {
-                    bool removed = false;
+                    // Collect all filled slots, then pick one at random
+                    var filled = new System.Collections.Generic.List<int>();
                     for (int i = 0; i < 5; i++)
                     {
-                        SkillName skill;
-                        double bonus;
+                        SkillName skill; double bonus;
                         cleanseBonuses.GetValues(i, out skill, out bonus);
-                        if (bonus != 0)
-                        {
-                            cleanseBonuses.SetValues(i, SkillName.Alchemy, 0);
-                            from.SendMessage(0x35, $"A random property has been removed from the item.");
-                            removed = true;
-                            break;
-                        }
+                        if (bonus != 0) filled.Add(i);
                     }
 
-                    if (!removed)
+                    if (filled.Count == 0)
+                    {
                         from.SendMessage(0x22, "That item has no removable properties.");
-                    else
-                        _orb.Delete();
+                        return; // don't play sound or consume orb
+                    }
+
+                    int slot = filled[Utility.Random(filled.Count)];
+                    SkillName removed; double removedBonus;
+                    cleanseBonuses.GetValues(slot, out removed, out removedBonus);
+                    cleanseBonuses.SetValues(slot, SkillName.Alchemy, 0);
+                    from.SendMessage(0x35, $"A random property has been removed (+{removedBonus} {removed}).");
+                    from.PlaySound(0x1F5);
+                    _orb.Delete();
                 }
                 else
                 {
                     // Tier 2: open a gump to choose which skill bonus to remove
                     from.SendGump(new CleansingSelectGump(from, cleanseBonuses, item, _orb));
+                    from.PlaySound(0x1F5);
                 }
-
-                from.PlaySound(0x1F5);
             }
 
             protected override void OnTargetCancel(Mobile from, TargetCancelType cancelType)
@@ -2111,7 +2241,8 @@ namespace Server.Custom
 
         /// <summary>
         /// Called from combat to apply the leech on a successful hit.
-        /// Drains a random stat from 'target' and gives it to 'attacker'.
+        /// Drains a random stat from 'target' temporarily via StatMod and
+        /// grants it to 'attacker' temporarily. Both return on mod expiry.
         /// </summary>
         public static void ProcessLeech(Mobile attacker, Mobile target)
         {
@@ -2121,42 +2252,36 @@ namespace Server.Custom
             int tier = GetTier(attacker);
             int drainMin = tier == 1 ? 1 : tier == 2 ? 2 : 3;
             int drainMax = tier == 1 ? 3 : tier == 2 ? 5 : 8;
-            int amount = Utility.RandomMinMax(drainMin, drainMax);
+            int amount   = Utility.RandomMinMax(drainMin, drainMax);
 
-            // Pick a random stat to drain
-            StatType[] stats = { StatType.Str, StatType.Dex, StatType.Int };
-            StatType stat = stats[Utility.Random(3)];
+            StatType[] stats   = { StatType.Str, StatType.Dex, StatType.Int };
+            StatType   stat    = stats[Utility.Random(3)];
+            string     statName = stat == StatType.Str ? "Strength" : stat == StatType.Dex ? "Dexterity" : "Intelligence";
 
-            string statName = stat == StatType.Str ? "Strength" : stat == StatType.Dex ? "Dexterity" : "Intelligence";
-
-            int targetCurrent;
-            switch (stat)
-            {
-                case StatType.Str: targetCurrent = target.RawStr; break;
-                case StatType.Dex: targetCurrent = target.RawDex; break;
-                default:           targetCurrent = target.RawInt; break;
-            }
-
-            amount = Math.Min(amount, targetCurrent - 1); // never drain to 0
+            // Never drain the target below 1
+            int targetCurrent = stat == StatType.Str ? target.Str : stat == StatType.Dex ? target.Dex : target.Int;
+            amount = Math.Min(amount, targetCurrent - 1);
             if (amount <= 0) return;
 
-            // Drain from target
-            switch (stat)
-            {
-                case StatType.Str: target.RawStr -= amount; break;
-                case StatType.Dex: target.RawDex -= amount; break;
-                default:           target.RawInt -= amount; break;
-            }
+            // Use accumulating StatMods so multiple hits stack and all expire naturally.
+            // Mod names are unique per attacker/target pair + stat.
+            string targetModName   = $"Leech_drain_{stat}_{attacker.Serial}";
+            string attackerModName = $"Leech_gain_{stat}_{target.Serial}";
+            TimeSpan modDuration   = TimeSpan.FromSeconds(60);
 
-            // Give to attacker (up to stat cap)
-            switch (stat)
-            {
-                case StatType.Str: attacker.RawStr = Math.Min(attacker.RawStr + amount, OrbCeilings.MaxStatValue); break;
-                case StatType.Dex: attacker.RawDex = Math.Min(attacker.RawDex + amount, OrbCeilings.MaxStatValue); break;
-                default:           attacker.RawInt = Math.Min(attacker.RawInt + amount, OrbCeilings.MaxStatValue); break;
-            }
+            // Accumulate drain on target
+            StatMod existingDrain = target.GetStatMod(targetModName);
+            int newDrainOffset    = (existingDrain?.Offset ?? 0) - amount;
+            target.RemoveStatMod(targetModName);
+            target.AddStatMod(new StatMod(stat, targetModName, newDrainOffset, modDuration));
 
-            target.SendMessage(0x22, $"Your {statName} is being drained!");
+            // Accumulate gain on attacker (capped so they don't exceed ceiling)
+            StatMod existingGain = attacker.GetStatMod(attackerModName);
+            int newGainOffset    = (existingGain?.Offset ?? 0) + amount;
+            attacker.RemoveStatMod(attackerModName);
+            attacker.AddStatMod(new StatMod(stat, attackerModName, newGainOffset, modDuration));
+
+            target.SendMessage(0x22, $"Your {statName} is being drained! (-{amount})");
         }
 
         public override void Serialize(GenericWriter writer)
@@ -2310,46 +2435,109 @@ namespace Server.Custom
         }
     }
 
-    // Balance orb gump — shows current skill/stat values for redistribution
-    public class BalanceOrbGump : Gump
+    // Balance orb — step 1: pick which skill to zero out and store in the orb
+    public class BalanceAbsorbGump : Gump
     {
-        private readonly Mobile _from;
+        private readonly Mobile       _from;
         private readonly OrbOfBalance _orb;
+        private readonly SkillName[]  _available;
 
-        public BalanceOrbGump(Mobile from, OrbOfBalance orb) : base(100, 100)
+        public BalanceAbsorbGump(Mobile from, OrbOfBalance orb) : base(80, 80)
         {
             _from = from;
             _orb  = orb;
 
+            // Collect all skills the player actually has points in
+            var avail = new System.Collections.Generic.List<SkillName>();
+            for (int i = 0; i < from.Skills.Length; i++)
+            {
+                if (from.Skills[i] != null && from.Skills[i].Base > 0)
+                    avail.Add((SkillName)i);
+            }
+            _available = avail.ToArray();
+
             AddPage(0);
-            AddBackground(0, 0, 320, 120, 9270);
 
-            string desc = orb.Tier == 1 ? "Transfer up to 10 skill pts" :
-                          orb.Tier == 2 ? "Transfer up to 50 skill pts" :
-                                          "Transfer up to 20 stat pts";
+            if (_available.Length == 0)
+            {
+                AddBackground(0, 0, 300, 80, 9270);
+                AddLabel(20, 20, 0x22, "You have no skills with points to absorb.");
+                return;
+            }
 
-            AddLabel(20, 15, 1165, "Orb of Balance");
-            AddLabel(20, 35, 0xFFFF, desc);
-            AddLabel(20, 60, 0xFFFF, "Use [props to edit skills/stats directly after applying.");
-            AddLabel(20, 80, 0x22,   "This orb consumes on use — contact GM to transfer.");
+            int cols   = 2;
+            int rowH   = 24;
+            int rows   = (int)Math.Ceiling(_available.Length / (double)cols);
+            int height = 80 + rows * rowH + 20;
 
-            // NOTE: Full skill/stat redistribution UI requires a more complex
-            // multi-page gump. For now the orb grants a GM-visible note and
-            // removes itself. A GM can then use [props to adjust accordingly,
-            // or this gump can be extended with a full skill picker in a later
-            // iteration.
-            AddButton(140, 95, 4005, 4007, 1, GumpButtonType.Reply, 0);
-            AddLabel(175, 95, 0xFFFF, "Consume Orb");
+            AddBackground(0, 0, 340, height, 9270);
+            AddLabel(20, 15, 1165, $"Orb of Balance — Absorb Skill (max {orb.MaxPoints:0} pts)");
+            AddLabel(20, 35, 0xFFFF, "Select a skill to zero out and store:");
+
+            for (int i = 0; i < _available.Length; i++)
+            {
+                int col = i % cols;
+                int row = i / cols;
+                int x   = col * 160 + 20;
+                int y   = 65 + row * rowH;
+                double val = from.Skills[_available[i]].Base;
+                double willStore = Math.Min(val, orb.MaxPoints);
+                AddButton(x, y, 4005, 4007, i + 1, GumpButtonType.Reply, 0);
+                AddLabel(x + 35, y, 0xFFFF, $"{_available[i]} ({val:0.0} → stores {willStore:0.0})");
+            }
         }
 
         public override void OnResponse(NetState sender, RelayInfo info)
         {
-            if (info.ButtonID == 1 && !_orb.Deleted)
-            {
-                _from.SendMessage(0x35, "The orb is consumed. A redistribution token has been noted — contact a GM or use [props to apply your changes.");
-                _from.PlaySound(0x1F7);
-                _orb.Delete();
-            }
+            if (info.ButtonID == 0 || _orb.Deleted) return;
+            int idx = info.ButtonID - 1;
+            if (_available == null || idx < 0 || idx >= _available.Length) return;
+
+            // Show confirm gump before committing
+            _from.SendGump(new BalanceAbsorbConfirmGump(_from, _orb, _available[idx]));
+        }
+    }
+
+    // Balance orb — step 2: confirm the absorb (irreversible)
+    public class BalanceAbsorbConfirmGump : Gump
+    {
+        private readonly Mobile       _from;
+        private readonly OrbOfBalance _orb;
+        private readonly SkillName    _skill;
+
+        public BalanceAbsorbConfirmGump(Mobile from, OrbOfBalance orb, SkillName skill) : base(150, 150)
+        {
+            _from  = from;
+            _orb   = orb;
+            _skill = skill;
+
+            double current   = from.Skills[skill].Base;
+            double willStore = Math.Min(current, orb.MaxPoints);
+
+            AddPage(0);
+            AddBackground(0, 0, 340, 140, 9270);
+            AddLabel(20, 15, 0x22, "WARNING — This cannot be undone!");
+            AddLabel(20, 40, 0xFFFF, $"Skill: {skill}");
+            AddLabel(20, 60, 0xFFFF, $"Current value: {current:0.0}");
+            AddLabel(20, 80, 0xFFFF, $"Will be stored in orb: {willStore:0.0}");
+            AddLabel(20, 100, current > orb.MaxPoints ? 0x22 : 0xFFFF,
+                current > orb.MaxPoints
+                    ? $"Excess {current - orb.MaxPoints:0.0} pts will be LOST (over orb cap)"
+                    : "Your skill will be set to 0.");
+
+            AddButton(20,  115, 4005, 4007, 1, GumpButtonType.Reply, 0);
+            AddLabel(55,   115, 0x35, "Confirm — Absorb Skill");
+
+            AddButton(200, 115, 4005, 4007, 2, GumpButtonType.Reply, 0);
+            AddLabel(235,  115, 0x22, "Cancel");
+        }
+
+        public override void OnResponse(NetState sender, RelayInfo info)
+        {
+            if (_orb.Deleted) return;
+            if (info.ButtonID == 1)
+                _orb.AbsorbSkill(_from, _skill);
+            // ButtonID 2 or 0 = cancel, do nothing
         }
     }
 
