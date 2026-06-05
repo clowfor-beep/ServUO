@@ -100,7 +100,7 @@ begin
 
   InstallDir := WizardDirValue;
   UOPath     := UOPathPage.Values[0];
-  PluginsDir := InstallDir + '\Plugins';
+  PluginsDir := InstallDir + '\ClassicUO\Plugins';
   CUOPath    := InstallDir + '\ClassicUO';  // launcher downloads ClassicUO.exe here
   LauncherDB := ExpandConstant('{userappdata}') + '\ClassicUOLauncher\launcher.db';
   SqlitePath := ExpandConstant('{tmp}') + '\sqlite3.exe';
@@ -158,7 +158,7 @@ begin
     '$r = Invoke-RestMethod -Uri "https://api.github.com/repos/RazorEnhanced/RazorEnhanced/releases/latest"' + #13#10 +
     '$a = $r.assets | Where-Object { $_.name -like "RazorEnhanced-*.zip" } | Select-Object -First 1' + #13#10 +
     '$wc.DownloadFile($a.browser_download_url, "$env:TEMP\razor.zip")' + #13#10 +
-    'Expand-Archive -Path "$env:TEMP\razor.zip" -DestinationPath "' + PluginsDir + '" -Force' + #13#10 +
+    'Expand-Archive -Path "$env:TEMP\razor.zip" -DestinationPath "' + PluginsDir + '\RazorEnhanced" -Force' + #13#10 +
     'Remove-Item "$env:TEMP\razor.zip" -Force' + #13#10 +
     '$exe = (Get-ChildItem -Path "' + PluginsDir + '" -Filter "RazorEnhanced.exe" -Recurse | Select-Object -First 1).FullName' + #13#10 +
     'if ($exe) { $exe | Set-Content -Path "' + TmpPath + '\razorpath.txt" -Encoding UTF8 }',
@@ -174,7 +174,7 @@ begin
   end;
 
   // Read actual plugin path
-  PluginPath := PluginsDir + '\RazorEnhanced.exe';
+  PluginPath := PluginsDir + '\RazorEnhanced\RazorEnhanced.exe';
   if LoadStringsFromFile(TmpPath + '\razorpath.txt', Lines) then
     if GetArrayLength(Lines) > 0 then
       PluginPath := Trim(Lines[0]);
