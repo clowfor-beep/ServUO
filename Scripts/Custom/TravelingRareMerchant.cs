@@ -632,9 +632,6 @@ namespace Server.Custom
             AddImageTiled(4, footY - 6, GW - 8, 2, 9264);
             AddButton(GW / 2 - 55, footY, 4017, 4019, BtnClose, GumpButtonType.Reply, 0);
             AddLabel(GW / 2 - 20, footY + 2, 0x848, "Close");
-            // Crafting supplies section link
-            AddButton(GW - 200, footY, 4005, 4007, 999, GumpButtonType.Reply, 0);
-            AddLabel(GW - 165, footY + 2, 0x59, "Crafting Supplies (Gold)");
         }
 
         public override void OnResponse(NetState sender, RelayInfo info)
@@ -646,13 +643,6 @@ namespace Server.Custom
             if (!_player.InRange(_npc.Location, 6))
             {
                 _player.SendMessage("You have moved too far away.");
-                return;
-            }
-
-            if (info.ButtonID == 999)
-            {
-                _player.CloseGump(typeof(CraftingSuppliesGump));
-                _player.SendGump(new CraftingSuppliesGump(_player, _npc));
                 return;
             }
 
