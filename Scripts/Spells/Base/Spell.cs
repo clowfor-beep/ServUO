@@ -1070,7 +1070,11 @@ namespace Server.Spells
             }
             else if (CheckFizzle())
             {
-                m_Caster.Mana -= mana;
+                // Spell Siphon mana refund chance
+                double refundChance = Server.Custom.SpellSiphonSystem.GetSiphonManaRefundChance(m_Caster);
+                if (refundChance <= 0.0 || refundChance < Utility.RandomDouble())
+                    m_Caster.Mana -= mana;
+                // else: mana refunded — don't deduct
 
                 if (m_Scroll is SpellStone)
                 {

@@ -1212,6 +1212,9 @@ namespace Server.Items
 
             int bonus = AosAttributes.GetValue(m, AosAttribute.WeaponSpeed);
 
+            // Spell Siphon swing speed bonus (PvM buff from Magic Resist)
+            bonus += (int)(Server.Custom.SpellSiphonSystem.GetSiphonSwingSpeedBonus(m) * 100);
+
             if (bonus > 60)
             {
                 bonus = 60;

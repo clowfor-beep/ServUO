@@ -367,6 +367,32 @@ namespace Server
                 return 0;
             }
 
+            // ── Magic Resist spell systems ────────────────────────────────────
+            if (type == DamageType.Spell && m is PlayerMobile)
+            {
+                // 1. Spell Siphon trigger (once per 5 min → 60-min buff)
+                Server.Custom.SpellSiphonSystem.OnSpellHit(m, from);
+
+                // 2. Spell Absorption (PvM only, 75% reduction on proc)
+                if (from is BaseCreature && Server.Custom.SpellSiphonSystem.TryAbsorbSpell(m, from))
+                {
+                    totalDamage = (int)(totalDamage * 0.25);
+                    m.FixedEffect(0x37B9, 10, 16);
+                    m.Animate(AnimationType.Parry, 0);
+                }
+
+                // 3. Flat spell damage reduction: 5% per 20 MagicResist
+                double spellReduction = Server.Custom.SpellSiphonSystem.GetSpellDamageReduction(m);
+                totalDamage = (int)(totalDamage * (1.0 - spellReduction));
+
+                // 4. Spell Siphon damage resistance bonus (PvM only)
+                if (from is BaseCreature)
+                {
+                    double siphonResist = Server.Custom.SpellSiphonSystem.GetSiphonDamageResistance(m);
+                    totalDamage = (int)(totalDamage * (1.0 - siphonResist));
+                }
+            }
+
             // Anatomy damage reduction: 1% per 10 Anatomy skill (max 12% at 120 Anatomy)
             if (m is PlayerMobile)
             {

@@ -48,32 +48,30 @@ namespace Server.Spells
 
         public virtual bool CheckResisted(Mobile target)
         {
-            double n = GetResistPercent(target);
+            // Outlands formula: (40% - circle * 5%) * (MagicResist / 100)
+            // Circle 1 = 35% at GM, circle 7 = 5% at GM, circle 8+ = 0%
+            int circleNumber = (int)Circle + 1;
+            double baseChance = (40.0 - circleNumber * 5.0) / 100.0;
 
-            n /= 100.0;
-
-            if (n <= 0.0)
+            if (baseChance <= 0.0)
                 return false;
 
-            if (n >= 1.0)
-                return true;
+            double resistSkill = GetResistSkill(target);
+            double chance = baseChance * (resistSkill / 100.0);
 
-            int maxSkill = (1 + (int)Circle) * 10;
-            maxSkill += (1 + ((int)Circle / 6)) * 25;
+            if (chance <= 0.0)
+                return false;
 
-            if (target.Skills[SkillName.MagicResist].Value < maxSkill)
-                target.CheckSkill(SkillName.MagicResist, 0.0, target.Skills[SkillName.MagicResist].Cap);
+            target.CheckSkill(SkillName.MagicResist, 0.0, target.Skills[SkillName.MagicResist].Cap);
 
-            return (n >= Utility.RandomDouble());
+            return chance >= Utility.RandomDouble();
         }
 
         public virtual double GetResistPercentForCircle(Mobile target, SpellCircle circle)
         {
-            double value = GetResistSkill(target);
-            double firstPercent = value / 5.0;
-            double secondPercent = value - (((Caster.Skills[CastSkill].Value - 20.0) / 5.0) + (1 + (int)circle) * 5.0);
-
-            return (firstPercent > secondPercent ? firstPercent : secondPercent) / 2.0; // Seems should be about half of what stratics says.
+            int circleNumber = (int)circle + 1;
+            double baseChance = Math.Max(0.0, 40.0 - circleNumber * 5.0);
+            return baseChance * (GetResistSkill(target) / 100.0);
         }
 
         public virtual double GetResistPercent(Mobile target)
