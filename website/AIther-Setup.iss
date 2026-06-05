@@ -152,15 +152,14 @@ begin
 
   SaveStringToFile(TmpPath + '\dl_razor.ps1',
     '[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12' + #13#10 +
-    'New-Item -ItemType Directory -Path "' + PluginsDir + '" -Force | Out-Null' + #13#10 +
-    '$wc = New-Object System.Net.WebClient' + #13#10 +
-    '$wc.Headers.Add("User-Agent", "Mozilla/5.0")' + #13#10 +
-    '$r = Invoke-RestMethod -Uri "https://api.github.com/repos/RazorEnhanced/RazorEnhanced/releases/latest"' + #13#10 +
-    '$a = $r.assets | Where-Object { $_.name -like "RazorEnhanced-*.zip" } | Select-Object -First 1' + #13#10 +
-    '$wc.DownloadFile($a.browser_download_url, "$env:TEMP\razor.zip")' + #13#10 +
-    'Expand-Archive -Path "$env:TEMP\razor.zip" -DestinationPath "' + PluginsDir + '\RazorEnhanced" -Force' + #13#10 +
+    '$dest = "' + PluginsDir + '\RazorEnhanced"' + #13#10 +
+    'New-Item -ItemType Directory -Path $dest -Force | Out-Null' + #13#10 +
+    '$r = Invoke-RestMethod -Uri "https://api.github.com/repos/RazorEnhanced/RazorEnhanced/releases/latest" -UseBasicParsing' + #13#10 +
+    '$url = ($r.assets | Where-Object { $_.name -like "RazorEnhanced-*.zip" } | Select-Object -First 1).browser_download_url' + #13#10 +
+    'Invoke-WebRequest -Uri $url -OutFile "$env:TEMP\razor.zip" -UseBasicParsing' + #13#10 +
+    'Expand-Archive -Path "$env:TEMP\razor.zip" -DestinationPath $dest -Force' + #13#10 +
     'Remove-Item "$env:TEMP\razor.zip" -Force' + #13#10 +
-    '$exe = (Get-ChildItem -Path "' + PluginsDir + '" -Filter "RazorEnhanced.exe" -Recurse | Select-Object -First 1).FullName' + #13#10 +
+    '$exe = (Get-ChildItem -Path $dest -Filter "RazorEnhanced.exe" -Recurse | Select-Object -First 1).FullName' + #13#10 +
     'if ($exe) { $exe | Set-Content -Path "' + TmpPath + '\razorpath.txt" -Encoding UTF8 }',
     False);
 
