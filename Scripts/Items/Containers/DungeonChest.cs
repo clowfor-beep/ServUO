@@ -28,13 +28,9 @@ namespace Server.Items
             for (int i = Utility.RandomMinMax(1, 3); i > 0; i--)
                 DropItem(Loot.RandomGem());
 
-            // 2% chance: random currency orb
-            if (Utility.RandomDouble() < 0.02)
+            // 1% chance: random currency orb
+            if (Utility.RandomDouble() < 0.01)
                 DropItem(RandomOrb());
-
-            // 2% chance: 105 or 110 power scroll
-            if (Utility.RandomDouble() < 0.02)
-                DropItem(PowerScroll.CreateRandom(105, 110));
         }
 
         public TreasureLevel1(Serial serial) : base(serial)
@@ -92,13 +88,9 @@ namespace Server.Items
             if (Utility.RandomBool())
                 AddLoot(Loot.RandomJewelry());
 
-            // 2% chance: random currency orb
-            if (Utility.RandomDouble() < 0.02)
+            // 1% chance: random currency orb
+            if (Utility.RandomDouble() < 0.01)
                 DropItem(RandomOrb());
-
-            // 2% chance: 105 or 110 power scroll
-            if (Utility.RandomDouble() < 0.02)
-                DropItem(PowerScroll.CreateRandom(105, 110));
         }
 
         public TreasureLevel2(Serial serial) : base(serial)
@@ -166,13 +158,9 @@ namespace Server.Items
             if (Utility.RandomBool())
                 AddLoot(Loot.RandomJewelry());
 
-            // 2% chance: random currency orb
-            if (Utility.RandomDouble() < 0.02)
+            // 1% chance: random currency orb
+            if (Utility.RandomDouble() < 0.01)
                 DropItem(RandomOrb());
-
-            // 2% chance: 105 or 110 power scroll
-            if (Utility.RandomDouble() < 0.02)
-                DropItem(PowerScroll.CreateRandom(105, 110));
         }
 
         public TreasureLevel3(Serial serial) : base(serial)
@@ -244,8 +232,8 @@ namespace Server.Items
             if (Utility.RandomDouble() < 0.10)
                 DropItem(Loot.RandomScroll(56, 63, SpellbookType.Regular));
 
-            // 2% chance: random currency orb
-            if (Utility.RandomDouble() < 0.02)
+            // 1% chance: random currency orb
+            if (Utility.RandomDouble() < 0.01)
                 DropItem(RandomOrb());
 
             // 2% chance: 105 or 110 power scroll
@@ -323,8 +311,8 @@ namespace Server.Items
             if (Utility.RandomDouble() < 0.10)
                 DropItem(Loot.RandomScroll(56, 63, SpellbookType.Regular));
 
-            // 2% chance: random currency orb
-            if (Utility.RandomDouble() < 0.02)
+            // 1% chance: random currency orb
+            if (Utility.RandomDouble() < 0.01)
                 DropItem(RandomOrb());
 
             // 2% chance: 105 or 110 power scroll
