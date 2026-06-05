@@ -1272,8 +1272,6 @@ namespace Server.Items
 
             if (canSwing && attacker.HarmfulCheck(damageable))
             {
-                // Capture hidden state BEFORE DisruptiveAction reveals the attacker
-                Server.Custom.SkillSynergies.RegisterBackstab(attacker);
                 attacker.DisruptiveAction();
 
                 if (attacker.NetState != null)

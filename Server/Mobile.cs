@@ -1950,6 +1950,7 @@ namespace Server
 				if (InLOS(combatant))
 				{
 					weapon.OnBeforeSwing(this, combatant);
+					Server.Custom.SkillSynergies.RegisterBackstab(this);
 					RevealingAction();
 					m_NextCombatTime = Core.TickCount + (int)weapon.OnSwing(this, combatant).TotalMilliseconds;
 				}
