@@ -143,11 +143,7 @@ namespace Server.Custom
             if (!PendingBackstab.Remove(attacker))
                 return 0.0;
 
-            double bonus = (attacker.Skills[SkillName.Stealth].Value / 100.0) * StealthBackstabBonus;
-
-            attacker.SendMessage(0x22, $"Backstab! ({bonus * 100:F0}% bonus damage)");
-
-            return bonus;
+            return (attacker.Skills[SkillName.Stealth].Value / 100.0) * StealthBackstabBonus;
         }
 
         public static double GetHealBonus(Mobile healer)
