@@ -1423,7 +1423,11 @@ namespace Server.Items
                 if (blocked)
                 {
                     defender.FixedEffect(0x37B9, 10, 16);
-                    damage = (int)(damage * 0.25); // 75% reduction on parry
+
+                    // Base 50% reduction. Each 20 Bushido adds 5% (max +30% at 120 Bushido = 80% total)
+                    double bushido = defender.Skills[SkillName.Bushido].Value;
+                    double reduction = 0.50 + (System.Math.Floor(bushido / 20.0) * 0.05);
+                    damage = (int)(damage * (1.0 - reduction));
 
                     defender.Animate(AnimationType.Parry, 0);
 

@@ -206,17 +206,24 @@ namespace Server
                 totalDamage = (int)(totalDamage * 1.25);
             }
 
-            // Creature spell parry: 40% * (parry/100) chance to reduce spell damage by 75%
+            // Creature spell parry: 40% * (parry/100) chance, reduction scales with Bushido only.
+            // Each 20 Bushido adds 8% reduction (0% base, max 48% at 120 Bushido). No Bushido = no effect.
             if (type == DamageType.Spell && from is BaseCreature && m is PlayerMobile)
             {
-                double parry = m.Skills[SkillName.Parry].Value;
-                double spellParryChance = 0.40 * (parry / 100.0);
+                double parry   = m.Skills[SkillName.Parry].Value;
+                double bushido = m.Skills[SkillName.Bushido].Value;
+                double spellReduction = System.Math.Floor(bushido / 20.0) * 0.08;
 
-                if (spellParryChance > Utility.RandomDouble())
+                if (spellReduction > 0.0)
                 {
-                    totalDamage = (int)(totalDamage * 0.25);
-                    m.FixedEffect(0x37B9, 10, 16);
-                    m.Animate(AnimationType.Parry, 0);
+                    double spellParryChance = 0.40 * (parry / 100.0);
+
+                    if (spellParryChance > Utility.RandomDouble())
+                    {
+                        totalDamage = (int)(totalDamage * (1.0 - spellReduction));
+                        m.FixedEffect(0x37B9, 10, 16);
+                        m.Animate(AnimationType.Parry, 0);
+                    }
                 }
             }
 
