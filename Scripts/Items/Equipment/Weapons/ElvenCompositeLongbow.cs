@@ -20,7 +20,7 @@ namespace Server.Items
         public override int EffectID => 0xF42;
         public override Type AmmoType => typeof(Arrow);
         public override Item Ammo => new Arrow();
-        public override WeaponAbility PrimaryAbility => WeaponAbility.ShadowStrike;
+        public override WeaponAbility PrimaryAbility => WeaponAbility.ForceArrow;
         public override WeaponAbility SecondaryAbility => WeaponAbility.SerpentArrow;
         public override int StrengthReq => 45;
         public override int MinDamage => 15;

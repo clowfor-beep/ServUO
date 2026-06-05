@@ -1,3 +1,4 @@
+using Server.Network;
 using Server.Spells;
 using System;
 using System.Collections.Generic;
@@ -8,12 +9,33 @@ namespace Server.Items
     {
         public override int BaseMana => 20;
 
+        // Shadow Strike mode: if attacker has 80+ Stealth, Force Arrow also hides them after the hit
+        private static bool HasShadowMode(Mobile attacker)
+        {
+            return attacker.Skills[SkillName.Stealth].Value >= 80.0;
+        }
+
         public override void OnHit(Mobile attacker, Mobile defender, int damage)
         {
             if (!Validate(attacker) || !CheckMana(attacker, true))
                 return;
 
             ClearCurrentAbility(attacker);
+
+            if (HasShadowMode(attacker))
+            {
+                attacker.SendLocalizedMessage(1060078); // You strike and hide in the shadows!
+                defender.SendLocalizedMessage(1060079); // You are dazed by the attack and your attacker vanishes!
+
+                Effects.SendLocationParticles(EffectItem.Create(attacker.Location, attacker.Map, EffectItem.DefaultDuration), 0x376A, 8, 12, 9943);
+                attacker.PlaySound(0x482);
+                defender.FixedEffect(0x37BE, 20, 25);
+
+                attacker.Combatant = null;
+                attacker.Warmode = false;
+                attacker.Hidden = true;
+                return;
+            }
 
             attacker.SendLocalizedMessage(1074381); // You fire an arrow of pure force.
             defender.SendLocalizedMessage(1074382); // You are struck by a force arrow!
