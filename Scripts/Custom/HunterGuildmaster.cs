@@ -386,6 +386,7 @@ namespace Server.Custom
             ("Orb of Alacrity (uncommon) — 2x skill gains 10 min",  2,  typeof(OrbOfAlacrity)),
             ("Orb of Alacrity (rare) — 2x skill gains 20 min",      4,  typeof(OrbOfAlacrity)),
             ("Orb of Alacrity (very rare) — 2x skill gains 40 min", 5,  typeof(OrbOfAlacrity)),
+            ("Elixir of Rebirth (resurrect a dead bonded pet)",      2,  typeof(ElixirOfRebirth)),
         };
 
         public HunterShopGump(Mobile from, HunterGuildmaster npc) : base(50, 50)
