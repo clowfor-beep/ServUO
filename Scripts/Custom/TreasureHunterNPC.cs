@@ -364,11 +364,32 @@ namespace Server.Custom
         {
             Map map = tMap.Facet;
             if (map == null || map == Map.Internal) return Point3D.Zero;
+
             int x = tMap.ChestLocation.X;
             int y = tMap.ChestLocation.Y;
             int z = map.GetAverageZ(x, y);
-            if (z <= -20) return Point3D.Zero; // water or invalid terrain
-            return new Point3D(x, y, z);
+
+            // Use CanFit as the authoritative check — mirrors what the dig system does
+            // and avoids the old z <= -20 threshold that incorrectly blocked valid marsh
+            // and coastal terrain with legitimate negative Z values.
+            if (map.CanFit(x, y, z, 16, false, false))
+                return new Point3D(x, y, z);
+
+            // If the exact spot is blocked, search a small radius for a valid tile.
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                for (int dy = -2; dy <= 2; dy++)
+                {
+                    int nx = x + dx;
+                    int ny = y + dy;
+                    int nz = map.GetAverageZ(nx, ny);
+
+                    if (map.CanFit(nx, ny, nz, 16, false, false))
+                        return new Point3D(nx, ny, nz);
+                }
+            }
+
+            return Point3D.Zero;
         }
 
         public override bool IsInvulnerable   => true;
