@@ -221,7 +221,70 @@ namespace Server.Items
         {
             base.Serialize(writer);
 
-            writer.Write(0); // version 
+            writer.Write(0); // version
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+
+            int version = reader.ReadInt();
+        }
+    }
+
+    public class TreasureLevel5 : BaseDungeonChest
+    {
+        [Constructable]
+        public TreasureLevel5() : base(0xe42) // Metal Golden Chest
+        {
+            RequiredSkill = 100;
+            LockLevel = RequiredSkill - Utility.Random(1, 10);
+            MaxLockLevel = RequiredSkill;
+            TrapType = TrapType.MagicTrap;
+            TrapPower = 5 * Utility.Random(1, 25);
+
+            DropItem(new Gold(400, 800));
+            DropItem(new BlankScroll(Utility.RandomMinMax(2, 6)));
+
+            for (int i = Utility.RandomMinMax(2, 4); i > 0; i--)
+            {
+                Item reagent = Loot.RandomReagent();
+                reagent.Amount = Utility.RandomMinMax(10, 20);
+                DropItem(reagent);
+            }
+
+            for (int i = Utility.RandomMinMax(2, 4); i > 0; i--)
+                DropItem(Loot.RandomPotion());
+
+            // 90% chance: 12-20 high-circle scrolls
+            if (0.90 > Utility.RandomDouble())
+                for (int i = Utility.RandomMinMax(12, 20); i > 0; i--)
+                    DropItem(Loot.RandomScroll(0, 63, SpellbookType.Regular));
+
+            // Always: 10-16 gems
+            for (int i = Utility.RandomMinMax(10, 16); i > 0; i--)
+                DropItem(Loot.RandomGem());
+
+            for (int i = Utility.RandomMinMax(2, 4); i > 0; i--)
+                DropItem(Loot.RandomWand());
+
+            // 3-5 magic items
+            for (int i = Utility.RandomMinMax(3, 5); i > 0; i--)
+                AddLoot(Loot.RandomArmorOrShieldOrWeapon());
+
+            AddLoot(Loot.RandomJewelry());
+            AddLoot(Loot.RandomJewelry());
+        }
+
+        public TreasureLevel5(Serial serial) : base(serial)
+        {
+        }
+
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+
+            writer.Write(0); // version
         }
 
         public override void Deserialize(GenericReader reader)
