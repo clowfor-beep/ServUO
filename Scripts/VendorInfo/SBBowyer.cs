@@ -16,7 +16,7 @@ namespace Server.Mobiles
             public InternalBuyInfo()
             {
                 Add(new GenericBuyInfo(typeof(FletcherTools), 2, 20, 0x1022, 0));
-                Add(new GenericBuyInfo(typeof(RepairDeed), 50, 10, 0x14F0, 0, new object[] { RepairSkillType.Fletching, 100.0 }));
+                Add(new GenericBuyInfo(typeof(RepairDeed), 2000, 10, 0x14F0, 0, new object[] { RepairSkillType.Fletching, 100.0 }));
             }
         }
 

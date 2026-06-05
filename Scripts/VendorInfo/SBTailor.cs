@@ -19,7 +19,7 @@ namespace Server.Mobiles
                 Add(new GenericBuyInfo(typeof(Scissors), 11, 20, 0xF9F, 0));
 
                 // Repair deeds — Tailoring
-                Add(new GenericBuyInfo(typeof(RepairDeed), 50, 10, 0x14F0, 0, new object[] { RepairSkillType.Tailoring, 100.0 }));
+                Add(new GenericBuyInfo(typeof(RepairDeed), 2000, 10, 0x14F0, 0, new object[] { RepairSkillType.Tailoring, 100.0 }));
                 Add(new GenericBuyInfo(typeof(DyeTub), 8, 20, 0xFAB, 0));
                 Add(new GenericBuyInfo(typeof(Dyes), 8, 20, 0xFA9, 0));
 
