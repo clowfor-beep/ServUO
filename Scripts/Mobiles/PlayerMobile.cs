@@ -4163,7 +4163,7 @@ namespace Server.Mobiles
 
         public List<Mobile> PermaFlags => m_PermaFlags;
 
-        public override int Luck => AosAttributes.GetValue(this, AosAttribute.Luck) + TenthAnniversarySculpture.GetLuckBonus(this);
+        public override int Luck => AosAttributes.GetValue(this, AosAttribute.Luck) + TenthAnniversarySculpture.GetLuckBonus(this) + (int)(Skills[SkillName.ItemID].Value * 5.0);
 
         public int RealLuck
         {
