@@ -101,10 +101,13 @@ begin
   InstallDir := WizardDirValue;
   UOPath     := UOPathPage.Values[0];
   PluginsDir := InstallDir + '\Plugins';
-  CUOPath    := InstallDir;
+  CUOPath    := InstallDir + '\ClassicUO';  // launcher downloads ClassicUO.exe here
   LauncherDB := ExpandConstant('{userappdata}') + '\ClassicUOLauncher\launcher.db';
   SqlitePath := ExpandConstant('{tmp}') + '\sqlite3.exe';
   TmpPath    := ExpandConstant('{tmp}');
+
+  // Pre-create the ClassicUO subfolder so the launcher knows where to download CUO
+  ForceDirectories(CUOPath);
 
   // ── Step 1: Download ClassicUO Launcher ───────────────────────────────────
   SetStatus('Downloading ClassicUO Launcher (this may take a minute)...');
