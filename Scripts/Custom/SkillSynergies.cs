@@ -62,13 +62,25 @@ namespace Server.Custom
 
         public static void RegisterBackstab(Mobile attacker)
         {
-            if (attacker == null || !attacker.Hidden)
-                return;
+            if (attacker == null) return;
 
-            if (attacker.Skills[SkillName.Hiding].Value  >= 80.0 &&
-                attacker.Skills[SkillName.Stealth].Value >= 80.0)
+            if (!attacker.Hidden)
             {
+                attacker.SendMessage(0x35, "[BS] Not hidden");
+                return;
+            }
+
+            double hiding  = attacker.Skills[SkillName.Hiding].Value;
+            double stealth = attacker.Skills[SkillName.Stealth].Value;
+
+            if (hiding >= 80.0 && stealth >= 80.0)
+            {
+                attacker.SendMessage(0x35, $"[BS] Registered (Hiding={hiding}, Stealth={stealth})");
                 PendingBackstab.Add(attacker);
+            }
+            else
+            {
+                attacker.SendMessage(0x35, $"[BS] Skill too low (Hiding={hiding}, Stealth={stealth})");
             }
         }
 
@@ -122,7 +134,11 @@ namespace Server.Custom
             if (!PendingBackstab.Remove(attacker))
                 return 0.0;
 
-            return (attacker.Skills[SkillName.Stealth].Value / 100.0) * StealthBackstabBonus;
+            double bonus = (attacker.Skills[SkillName.Stealth].Value / 100.0) * StealthBackstabBonus;
+
+            attacker.SendMessage(0x22, $"Backstab! ({bonus * 100:F0}% bonus damage)");
+
+            return bonus;
         }
 
         public static double GetHealBonus(Mobile healer)
