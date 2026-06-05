@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $id     = trim($_POST['id']     ?? '');
 $status = trim($_POST['status'] ?? '');
+$notes  = trim($_POST['notes']  ?? '');
 
 $validStatuses = ['open', 'investigating', 'fixed', 'wontfix', 'planned', 'implemented', 'rejected'];
 if (!$id || !in_array($status, $validStatuses)) {
@@ -47,6 +48,7 @@ $found = false;
 foreach ($submissions as &$s) {
     if ($s['id'] === $id) {
         $s['status'] = $status;
+        $s['notes']  = $notes;
         $found = true;
         break;
     }

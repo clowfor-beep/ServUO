@@ -114,6 +114,9 @@ tr:hover td { background: rgba(201,168,76,0.03); }
 .save-btn { margin-top: 0.4rem; width: 100%; padding: 0.35rem; background: none; border: 0.5px solid var(--border); color: var(--text-dim); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
 .save-btn:hover { border-color: var(--gold-dark); color: var(--gold); }
 .save-btn.saved { border-color: #3a7d44; color: #7ec88a; }
+.notes-input { margin-top: 0.5rem; width: 100%; padding: 0.4rem 0.6rem; background: var(--surface-2); border: 0.5px solid var(--border); color: var(--text-muted); font-size: 0.72rem; font-family: 'Inter', sans-serif; line-height: 1.5; resize: vertical; min-height: 56px; outline: none; }
+.notes-input:focus { border-color: var(--gold-dark); color: var(--text); }
+.notes-input::placeholder { color: var(--text-dim); }
 .empty { color: var(--text-dim); font-style: italic; padding: 2rem 0; }
 </style>
 </head>
@@ -193,6 +196,7 @@ $open    = array_filter($submissions, fn($s) => ($s['status'] ?? 'open') === 'op
           </option>
         <?php endforeach; ?>
       </select>
+      <textarea class="notes-input" placeholder="Resolution notes…"><?= htmlspecialchars($s['notes'] ?? '') ?></textarea>
       <button class="save-btn" onclick="saveStatus(this)">Save</button>
     </td>
   </tr>
@@ -213,12 +217,14 @@ function filterTable(filter, btn) {
 }
 
 async function saveStatus(btn) {
-  const select = btn.previousElementSibling;
+  const notes  = btn.previousElementSibling;
+  const select = notes.previousElementSibling;
   const id     = select.dataset.id;
   const status = select.value;
   const data   = new FormData();
   data.append('id', id);
   data.append('status', status);
+  data.append('notes', notes.value);
   const res = await fetch('/update-status.php', { method: 'POST', body: data });
   const json = await res.json();
   if (json.ok) {
