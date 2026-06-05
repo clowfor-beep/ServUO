@@ -206,6 +206,20 @@ namespace Server
                 totalDamage = (int)(totalDamage * 1.25);
             }
 
+            // Creature spell parry: 40% * (parry/100) chance to reduce spell damage by 75%
+            if (type == DamageType.Spell && from is BaseCreature && m is PlayerMobile)
+            {
+                double parry = m.Skills[SkillName.Parry].Value;
+                double spellParryChance = 0.40 * (parry / 100.0);
+
+                if (spellParryChance > Utility.RandomDouble())
+                {
+                    totalDamage = (int)(totalDamage * 0.25);
+                    m.FixedEffect(0x37B9, 10, 16);
+                    m.Animate(AnimationType.Parry, 0);
+                }
+            }
+
             var fromCreature = from as BaseCreature;
             var toCreature = m as BaseCreature;
 

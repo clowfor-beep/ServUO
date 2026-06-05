@@ -1358,36 +1358,18 @@ namespace Server.Items
             double bushidoNonRacial = defender.Skills[SkillName.Bushido].NonRacialValue;
             double bushido = defender.Skills[SkillName.Bushido].Value;
 
+            // Outlands-style parry: 50% * (parry/100) chance for both shield and two-handed.
+            // No Bushido dependency. Evasion still applies as a multiplier.
+            double baseChance = 0.50 * (parry / 100.0);
+
             if (shield != null || !defender.Player)
             {
-                double chance = (parry - bushidoNonRacial) / 400.0;
-                // As per OSI, no negitive effect from the Racial stuffs, ie, 120 parry and '0' bushido with humans
+                double chance = baseChance;
 
-                if (chance < 0) // chance shouldn't go below 0
-                {
-                    chance = defender.Player ? 0 : .1;
-                }
-
-                // Skill Masteries
                 chance += HeightenedSensesSpell.GetParryBonus(defender);
 
-                // Parry/Bushido over 100 grants a 5% bonus.
-                if (parry >= 100.0 || bushido >= 100.0)
-                {
-                    chance += 0.05;
-                }
-
-                // Evasion grants a variable bonus post ML. 50% prior.
                 if (Evasion.IsEvading(defender))
-                {
                     chance *= Evasion.GetParryScalar(defender);
-                }
-
-                // Low dexterity lowers the chance.
-                if (defender.Player && defender.Dex < 80)
-                {
-                    chance = chance * (20 + defender.Dex) / 100;
-                }
 
                 bool success = defender.CheckSkill(SkillName.Parry, chance);
 
@@ -1404,50 +1386,14 @@ namespace Server.Items
                 BaseWeapon weapon = defender.Weapon as BaseWeapon;
 
                 if (weapon.Attributes.BalancedWeapon > 0)
-                {
                     return false;
-                }
 
-                double divisor = (weapon.Layer == Layer.OneHanded && defender.Player) ? 48000.0 : 41140.0;
+                double chance = baseChance;
 
-                double chance = (parry * bushido) / divisor;
-
-                double aosChance = parry / 800.0;
-
-                // Parry or Bushido over 100 grant a 5% bonus.
-                if (parry >= 100.0)
-                {
-                    chance += 0.05;
-                    aosChance += 0.05;
-                }
-                else if (bushido >= 100.0)
-                {
-                    chance += 0.05;
-                }
-
-                // Evasion grants a variable bonus post ML. 50% prior.
                 if (Evasion.IsEvading(defender))
-                {
                     chance *= Evasion.GetParryScalar(defender);
-                }
 
-                // Low dexterity lowers the chance.
-                if (defender.Dex < 80)
-                {
-                    chance = chance * (20 + defender.Dex) / 100;
-                }
-
-                bool success;
-
-                if (chance > aosChance)
-                {
-                    success = defender.CheckSkill(SkillName.Parry, chance);
-                }
-                else
-                {
-                    success = (aosChance > Utility.RandomDouble());
-                    // Only skillcheck if wielding a shield & there's no effect from Bushido
-                }
+                bool success = defender.CheckSkill(SkillName.Parry, chance);
 
                 if (success)
                 {
@@ -1477,7 +1423,7 @@ namespace Server.Items
                 if (blocked)
                 {
                     defender.FixedEffect(0x37B9, 10, 16);
-                    damage = 0;
+                    damage = (int)(damage * 0.25); // 75% reduction on parry
 
                     defender.Animate(AnimationType.Parry, 0);
 
