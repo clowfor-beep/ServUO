@@ -151,11 +151,11 @@ namespace Server.Custom
 
     public class BulkResourceSlot
     {
-        public readonly string          Name;
-        public readonly int             Amount;
-        public readonly int             GoldPrice;
-        public readonly int             ItemID;
-        public readonly int             ItemHue;
+        public readonly string Name;
+        public readonly int    Amount;
+        public readonly int    GoldPrice;
+        public readonly int    ItemID;
+        public readonly int    ItemHue;
 
         public BulkResourceSlot(string name, int amount, int goldPerUnit, int itemID, int itemHue)
         {
@@ -234,6 +234,43 @@ namespace Server.Custom
             new BulkResourceEntry("Tourmaline",          10, amt => new Tourmaline(amt)),
         };
 
+        // ── Special crafting ingredients — sold in small batches for flat 1000g ──
+        private static readonly int[] SpecialAmounts = { 10, 25, 50 };
+
+        public static readonly List<BulkResourceEntry> SpecialPool = new List<BulkResourceEntry>
+        {
+            // ── Imbuing Gems (blacksmithing) ──────────────────────────────────
+            new BulkResourceEntry("Blue Diamond",     0, amt => new BlueDiamond()    { Amount = amt }),
+            new BulkResourceEntry("Dark Sapphire",    0, amt => new DarkSapphire()   { Amount = amt }),
+            new BulkResourceEntry("Ecru Citrine",     0, amt => new EcruCitrine()    { Amount = amt }),
+            new BulkResourceEntry("Fire Ruby",        0, amt => new FireRuby()       { Amount = amt }),
+            new BulkResourceEntry("Perfect Emerald",  0, amt => new PerfectEmerald() { Amount = amt }),
+            new BulkResourceEntry("Turquoise",        0, amt => new Turquoise()      { Amount = amt }),
+            new BulkResourceEntry("Brilliant Amber",  0, amt => new BrilliantAmber() { Amount = amt }),
+            new BulkResourceEntry("White Pearl",      0, amt => new WhitePearl()     { Amount = amt }),
+
+            // ── Tailoring ingredients ─────────────────────────────────────────
+            new BulkResourceEntry("Spool Of Thread",   0, amt => new SpoolOfThread()   { Amount = amt }),
+            new BulkResourceEntry("Fey Wings",         0, amt => new FeyWings()        { Amount = amt }),
+            new BulkResourceEntry("Faery Dust",        0, amt => new FaeryDust()       { Amount = amt }),
+            new BulkResourceEntry("Void Core",         0, amt => new VoidCore()        { Amount = amt }),
+            new BulkResourceEntry("Vile Tentacles",    0, amt => new VileTentacles()   { Amount = amt }),
+            new BulkResourceEntry("Lodestone",         0, amt => new Lodestone()       { Amount = amt }),
+            new BulkResourceEntry("Luminescent Fungi", 0, amt => new LuminescentFungi(){ Amount = amt }),
+            new BulkResourceEntry("Tiger Pelt",        0, amt => new TigerPelt()       { Amount = amt }),
+            new BulkResourceEntry("Dragon Turtle Scute",0,amt => new DragonTurtleScute(){ Amount = amt }),
+
+            // ── Carpentry / Fletching ingredients ────────────────────────────
+            new BulkResourceEntry("Black Powder",     0, amt => new BlackPowder()    { Amount = amt }),
+            new BulkResourceEntry("Bone",             0, amt => new Bone()           { Amount = amt }),
+            new BulkResourceEntry("Live Rock",        0, amt => new LiveRock()       { Amount = amt }),
+            new BulkResourceEntry("Workable Glass",   0, amt => new WorkableGlass()  { Amount = amt }),
+            new BulkResourceEntry("Relic Fragment",   0, amt => new RelicFragment()  { Amount = amt }),
+            new BulkResourceEntry("Nexus Core",       0, amt => new NexusCore()      { Amount = amt }),
+            new BulkResourceEntry("Small Blackrock",  0, amt => new SmallPieceofBlackrock() { Amount = amt }),
+            new BulkResourceEntry("Runed Prism",      0, amt => new RunedPrism()     { Amount = amt }),
+        };
+
         // Lookup by name — used by ResourceDeed on redemption
         private static Dictionary<string, Func<int, Item>> _factoryCache;
 
@@ -244,6 +281,8 @@ namespace Server.Custom
                 _factoryCache = new Dictionary<string, Func<int, Item>>();
                 foreach (var entry in Pool)
                     _factoryCache[entry.Name] = entry.Create;
+                foreach (var entry in SpecialPool)
+                    _factoryCache[entry.Name] = entry.Create;
             }
 
             Func<int, Item> factory;
@@ -252,19 +291,24 @@ namespace Server.Custom
 
         public static List<BulkResourceSlot> GetRandomStock(int count = 10)
         {
-            var pool   = new List<BulkResourceEntry>(Pool);
-            var result = new List<BulkResourceSlot>();
-            count = Math.Min(count, pool.Count);
+            // 7 standard items + 3 special crafting ingredients per visit
+            int specialCount  = Math.Min(3, SpecialPool.Count);
+            int standardCount = Math.Max(1, count - specialCount);
 
-            while (result.Count < count)
+            var stdPool  = new List<BulkResourceEntry>(Pool);
+            var spcPool  = new List<BulkResourceEntry>(SpecialPool);
+            var result   = new List<BulkResourceSlot>();
+
+            // Pick standard items
+            int toPick = Math.Min(standardCount, stdPool.Count);
+            while (result.Count < toPick)
             {
-                int idx   = Utility.Random(pool.Count);
-                var entry = pool[idx];
-                pool.RemoveAt(idx);
+                int idx   = Utility.Random(stdPool.Count);
+                var entry = stdPool[idx];
+                stdPool.RemoveAt(idx);
 
                 int amount = Amounts[Utility.Random(Amounts.Length)];
 
-                // Create a temp item just to get the icon/hue for the gump
                 Item temp = entry.Create(1);
                 int  iid  = temp.ItemID;
                 int  hue  = temp.Hue;
@@ -272,6 +316,32 @@ namespace Server.Custom
 
                 result.Add(new BulkResourceSlot(
                     entry.Name, amount, (int)Math.Round(entry.GoldPerUnit * 1.5), iid, hue));
+            }
+
+            // Pick special items (flat 1000g, amounts 10/25/50)
+            int spcPick = Math.Min(specialCount, spcPool.Count);
+            while (result.Count < toPick + spcPick)
+            {
+                int idx   = Utility.Random(spcPool.Count);
+                var entry = spcPool[idx];
+                spcPool.RemoveAt(idx);
+
+                int amount = SpecialAmounts[Utility.Random(SpecialAmounts.Length)];
+
+                Item temp = entry.Create(1);
+                int  iid  = temp.ItemID;
+                int  hue  = temp.Hue;
+                temp.Delete();
+
+                // 1000g per individual item (10x=10k, 25x=25k, 50x=50k)
+                result.Add(new BulkResourceSlot(entry.Name, amount, 1000, iid, hue));
+            }
+
+            // Shuffle so special items aren't always at the end
+            for (int i = result.Count - 1; i > 0; i--)
+            {
+                int j = Utility.Random(i + 1);
+                var tmp = result[i]; result[i] = result[j]; result[j] = tmp;
             }
 
             return result;
