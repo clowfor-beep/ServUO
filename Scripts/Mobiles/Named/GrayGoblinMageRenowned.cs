@@ -42,6 +42,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.Magery, 100.0, 110.0);
 
             Fame = 1500;
+        public override int TreasureMapLevel => 3;
             Karma = -1500;
         }
 

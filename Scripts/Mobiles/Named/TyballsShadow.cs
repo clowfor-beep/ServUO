@@ -42,6 +42,7 @@ namespace Server.Mobiles
             SetWearable(new ShroudOfTheCondemned(), -1, 0.1);
 
             Fame = 20000;
+        public override int TreasureMapLevel => 4;
             Karma = -20000;
         }
 

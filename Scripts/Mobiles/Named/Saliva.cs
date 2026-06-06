@@ -17,6 +17,7 @@ namespace Server.Mobiles
             SetInt(118, 127);
 
             SetHits(409, 842);
+        public override int TreasureMapLevel => 3;
 
             SetDamage(19, 28);
 

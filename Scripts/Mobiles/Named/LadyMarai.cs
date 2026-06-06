@@ -34,6 +34,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.Anatomy, 126.2, 136.5);
 
             Fame = 18000;
+        public override int TreasureMapLevel => 3;
             Karma = -18000;
 
             SetWeaponAbility(WeaponAbility.CrushingBlow);

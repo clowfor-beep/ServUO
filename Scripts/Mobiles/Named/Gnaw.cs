@@ -34,6 +34,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.MagicResist, 93.6, 112.8);
 
             Fame = 17500;
+        public override int TreasureMapLevel => 3;
             Karma = -17500;
 
             Tamable = false;

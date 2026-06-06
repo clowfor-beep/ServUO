@@ -36,6 +36,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.Anatomy, 66.6, 72.0);
 
             Fame = 21000;
+        public override int TreasureMapLevel => 5;
             Karma = -21000;
 
             Tamable = false;

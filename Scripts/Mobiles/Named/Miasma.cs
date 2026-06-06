@@ -36,6 +36,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.Poisoning, 128.5, 143.6);
 
             Fame = 21000;
+        public override int TreasureMapLevel => 4;
             Karma = -21000;
 
             Tamable = false;

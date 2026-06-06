@@ -35,6 +35,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.Spellweaving, 120.0);
 
             Fame = 21000;
+        public override int TreasureMapLevel => 4;
             Karma = -21000;
 
             SetSpecialAbility(SpecialAbility.ManaDrain);

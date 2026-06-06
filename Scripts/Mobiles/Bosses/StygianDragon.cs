@@ -45,6 +45,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 115.0, 117.7);
 
             Fame = 15000;
+        public override int TreasureMapLevel => 6;
             Karma = -15000;
 
             Tamable = false;

@@ -40,6 +40,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 90.1, 105.0);
 
             Fame = 24000;
+        public override int TreasureMapLevel => 6;
             Karma = -24000;
 
             SetSpecialAbility(SpecialAbility.LifeDrain);

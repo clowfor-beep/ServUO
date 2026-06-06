@@ -43,6 +43,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.Chivalry, 100.0);
 
             Fame = 22500;
+        public override int TreasureMapLevel => 6;
             Karma = 22500;
         }
 

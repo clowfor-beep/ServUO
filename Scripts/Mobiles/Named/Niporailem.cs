@@ -83,6 +83,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.SpiritSpeak, 97.5, 105.2);
 
             Fame = 18000;
+        public override int TreasureMapLevel => 5;
             Karma = -18000;
         }
 

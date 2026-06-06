@@ -38,6 +38,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.Meditation, 128.8, 132.9);
 
             Fame = 18000;
+        public override int TreasureMapLevel => 3;
             Karma = -18000;
 
 			SetWearable(new Shoes(), 0x537, 1);

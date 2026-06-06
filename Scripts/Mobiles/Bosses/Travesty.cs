@@ -85,6 +85,7 @@ namespace Server.Mobiles
             SetSkill(SkillName.Peacemaking, 100.0, 120.0);
 
             Fame = 30000;
+        public override int TreasureMapLevel => 7;
             Karma = -30000;
         }
 
