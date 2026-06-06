@@ -52,12 +52,13 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 100, 120);
 
             Fame = 28000;
-        public override int TreasureMapLevel => 6;
             Karma = -28000;
 
             m_Timer = new TeleportTimer(this);
             m_Timer.Start();
         }
+
+        public override int TreasureMapLevel => 6;
 
         public PrimevalLich(Serial serial)
             : base(serial)

@@ -39,6 +39,8 @@ namespace Server.Mobiles
             Karma = -18000;
         }
 
+        public override int TreasureMapLevel => 5;
+
         public MasterJonath(Serial serial)
             : base(serial)
         {
@@ -46,7 +48,6 @@ namespace Server.Mobiles
 
         public override bool CanBeParagon => false;
 
-        public override int TreasureMapLevel => 5;
         public override void GenerateLoot()
         {
             AddLoot(LootPack.UltraRich, 3);

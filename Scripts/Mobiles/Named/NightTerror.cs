@@ -46,12 +46,13 @@ namespace Server.Mobiles
             Karma = -8000;
         }
 
+        public override int TreasureMapLevel => 4;
+
         public NightTerror(Serial serial)
             : base(serial)
         {
         }
 
-        public override int TreasureMapLevel => 4;
 
         public override Poison PoisonImmune => Poison.Lethal;
 

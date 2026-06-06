@@ -19,7 +19,6 @@ namespace Server.Mobiles
             SetInt(128, 142);
 
             SetHits(7470, 7540);
-        public override int TreasureMapLevel => 5;
 
             SetDamage(26, 31);
 
@@ -42,6 +41,8 @@ namespace Server.Mobiles
 
             SetSpecialAbility(SpecialAbility.DragonBreath);
         }
+
+        public override int TreasureMapLevel => 5;
 
         public Abscess(Serial serial)
             : base(serial)

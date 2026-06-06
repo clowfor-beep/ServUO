@@ -34,7 +34,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.MagicResist, 95.0, 105.0);
 
             Fame = 18000;
-        public override int TreasureMapLevel => 3;
             Karma = 0;
 
             Tamable = false;
@@ -43,6 +42,8 @@ namespace Server.Mobiles
         }
 
         public override bool CanBeParagon => false;
+
+        public override int TreasureMapLevel => 3;
 
         public Swoop(Serial serial)
             : base(serial)

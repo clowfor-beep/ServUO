@@ -45,9 +45,10 @@ namespace Server.Mobiles
             SetSkill(SkillName.Anatomy, 90.1, 100.0);
 
             Fame = 5000;
-        public override int TreasureMapLevel => 2;
             Karma = -1000;
         }
+
+        public override int TreasureMapLevel => 2;
 
         public GrimmochDrummel(Serial serial)
             : base(serial)

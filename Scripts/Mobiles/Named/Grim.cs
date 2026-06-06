@@ -35,7 +35,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.Anatomy, 105.0, 128.4);
 
             Fame = 17500;
-        public override int TreasureMapLevel => 3;
             Karma = -5500;
 
             Tamable = false;
@@ -45,6 +44,8 @@ namespace Server.Mobiles
         }
 
         public override bool GivesMLMinorArtifact => true;
+
+        public override int TreasureMapLevel => 3;
 
         public Grim(Serial serial)
             : base(serial)

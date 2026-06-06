@@ -39,11 +39,12 @@ namespace Server.Mobiles
             Timer.DelayCall(TimeSpan.FromSeconds(1), SpawnBulbous);  //BulbousPutrification
 
             Fame = 25000;
-        public override int TreasureMapLevel => 7;
             Karma = -25000;
 
             SetAreaEffect(AreaEffect.PoisonBreath);
         }
+
+        public override int TreasureMapLevel => 7;
 
         public ChiefParoxysmus(Serial serial)
             : base(serial)

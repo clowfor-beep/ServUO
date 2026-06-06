@@ -7,6 +7,8 @@ namespace Server.Mobiles
 {
     public class Osiredon : BaseSeaChampion
     {
+        public override int TreasureMapLevel => 7;
+
         public static readonly TimeSpan SpawnRate = TimeSpan.FromSeconds(30);
         public static readonly int SpawnMax = 25;
 
@@ -28,7 +30,6 @@ namespace Server.Mobiles
         public override int Scales => 20;
 
         public override double TreasureMapChance => .50;
-        public override int TreasureMapLevel => 7;
 
         public override Type[] UniqueList => new Type[] { typeof(EnchantedCoralBracelet), typeof(WandOfThunderingGlory), typeof(LeviathanHideBracers), typeof(SmilingMoonBlade) };
         public override Type[] SharedList => new Type[] { typeof(MiniSoulForgeDeed) };

@@ -111,7 +111,6 @@ namespace Server.Mobiles
         public override int Hides => 10;
         public override HideType HideType => HideType.Regular;
         public override Poison PoisonImmune => Poison.Regular;
-        public override int TreasureMapLevel => 3;
         public override bool BardImmune => true;
         public override bool Unprovokable => true;
         public override bool Uncalmable => true;
@@ -168,6 +167,8 @@ namespace Server.Mobiles
                     m.Animate(20, 7, 1, true, false, 0); // take hit
             }
         }
+
+        public override int TreasureMapLevel => 3;
 
         public Meraktus(Serial serial)
             : base(serial)

@@ -38,7 +38,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 97.6, 100.0);
 
             Fame = 22500;
-        public override int TreasureMapLevel => 6;
             Karma = -22500;
 
             SetSpecialAbility(SpecialAbility.Webbing);
@@ -46,6 +45,8 @@ namespace Server.Mobiles
             ForceActiveSpeed = 0.3;
             ForcePassiveSpeed = 0.6;
         }
+
+        public override int TreasureMapLevel => 6;
 
         public Mephitis(Serial serial)
             : base(serial)

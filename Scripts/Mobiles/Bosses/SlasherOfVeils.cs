@@ -59,7 +59,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.DetectHidden, 127.1);
 
             Fame = 35000;
-        public override int TreasureMapLevel => 7;
             Karma = -35000;
 
             SetSpecialAbility(SpecialAbility.AngryFire);
@@ -67,6 +66,8 @@ namespace Server.Mobiles
             SetWeaponAbility(WeaponAbility.ParalyzingBlow);
             SetSpecialAbility(SpecialAbility.TrueFear);
         }
+
+        public override int TreasureMapLevel => 7;
 
         public SlasherOfVeils(Serial serial)
             : base(serial)

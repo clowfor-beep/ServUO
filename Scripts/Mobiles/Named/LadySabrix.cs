@@ -36,11 +36,12 @@ namespace Server.Mobiles
             SetSkill(SkillName.Poisoning, 97.8, 116.7);
 
             Fame = 18900;
-        public override int TreasureMapLevel => 3;
             Karma = -18900;
 
             SetWeaponAbility(WeaponAbility.ArmorIgnore);
         }
+
+        public override int TreasureMapLevel => 3;
 
         public LadySabrix(Serial serial)
             : base(serial)

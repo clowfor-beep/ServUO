@@ -39,12 +39,13 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 118.4, 123.9);
 
             Fame = 22500;
-        public override int TreasureMapLevel => 6;
             Karma = -22500;
 
             ForceActiveSpeed = 0.35;
             ForcePassiveSpeed = 0.7;
         }
+
+        public override int TreasureMapLevel => 6;
 
         public Rikktor(Serial serial)
             : base(serial)

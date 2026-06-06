@@ -99,6 +99,7 @@ namespace Server.Mobiles
         public override bool Unprovokable => true;
         public override Poison PoisonImmune => Poison.Deadly;
         public override Poison HitPoison => Poison.Lethal;
+
         public override int TreasureMapLevel => 5;
 
         public DreadHorn(Serial serial) : base(serial)

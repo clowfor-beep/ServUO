@@ -40,7 +40,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 118.4, 122.7);
 
             Fame = 22500;
-        public override int TreasureMapLevel => 6;
             Karma = -22500;
 
 			SetWearable(new FancyShirt(), Utility.RandomGreenHue(), 1);
@@ -54,6 +53,8 @@ namespace Server.Mobiles
 
             m_SpecialSlayerMechanics = true;
         }
+
+        public override int TreasureMapLevel => 6;
 
         public Barracoon(Serial serial)
             : base(serial)

@@ -40,9 +40,10 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 80.1, 100.0);
 
             Fame = 12500;
-        public override int TreasureMapLevel => 3;
             Karma = -12500;
         }
+
+        public override int TreasureMapLevel => 3;
 
         public AcidElementalRenowned(Serial serial)
             : base(serial)

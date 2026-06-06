@@ -34,11 +34,12 @@ namespace Server.Mobiles
             SetSkill(SkillName.Anatomy, 127.5, 137.2);
 
             Fame = 18000;
-        public override int TreasureMapLevel => 3;
             Karma = -18000;
 
             SetSpecialAbility(SpecialAbility.LifeDrain);
         }
+
+        public override int TreasureMapLevel => 3;
 
         public SirPatrick(Serial serial)
             : base(serial)

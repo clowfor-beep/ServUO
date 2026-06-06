@@ -48,6 +48,8 @@ namespace Server.Mobiles
             SetWearable(new Bow(), 1);
         }
 
+        public override int TreasureMapLevel => 5;
+
         public Twaulo(Serial serial)
             : base(serial)
         {
@@ -67,7 +69,6 @@ namespace Server.Mobiles
 
         public override Poison PoisonImmune => Poison.Regular;
 
-        public override int TreasureMapLevel => 5;
 
         public override int Meat => 1;
 

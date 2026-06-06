@@ -41,11 +41,12 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 97.6, 100.0);
 
             Fame = 22500;
-        public override int TreasureMapLevel => 4;
             Karma = -22500;
 
             SetSpecialAbility(SpecialAbility.DragonBreath);
         }
+
+        public override int TreasureMapLevel => 4;
 
         public SkeletalDragonRenowned(Serial serial)
             : base(serial)

@@ -63,7 +63,6 @@ namespace Server.Mobiles
         }
 
         public override bool AutoDispel => true;
-        public override int TreasureMapLevel => 5;
         public override bool HasFireRing => true;
         public override double FireRingChance => 0.1;
 
@@ -120,6 +119,8 @@ namespace Server.Mobiles
         }
 
         #endregion
+
+        public override int TreasureMapLevel => 5;
 
         public ShimmeringEffusion(Serial serial)
             : base(serial)

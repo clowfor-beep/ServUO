@@ -46,6 +46,8 @@ namespace Server.Mobiles
             Karma = -24000;
         }
 
+        public override int TreasureMapLevel => 5;
+
         public WyvernRenowned(Serial serial)
             : base(serial)
         {
@@ -65,7 +67,6 @@ namespace Server.Mobiles
 
         public override bool BardImmune => true;
 
-        public override int TreasureMapLevel => 5;
 
         public override int Meat => 10;
 

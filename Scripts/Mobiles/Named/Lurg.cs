@@ -41,13 +41,14 @@ namespace Server.Mobiles
             SetWeaponAbility(WeaponAbility.CrushingBlow);
         }
 
+        public override int TreasureMapLevel => 4;
+
         public Lurg(Serial serial)
             : base(serial)
         {
         }
         public override bool CanBeParagon => false;
         public override bool GivesMLMinorArtifact => true;
-        public override int TreasureMapLevel => 4;
         public override bool AllureImmune => true;
 
         public override void GenerateLoot()

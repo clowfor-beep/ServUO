@@ -33,11 +33,12 @@ namespace Server.Mobiles
             SetSkill(SkillName.MagicResist, 102.4, 118.6);
 
             Fame = 22400;
-        public override int TreasureMapLevel => 4;
             Karma = -22400;
 
             SetWeaponAbility(WeaponAbility.ArmorIgnore);
         }
+
+        public override int TreasureMapLevel => 4;
 
         public Thrasher(Serial serial)
             : base(serial)

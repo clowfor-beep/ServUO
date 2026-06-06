@@ -36,7 +36,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.Anatomy, 66.6, 72.0);
 
             Fame = 21000;
-        public override int TreasureMapLevel => 5;
             Karma = -21000;
 
             Tamable = false;
@@ -46,6 +45,8 @@ namespace Server.Mobiles
             SetWeaponAbility(WeaponAbility.ParalyzingBlow);
             SetSpecialAbility(SpecialAbility.DragonBreath);
         }
+
+        public override int TreasureMapLevel => 5;
 
         public Rend(Serial serial)
             : base(serial)

@@ -41,11 +41,12 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 85.5);
 
             Fame = 6500;
-        public override int TreasureMapLevel => 5;
             Karma = -6500;
 
 			SetWearable(new Bow(), 1);
         }
+
+        public override int TreasureMapLevel => 5;
 
         public RakktaviRenowned(Serial serial)
             : base(serial)

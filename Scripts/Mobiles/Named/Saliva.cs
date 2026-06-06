@@ -17,7 +17,6 @@ namespace Server.Mobiles
             SetInt(118, 127);
 
             SetHits(409, 842);
-        public override int TreasureMapLevel => 3;
 
             SetDamage(19, 28);
 
@@ -33,6 +32,8 @@ namespace Server.Mobiles
             SetSkill(SkillName.Tactics, 129.9, 141.0);
             SetSkill(SkillName.MagicResist, 84.3, 90.1);
         }
+
+        public override int TreasureMapLevel => 3;
 
         public Saliva(Serial serial)
             : base(serial)

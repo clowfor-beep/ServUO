@@ -53,7 +53,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 119.7, 128.9);
 
             Fame = 22000;
-        public override int TreasureMapLevel => 6;
             Karma = -22000;
 
 			SetWearable(new IronwoodCompositeBow());
@@ -63,6 +62,8 @@ namespace Server.Mobiles
             SetWeaponAbility(WeaponAbility.MortalStrike);
             SetSpecialAbility(SpecialAbility.VenomousBite);
         }
+
+        public override int TreasureMapLevel => 6;
 
         public Medusa(Serial serial)
             : base(serial)

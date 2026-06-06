@@ -34,9 +34,10 @@ namespace Server.Mobiles
             SetSkill(SkillName.MagicResist, 108.4, 114.0);
 
             Fame = 16000;
-        public override int TreasureMapLevel => 3;
             Karma = -16000;
         }
+
+        public override int TreasureMapLevel => 3;
 
         public Tangle(Serial serial)
             : base(serial)

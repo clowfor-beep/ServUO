@@ -44,11 +44,12 @@ namespace Server.Mobiles
             SetSkill(SkillName.Anatomy, 45.4, 74.1);
 
             Fame = 7000;
-        public override int TreasureMapLevel => 3;
             Karma = -10000;
 
             SetWeaponAbility(WeaponAbility.ConcussionBlow);
         }
+
+        public override int TreasureMapLevel => 3;
 
         public FireDaemonRenowned(Serial serial)
             : base(serial)

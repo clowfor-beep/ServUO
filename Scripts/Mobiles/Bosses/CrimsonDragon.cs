@@ -49,6 +49,8 @@ namespace Server.Mobiles
             SetSpecialAbility(SpecialAbility.DragonBreath);
         }
 
+        public override int TreasureMapLevel => 5;
+
         public CrimsonDragon(Serial serial)
             : base(serial)
         {
@@ -69,7 +71,6 @@ namespace Server.Mobiles
         public override FoodType FavoriteFood => FoodType.Meat;
         public override Poison PoisonImmune => Poison.Lethal;
         public override Poison HitPoison => Utility.RandomBool() ? Poison.Deadly : Poison.Lethal;
-        public override int TreasureMapLevel => 5;
 
         public override void GenerateLoot()
         {

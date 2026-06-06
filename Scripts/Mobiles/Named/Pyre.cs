@@ -39,7 +39,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.Meditation, 100.0, 110.0);
 
             Fame = 21000;
-        public override int TreasureMapLevel => 4;
             Karma = -21000;
 			
 			Tamable = false;
@@ -49,6 +48,8 @@ namespace Server.Mobiles
         }
 
         public override bool GivesMLMinorArtifact => true;
+
+        public override int TreasureMapLevel => 4;
 
         public Pyre(Serial serial)
             : base(serial)

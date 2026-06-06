@@ -50,9 +50,10 @@ namespace Server.Mobiles
             SetSkill(SkillName.Meditation, 100.0);
 
             Fame = 28000;
-        public override int TreasureMapLevel => 6;
             Karma = -28000;
         }
+
+        public override int TreasureMapLevel => 6;
 
         public AbyssalInfernal(Serial serial)
             : base(serial)

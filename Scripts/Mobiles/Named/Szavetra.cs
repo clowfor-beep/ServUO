@@ -33,11 +33,12 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 80.2, 86.4);
 
             Fame = 24000;
-        public override int TreasureMapLevel => 5;
             Karma = -24000;
 
             SetSpecialAbility(SpecialAbility.LifeDrain);
         }
+
+        public override int TreasureMapLevel => 5;
 
         public Szavetra(Serial serial)
             : base(serial)

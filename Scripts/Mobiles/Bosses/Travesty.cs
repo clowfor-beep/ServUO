@@ -85,7 +85,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.Peacemaking, 100.0, 120.0);
 
             Fame = 30000;
-        public override int TreasureMapLevel => 7;
             Karma = -30000;
         }
 
@@ -108,6 +107,8 @@ namespace Server.Mobiles
             AddLoot(LootPack.LootItem<MarkOfTravesty>(5.0));
             AddLoot(LootPack.LootItem<MalekisHonor>(2.5));
         }
+
+        public override int TreasureMapLevel => 7;
 
         public Travesty(Serial serial)
             : base(serial)

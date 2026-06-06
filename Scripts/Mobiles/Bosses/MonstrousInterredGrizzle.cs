@@ -64,13 +64,14 @@ namespace Server.Mobiles
             SetSpecialAbility(SpecialAbility.HowlOfCacophony);
         }
 
+        public override int TreasureMapLevel => 5;
+
         public MonstrousInterredGrizzle(Serial serial)
             : base(serial)
         {
         }
 
         public override bool GivesMLMinorArtifact => true;
-        public override int TreasureMapLevel => 5;
 
         public override void GenerateLoot()
         {

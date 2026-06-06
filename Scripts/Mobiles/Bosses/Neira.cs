@@ -42,7 +42,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 97.6, 100.0);
 
             Fame = 22500;
-        public override int TreasureMapLevel => 6;
             Karma = -22500;
 
             Female = true;
@@ -51,6 +50,8 @@ namespace Server.Mobiles
 			SetWearable(new Scimitar { Skill = SkillName.Wrestling }, 38);
 			SetWearable(new VirtualMountItem(this));
         }
+
+        public override int TreasureMapLevel => 6;
 
         public Neira(Serial serial)
             : base(serial)

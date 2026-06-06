@@ -45,7 +45,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 115.0, 117.7);
 
             Fame = 15000;
-        public override int TreasureMapLevel => 6;
             Karma = -15000;
 
             Tamable = false;
@@ -54,6 +53,8 @@ namespace Server.Mobiles
             SetWeaponAbility(WeaponAbility.TalonStrike);
             SetSpecialAbility(SpecialAbility.DragonBreath);
         }
+
+        public override int TreasureMapLevel => 6;
 
         public StygianDragon(Serial serial)
             : base(serial)

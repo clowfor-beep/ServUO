@@ -42,7 +42,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.MagicResist, 60);
 
             Fame = 3600;
-        public override int TreasureMapLevel => 2;
             Karma = -3600;
         }
 
@@ -98,6 +97,8 @@ namespace Server.Mobiles
             base.OnThink();
         }
         #endregion
+
+        public override int TreasureMapLevel => 2;
 
         public Drelgor(Serial serial)
             : base(serial)

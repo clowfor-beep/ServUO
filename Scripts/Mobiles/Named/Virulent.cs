@@ -41,11 +41,12 @@ namespace Server.Mobiles
             SetSkill(SkillName.EvalInt, 102.8, 116.8);
 
             Fame = 21000;
-        public override int TreasureMapLevel => 3;
             Karma = -21000;
 
             SetWeaponAbility(WeaponAbility.MortalStrike);
         }
+
+        public override int TreasureMapLevel => 3;
 
         public Virulent(Serial serial)
             : base(serial)

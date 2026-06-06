@@ -34,13 +34,14 @@ namespace Server.Mobiles
             SetSkill(SkillName.Meditation, 108.9, 119.1);
 
             Fame = 21000;
-        public override int TreasureMapLevel => 4;
             Karma = -21000;
 
             SetSpecialAbility(SpecialAbility.AngryFire);
         }
 
         public override bool CanBeParagon => false;
+
+        public override int TreasureMapLevel => 4;
 
         public Irk(Serial serial)
             : base(serial)

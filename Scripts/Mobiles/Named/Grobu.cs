@@ -38,11 +38,12 @@ namespace Server.Mobiles
             SetSkill(SkillName.MagicResist, 66.2, 83.7);
 
             Fame = 1000;
-        public override int TreasureMapLevel => 2;
             Karma = 1000;
 
             Tamable = false;
         }
+
+        public override int TreasureMapLevel => 2;
 
         public Grobu(Serial serial)
             : base(serial)

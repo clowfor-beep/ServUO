@@ -36,7 +36,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.Poisoning, 128.5, 143.6);
 
             Fame = 21000;
-        public override int TreasureMapLevel => 4;
             Karma = -21000;
 
             Tamable = false;
@@ -46,6 +45,8 @@ namespace Server.Mobiles
             ForceActiveSpeed = 0.3;
             ForcePassiveSpeed = 0.6;
         }
+
+        public override int TreasureMapLevel => 4;
 
         public Miasma(Serial serial)
             : base(serial)

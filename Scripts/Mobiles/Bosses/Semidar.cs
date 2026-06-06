@@ -40,7 +40,6 @@ namespace Server.Mobiles
             SetSkill(SkillName.Wrestling, 90.1, 105.0);
 
             Fame = 24000;
-        public override int TreasureMapLevel => 6;
             Karma = -24000;
 
             SetSpecialAbility(SpecialAbility.LifeDrain);
@@ -48,6 +47,8 @@ namespace Server.Mobiles
             ForceActiveSpeed = 0.3;
             ForcePassiveSpeed = 0.6;
         }
+
+        public override int TreasureMapLevel => 6;
 
         public Semidar(Serial serial)
             : base(serial)
