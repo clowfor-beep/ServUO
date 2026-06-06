@@ -1141,7 +1141,10 @@ namespace Server
                 }
                 else if (Type == typeof(BaseArmor))
                 {
-                    item = Loot.RandomArmorOrHat(inTokuno, isMondain, isStygian);
+                    // 20% chance to drop a magic shoe or tunic instead of armour
+                    item = Utility.Random(5) == 0
+                        ? (Item)Loot.RandomMagicClothing()
+                        : Loot.RandomArmorOrHat(inTokuno, isMondain, isStygian);
                 }
                 else if (Type == typeof(BaseShield))
                 {
@@ -1149,7 +1152,10 @@ namespace Server
                 }
                 else if (Type == typeof(BaseJewel))
                 {
-                    item = Loot.RandomJewelry(isStygian);
+                    // 20% chance to drop a magic shoe or tunic instead of jewellery
+                    item = Utility.Random(5) == 0
+                        ? (Item)Loot.RandomMagicClothing()
+                        : Loot.RandomJewelry(isStygian);
                 }
                 else if (Type == typeof(BaseInstrument))
                 {
