@@ -668,6 +668,10 @@ namespace Server
                     m_JewelryTypes);
             }
 
+            // 20% chance to return a magic clothing item (shoes or tunic)
+            if (Utility.Random(5) == 0)
+                return RandomMagicClothing();
+
             return Construct(
                 m_WeaponTypes,
                 m_RangedWeaponTypes,
@@ -675,6 +679,14 @@ namespace Server
                 m_HatTypes,
                 m_ShieldTypes,
                 m_JewelryTypes);
+        }
+
+        /// <summary>Returns a randomly generated magic shoe or tunic.</summary>
+        public static BaseClothing RandomMagicClothing()
+        {
+            return Utility.RandomBool()
+                ? Server.Custom.MagicClothingSystem.RandomMagicShoes()
+                : Server.Custom.MagicClothingSystem.RandomMagicTunic();
         }
 
         #region Chest of Heirlooms

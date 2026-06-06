@@ -75,6 +75,7 @@ namespace Server.Items
         private SAAbsorptionAttributes m_SAAbsorptionAttributes;
         private NegativeAttributes m_NegativeAttributes;
         private AosWeaponAttributes m_AosWeaponAttributes;
+        private int m_MovementSpeedBonus;
 
         private int m_TimesImbued;
         private bool m_IsImbued;
@@ -346,6 +347,13 @@ namespace Server.Items
 
         [CommandProperty(AccessLevel.GameMaster)]
         public AosWeaponAttributes WeaponAttributes { get { return m_AosWeaponAttributes; } set { } }
+
+        [CommandProperty(AccessLevel.GameMaster)]
+        public int MovementSpeedBonus
+        {
+            get => m_MovementSpeedBonus;
+            set { m_MovementSpeedBonus = value; InvalidateProperties(); }
+        }
 
         public virtual int BasePhysicalResistance => 0;
         public virtual int BaseFireResistance => 0;
@@ -1081,6 +1089,9 @@ namespace Server.Items
             if ((prop = m_AosAttributes.WeaponSpeed) != 0)
                 list.Add(1060486, prop.ToString()); // swing speed increase ~1_val~%
 
+            if (m_MovementSpeedBonus > 0)
+                list.Add(1, $"Movement Speed Increase {m_MovementSpeedBonus}%");
+
             if ((prop = m_AosAttributes.WeaponDamage) != 0)
                 list.Add(1060401, prop.ToString()); // damage increase ~1_val~%
 
@@ -1195,7 +1206,8 @@ namespace Server.Items
             StrReq = 0x00000400,
             NegativeAttributes = 0x00000800,
             Altered = 0x00001000,
-            xWeaponAttributes = 0x00002000
+            xWeaponAttributes = 0x00002000,
+            MovementSpeedBonus = 0x00004000
         }
 
         #region Mondain's Legacy Sets
@@ -1246,7 +1258,7 @@ namespace Server.Items
         {
             base.Serialize(writer);
 
-            writer.Write(12); // version
+            writer.Write(13); // version
 
             // Embroidery Tool version 11
             writer.Write(m_EngravedText);
@@ -1356,8 +1368,10 @@ namespace Server.Items
             //SetSaveFlag(ref flags, SaveFlag.TimesImbued, m_TimesImbued != 0);
             #endregion
             SetSaveFlag(ref flags, SaveFlag.Altered, m_Altered);
+            SetSaveFlag(ref flags, SaveFlag.MovementSpeedBonus, m_MovementSpeedBonus != 0);
 
             writer.WriteEncodedInt((int)flags);
+
 
             if (GetSaveFlag(flags, SaveFlag.xWeaponAttributes))
                 m_AosWeaponAttributes.Serialize(writer);
@@ -1394,6 +1408,9 @@ namespace Server.Items
 
             if (GetSaveFlag(flags, SaveFlag.StrReq))
                 writer.WriteEncodedInt(m_StrReq);
+
+            if (GetSaveFlag(flags, SaveFlag.MovementSpeedBonus))
+                writer.WriteEncodedInt(m_MovementSpeedBonus);
         }
 
         public override void Deserialize(GenericReader reader)
@@ -1404,6 +1421,7 @@ namespace Server.Items
 
             switch (version)
             {
+                case 13:
                 case 12:
                 case 11:
                     {
@@ -1577,6 +1595,9 @@ namespace Server.Items
 
                         if (GetSaveFlag(flags, SaveFlag.Altered))
                             m_Altered = true;
+
+                        if (GetSaveFlag(flags, SaveFlag.MovementSpeedBonus))
+                            m_MovementSpeedBonus = reader.ReadEncodedInt();
 
                         break;
                     }

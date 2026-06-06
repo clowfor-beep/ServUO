@@ -5549,12 +5549,30 @@ namespace Server.Mobiles
 
             AnimalFormContext animalContext = AnimalForm.GetContext(this);
 
-            if (onHorse || (animalContext != null && animalContext.SpeedBoost))
-            {
-                return (running ? RunMount : WalkMount);
-            }
+            int delay;
 
-            return (running ? RunFoot : WalkFoot);
+            if (onHorse || (animalContext != null && animalContext.SpeedBoost))
+                delay = running ? RunMount : WalkMount;
+            else
+                delay = running ? RunFoot : WalkFoot;
+
+            // Movement speed bonus from equipped clothing (boots, tunics etc.)
+            double movBonus = GetClothingMovementBonus();
+            if (movBonus > 0.0)
+                delay = (int)(delay * (1.0 - movBonus));
+
+            return System.Math.Max(25, delay); // 25ms hard floor
+        }
+
+        private double GetClothingMovementBonus()
+        {
+            double total = 0.0;
+            foreach (Item item in Items)
+            {
+                if (item is Server.Items.BaseClothing clothing)
+                    total += clothing.MovementSpeedBonus / 100.0;
+            }
+            return System.Math.Min(total, 0.30); // 30% total cap
         }
 
         public static bool MovementThrottle_Callback(NetState ns, out bool drop)

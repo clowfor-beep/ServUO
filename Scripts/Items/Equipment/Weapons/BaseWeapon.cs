@@ -2180,6 +2180,18 @@ namespace Server.Items
             lifeLeech = (int)(WeaponAttributes.HitLeechHits * propertyBonus);
             manaLeech = (int)(WeaponAttributes.HitLeechMana * propertyBonus);
 
+            // Add leech from equipped clothing (boots, tunics, etc.)
+            foreach (Item item in attacker.Items)
+            {
+                if (item is Server.Items.BaseClothing clothing)
+                {
+                    lifeLeech += clothing.WeaponAttributes.HitLeechHits;
+                    manaLeech += clothing.WeaponAttributes.HitLeechMana;
+                    if (clothing.WeaponAttributes.HitLeechStam > 0 && clothing.WeaponAttributes.HitLeechStam > Utility.Random(100))
+                        stamLeech += 100;
+                }
+            }
+
             int toHealCursedWeaponSpell = 0;
 
             if (CurseWeaponSpell.IsCursed(attacker, this))
