@@ -70,7 +70,11 @@ namespace Server.Custom
             // Roll 1–4 unique properties
             int propCount = Utility.RandomMinMax(1, 4);
             List<Prop> available = new List<Prop>((Prop[])Enum.GetValues(typeof(Prop)));
-            Utility.Shuffle(available);
+            for (int j = available.Count - 1; j > 0; j--)
+            {
+                int k = Utility.Random(j + 1);
+                Prop tmp = available[j]; available[j] = available[k]; available[k] = tmp;
+            }
 
             for (int i = 0; i < propCount && i < available.Count; i++)
                 ApplyProperty(item, available[i]);
