@@ -59,8 +59,8 @@ namespace Server.Engines.CannedEvil
         {
             switch (RankForLevel(l))
             {
-                case 0: return 1.0d;
-                case 1: return 0.75d;
+                case 0: return 0.5d;
+                case 1: return 0.5d;
                 case 2: return 0.5d;
                 default: return 0.25d;
             }

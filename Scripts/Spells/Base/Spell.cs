@@ -920,6 +920,9 @@ namespace Server.Spells
 
             lmc += BaseArmor.GetInherentLowerManaCost(m_Caster);
 
+            // Meditation LMC: 1% per 10 Meditation, stacks above the 40% item cap
+            lmc += (int)(m_Caster.Skills[SkillName.Meditation].Value / 10.0);
+
             scalar -= (double)lmc / 100;
 
             return (int)(mana * scalar);
