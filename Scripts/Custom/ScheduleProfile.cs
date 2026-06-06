@@ -30,18 +30,12 @@ namespace Server.Custom
             return Utility.RandomDouble() < _hourlyChance[hour];
         }
 
-        // -- Wanderers -- friendly, daytime-focused -------------------
+        // -- Wanderers -- always active, 24/7 -------------------------
         public static ScheduleProfile Wanderers(int driftMinutes = 0)
         {
             double[] chance = new double[24];
             for (int h = 0; h < 24; h++)
-            {
-                if      (h >= 0  && h < 8)  chance[h] = 0.20;
-                else if (h >= 8  && h < 12) chance[h] = 0.60;
-                else if (h >= 12 && h < 18) chance[h] = 0.70;
-                else if (h >= 18 && h < 23) chance[h] = 0.90;
-                else                        chance[h] = 0.40;
-            }
+                chance[h] = 1.0; // Wanderers are always out in the world
             return new ScheduleProfile(chance, driftMinutes);
         }
 

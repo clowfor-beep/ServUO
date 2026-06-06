@@ -439,6 +439,22 @@ namespace Server.Custom
         /// <summary>Override to true in subclasses that should be immune to Succubus life drain.</summary>
         public virtual bool IsImmuneToLifeDrain => false;
 
+        /// <summary>
+        /// Restores all equipped weapons and armour to full durability.
+        /// Call periodically from OnThink in subclasses that use indestructible gear.
+        /// </summary>
+        protected void RepairEquippedGear()
+        {
+            foreach (Item item in Items)
+            {
+                if (item is BaseWeapon w && w.HitPoints < w.MaxHitPoints)
+                    w.HitPoints = w.MaxHitPoints;
+                else if (item is BaseArmor a && a.HitPoints < a.MaxHitPoints)
+                    a.HitPoints = a.MaxHitPoints;
+                // BaseShield extends BaseArmor so is covered above
+            }
+        }
+
         /// <summary>Returns a health indicator used by the monitor gump and watchdog.</summary>
         public virtual SimHealthStatus GetHealth()
         {

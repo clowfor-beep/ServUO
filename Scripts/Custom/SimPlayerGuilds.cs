@@ -496,6 +496,9 @@ namespace Server.Custom
             if (_champPhase == ChampPhase.AtSpawn && Alive)
                 TrySelfHeal();
 
+            // Keep all equipped gear at full durability (indestructible)
+            RepairEquippedGear();
+
             base.OnThink();
 
             // AFTER base AI: immediately clear any innocent player pet it may have
@@ -1673,18 +1676,20 @@ namespace Server.Custom
             Kills         = 0;
             ActiveSpeed   = 0.13; // ~50% faster than default 0.2
 
-            // Full plate
-            AddItem(new PlateChest());
-            AddItem(new PlateLegs());
-            AddItem(new PlateArms());
-            AddItem(new PlateGloves());
-            AddItem(new PlateGorget());
-            AddItem(new PlateHelm());
+            // Full plate — max durability so RepairEquippedGear has room to work
+            var chest  = new PlateChest();   chest.MaxHitPoints  = 255; chest.HitPoints  = 255; AddItem(chest);
+            var legs   = new PlateLegs();    legs.MaxHitPoints   = 255; legs.HitPoints   = 255; AddItem(legs);
+            var arms   = new PlateArms();    arms.MaxHitPoints   = 255; arms.HitPoints   = 255; AddItem(arms);
+            var gloves = new PlateGloves();  gloves.MaxHitPoints = 255; gloves.HitPoints = 255; AddItem(gloves);
+            var gorget = new PlateGorget();  gorget.MaxHitPoints = 255; gorget.HitPoints = 255; AddItem(gorget);
+            var helm   = new PlateHelm();    helm.MaxHitPoints   = 255; helm.HitPoints   = 255; AddItem(helm);
             AddItem(new Boots());
-            AddItem(new HeaterShield());
+            var shield = new HeaterShield(); shield.MaxHitPoints = 255; shield.HitPoints = 255; AddItem(shield);
 
             // Longsword with hit harm — single-target, no AOE splash on pets
             var sword = new Longsword();
+            sword.MaxHitPoints                  = 255;
+            sword.HitPoints                     = 255;
             sword.WeaponAttributes.HitHarm      = 70;
             sword.WeaponAttributes.HitLeechHits = 40; // 40% life leech
             sword.Attributes.WeaponDamage       = 50;
