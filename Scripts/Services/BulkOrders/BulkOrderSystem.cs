@@ -25,9 +25,9 @@ namespace Server.Engines.BulkOrders
 
     public class BulkOrderSystem
     {
-        // Logic (EA says 3 cached): 2 cached, 1 in the pipe if the last bod > 6 hours = 3
+        // 1 BOD every 30 minutes, max 2 cached (full cache in 1 hour)
         public static readonly int MaxCachedDeeds = 2;
-        public static readonly int Delay = 6;
+        public static readonly int Delay = 30; // minutes
 
         public static bool NewSystemEnabled = true;
         public static BulkOrderSystem Instance { get; set; }
@@ -175,7 +175,7 @@ namespace Server.Engines.BulkOrders
                 {
                     entry.CheckCache();
 
-                    if (entry.LastBulkOrder + TimeSpan.FromHours(Delay) < DateTime.UtcNow)
+                    if (entry.LastBulkOrder + TimeSpan.FromMinutes(Delay) < DateTime.UtcNow)
                     {
                         entry.LastBulkOrder = DateTime.UtcNow;
 
@@ -203,7 +203,7 @@ namespace Server.Engines.BulkOrders
                 {
                     DateTime last = context.Entries[type].LastBulkOrder;
 
-                    return (last + TimeSpan.FromHours(Delay)) - DateTime.UtcNow;
+                    return (last + TimeSpan.FromMinutes(Delay)) - DateTime.UtcNow;
                 }
                 else if (context.Entries.ContainsKey(type))
                 {
@@ -229,10 +229,10 @@ namespace Server.Engines.BulkOrders
                 {
                     if (context.Entries.ContainsKey(type))
                     {
-                        if (context.Entries[type].LastBulkOrder < DateTime.UtcNow - TimeSpan.FromHours(Delay * MaxCachedDeeds))
-                            context.Entries[type].LastBulkOrder = DateTime.UtcNow - TimeSpan.FromHours(Delay * MaxCachedDeeds);
+                        if (context.Entries[type].LastBulkOrder < DateTime.UtcNow - TimeSpan.FromMinutes(Delay * MaxCachedDeeds))
+                            context.Entries[type].LastBulkOrder = DateTime.UtcNow - TimeSpan.FromMinutes(Delay * MaxCachedDeeds);
                         else
-                            context.Entries[type].LastBulkOrder = (context.Entries[type].LastBulkOrder + ts) - TimeSpan.FromHours(Delay);
+                            context.Entries[type].LastBulkOrder = (context.Entries[type].LastBulkOrder + ts) - TimeSpan.FromMinutes(Delay);
                     }
                 }
                 else if (context.Entries.ContainsKey(type))
@@ -864,12 +864,12 @@ namespace Server.Engines.BulkOrders
             if (LastBulkOrder == DateTime.MinValue)
             {
                 CachedDeeds = BulkOrderSystem.MaxCachedDeeds;
-                LastBulkOrder = DateTime.UtcNow - TimeSpan.FromHours(BulkOrderSystem.Delay);
+                LastBulkOrder = DateTime.UtcNow - TimeSpan.FromMinutes(BulkOrderSystem.Delay);
             }
-            else if (LastBulkOrder + TimeSpan.FromHours(BulkOrderSystem.Delay) < DateTime.UtcNow)
+            else if (LastBulkOrder + TimeSpan.FromMinutes(BulkOrderSystem.Delay) < DateTime.UtcNow)
             {
                 CachedDeeds++;
-                LastBulkOrder = LastBulkOrder + TimeSpan.FromHours(BulkOrderSystem.Delay);
+                LastBulkOrder = LastBulkOrder + TimeSpan.FromMinutes(BulkOrderSystem.Delay);
             }
         }
 

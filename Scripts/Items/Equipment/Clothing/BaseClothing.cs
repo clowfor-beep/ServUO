@@ -1090,7 +1090,7 @@ namespace Server.Items
                 list.Add(1060486, prop.ToString()); // swing speed increase ~1_val~%
 
             if (m_MovementSpeedBonus > 0)
-                list.Add(1, $"Movement Speed Increase {m_MovementSpeedBonus}%");
+                list.Add($"Movement Speed Increase {m_MovementSpeedBonus}%");
 
             if ((prop = m_AosAttributes.WeaponDamage) != 0)
                 list.Add(1060401, prop.ToString()); // damage increase ~1_val~%
