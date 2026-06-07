@@ -129,7 +129,13 @@ alchemy:{name:'Alchemy',desc:'Potion making — also provides fire resistance an
     ['Poison resist cap','+2 at 100 / +3 at 120','pill-pois'],
   ]},
 ]},
-anatomy:{name:'Anatomy',desc:'Knowledge of the body — boosts bandage healing when paired with Healing skill.',bonuses:[
+anatomy:{name:'Anatomy',desc:'Knowledge of the body — where to strike, how to absorb damage, how to heal. Rewards any build that invests in it.',bonuses:[
+  {group:'Melee damage',note:'Linear — scales from 0 to GM with no floor',rows:[
+    ['All weapons','+10% at GM','pill-off'],
+  ]},
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Physical resist','+10 points at GM','pill-phys'],
+  ]},
   {group:'Healing',note:'Uses the lower of Anatomy or Healing',rows:[
     ['Bandage heal amount','Up to +50% at GM in both','pill-off'],
   ]},

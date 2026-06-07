@@ -15,6 +15,7 @@ namespace Server.Custom
         // CONFIG
         // ============================================================
 
+        public static double AnatomyDamageBonus      = 0.10;
         public static double CampingDamageBonus      = 0.10;
         public static double ForensicDamageBonus     = 0.10;
         public static double TrackingDamageBonus     = 0.10;
@@ -105,6 +106,7 @@ namespace Server.Custom
             double bonus = 0.0;
             WeaponType wtype = weapon.Type;
 
+            bonus += (attacker.Skills[SkillName.Anatomy].Value   / 100.0) * AnatomyDamageBonus;
             bonus += (attacker.Skills[SkillName.Camping].Value   / 100.0) * CampingDamageBonus;
             bonus += (attacker.Skills[SkillName.Forensics].Value / 100.0) * ForensicDamageBonus;
             bonus += (attacker.Skills[SkillName.Tracking].Value  / 100.0) * TrackingDamageBonus;
@@ -197,6 +199,7 @@ namespace Server.Custom
         {
             if (!(m is PlayerMobile)) return 0;
             double sum = 0;
+            sum += SynergyScale(m.Skills[SkillName.Anatomy].Value)        * 10;
             sum += SynergyScale(m.Skills[SkillName.Blacksmith].Value)    * 10;
             sum += SynergyScale(m.Skills[SkillName.Mining].Value)        *  5;
             sum += SynergyScale(m.Skills[SkillName.Lumberjacking].Value) *  5;
