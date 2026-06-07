@@ -323,14 +323,13 @@ namespace Server.Spells.Necromancy
             // to be sure
             bc.Tamable = false;
 
-            if (bc is BaseMount)
-                bc.ControlSlots = 1;
-            else
-                bc.ControlSlots = 0;
+            // Assign control slot cost based on creature tier
+            bc.ControlSlots = GetAnimatedControlSlots(toSummon);
 
             Effects.PlaySound(loc, map, bc.GetAngerSound());
 
-            BaseCreature.Summon((BaseCreature)summoned, false, caster, loc, 0x28, TimeSpan.FromDays(1.0));
+            // controlled = true so the summon counts against the caster's follower limit
+            BaseCreature.Summon((BaseCreature)summoned, true, caster, loc, 0x28, TimeSpan.FromDays(1.0));
             Server.Custom.SummonerSynergySystem.ApplyBonuses(summoned, caster);
 
             if (summoned is SkeletalDragon)
@@ -360,6 +359,25 @@ namespace Server.Spells.Necromancy
                 bc.HitsMaxSeed = AOS.Scale(toScale, scalar);
 
             bc.Hits = bc.Hits; // refresh hits
+        }
+
+        private static int GetAnimatedControlSlots(Type t)
+        {
+            // Tier 3 — major undead (3 slots)
+            if (t == typeof(SkeletalDragon) || t == typeof(LichLord))
+                return 3;
+
+            // Tier 2 — strong undead (2 slots)
+            if (t == typeof(Lich) || t == typeof(FleshGolem) || t == typeof(WailingBanshee))
+                return 2;
+
+            // Tier 1 — mid undead (1 slot)
+            if (t == typeof(SkeletalKnight) || t == typeof(BoneKnight) ||
+                t == typeof(Mummy) || t == typeof(Wraith))
+                return 1;
+
+            // Tier 0 — weak undead (0 slots): SkeletalMage, BoneMagi, PatchworkSkeleton, mounts, etc.
+            return 0;
         }
 
         public class InternalTarget : Target

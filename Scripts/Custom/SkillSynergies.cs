@@ -459,9 +459,10 @@ namespace Server.Custom
 
             double effectiveSkill = GetEffectiveHerding(master);
 
-            // Passive skill gain — fires whenever a crook is activated (effectiveSkill >= 0),
-            // regardless of current skill level. Lets players train from 0 by fighting with followers.
-            if (effectiveSkill >= 0 && Utility.RandomDouble() < 0.05)
+            // Passive skill gain — fires whenever a crook is activated (effectiveSkill >= 0).
+            // Double chance (10%) while below 50 skill to ease early training.
+            double gainChance = master.Skills[SkillName.Herding].Value < 50.0 ? 0.10 : 0.05;
+            if (effectiveSkill >= 0 && Utility.RandomDouble() < gainChance)
                 master.CheckSkill(SkillName.Herding, 0.0, 120.0);
 
             // Damage bonus only applies once effective skill reaches 30
