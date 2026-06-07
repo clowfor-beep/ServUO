@@ -585,7 +585,10 @@ namespace Server.Misc
             0x1F03, 0x1F04, 0x26AE,                         // Robe & Arcane Robe
             0xE81,                                          // Crook
             0x1086, 0x108A, 0x1F06, 0x1F09,                 // Rings/Bracelet
-            0xA412                                          // Tabard
+            0xA412,                                         // Tabard
+            // Shoes/boots — all races including gargoyle can wear magic footwear
+            0x170B, 0x170D, 0x170F, 0x1711, 0x1712,
+            0x2307, 0x2796, 0x2797, 0x2FC4, 0x7819
         };
 
         public static int[] GargoyleOnlyIDs => _GargoyleOnlyIDs;
