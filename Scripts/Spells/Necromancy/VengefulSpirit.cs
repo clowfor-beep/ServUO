@@ -62,6 +62,8 @@ namespace Server.Spells.Necromancy
 
                 if (BaseCreature.Summon(rev, false, Caster, m.Location, 0x81, TimeSpan.FromSeconds(duration.TotalSeconds + 2.0)))
                     rev.FixedParticles(0x373A, 1, 15, 9909, EffectLayer.Waist);
+
+                Server.Custom.SummonerSynergySystem.ApplyBonuses(rev, Caster);
             }
 
             FinishSequence();
