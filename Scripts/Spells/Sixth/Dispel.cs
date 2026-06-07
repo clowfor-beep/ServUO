@@ -48,7 +48,17 @@ namespace Server.Spells.Sixth
                     {
                         from.SendLocalizedMessage(1005049); // That cannot be dispelled.
                     }
-                    else if (bc.SummonMaster == from || m_Owner.CheckHSequence(m))
+                    else if (bc.SummonMaster == from)
+                    {
+                        // Owner always instantly dismisses their own summon — no formula, no resist
+                        SpellHelper.Turn(from, m);
+
+                        Effects.SendLocationParticles(EffectItem.Create(m.Location, m.Map, EffectItem.DefaultDuration), 0x3728, 8, 20, 5042);
+                        Effects.PlaySound(m, m.Map, 0x201);
+
+                        m.Delete();
+                    }
+                    else if (m_Owner.CheckHSequence(m))
                     {
                         SpellHelper.Turn(from, m);
 

@@ -62,6 +62,15 @@ namespace Server.Spells.Seventh
                     if (bc == null)
                         continue;
 
+                    // Owner always instantly dismisses their own summons — no formula, no resist
+                    if (bc.SummonMaster == Caster)
+                    {
+                        Effects.SendLocationParticles(EffectItem.Create(m.Location, m.Map, EffectItem.DefaultDuration), 0x3728, 8, 20, 5042);
+                        Effects.PlaySound(m, m.Map, 0x201);
+                        m.Delete();
+                        continue;
+                    }
+
                     double dispelChance = (50.0 + ((100 * (Caster.Skills.Magery.Value - bc.GetDispelDifficulty())) / (bc.DispelFocus * 2))) / 100;
 
                     // Skill Masteries
