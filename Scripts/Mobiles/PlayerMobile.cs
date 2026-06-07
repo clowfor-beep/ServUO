@@ -5561,6 +5561,20 @@ namespace Server.Mobiles
             if (movBonus > 0.0)
                 delay = (int)(delay * (1.0 - movBonus));
 
+            // Stealth movement bonus: scales from 0% at 80/80 to 30% at 120/120
+            if (Hidden)
+            {
+                double hiding  = Skills[SkillName.Hiding].Value;
+                double stealth = Skills[SkillName.Stealth].Value;
+
+                if (hiding >= 80.0 && stealth >= 80.0)
+                {
+                    double minSkill = System.Math.Min(hiding, stealth);
+                    double stealthBonus = System.Math.Min((minSkill - 80.0) / 40.0, 1.0) * 0.30;
+                    delay = (int)(delay * (1.0 - stealthBonus));
+                }
+            }
+
             return System.Math.Max(25, delay); // 25ms hard floor
         }
 
