@@ -3632,6 +3632,18 @@ namespace Server.Mobiles
 
         public virtual void Dispel(Mobile m)
         {
+            // Check Spirit Speak dispel resistance before auto-dispelling a player's summon
+            BaseCreature bc = m as BaseCreature;
+            if (bc != null && bc.SummonMaster != null && bc.SummonMaster != this)
+            {
+                double resistChance = Server.Custom.SummonerSynergySystem.GetDispelResistChance(bc);
+                if (Utility.RandomDouble() < resistChance)
+                {
+                    m.FixedEffect(0x3779, 10, 20);
+                    return; // resisted
+                }
+            }
+
             Effects.SendLocationParticles(EffectItem.Create(m.Location, m.Map, EffectItem.DefaultDuration), 0x3728, 8, 20, 5042);
             Effects.PlaySound(m, m.Map, 0x201);
 
