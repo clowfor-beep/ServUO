@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skill Synergies — Aither UO</title>
+<style>
+  :root {
+    --bg: #0e0e10;
+    --bg2: #16161a;
+    --bg3: #1e1e24;
+    --border: #2a2a32;
+    --text: #e8e8ec;
+    --muted: #8888a0;
+    --accent: #7c6af7;
+    --accent2: #a898ff;
+    --phys: #4a8cc7; --phys-bg: #1a2a3a;
+    --fire: #c47a2a; --fire-bg: #2a1e10;
+    --cold: #3a9e7a; --cold-bg: #102a22;
+    --pois: #6a9e3a; --pois-bg: #182210;
+    --nrg:  #8a6adf; --nrg-bg:  #1e1830;
+    --off:  #c04a4a; --off-bg:  #2a1212;
+    --summ: #b05aaa; --summ-bg: #2a1228;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+  header { border-bottom: 1px solid var(--border); padding: 1.25rem 2rem; display: flex; align-items: baseline; gap: 1rem; }
+  .site-name { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent2); }
+  header h1 { font-size: 18px; font-weight: 500; color: var(--text); }
+  header p { font-size: 13px; color: var(--muted); margin-left: auto; }
+
+  .layout { display: grid; grid-template-columns: 190px 1fr; min-height: calc(100vh - 57px); }
+
+  .sidebar { border-right: 1px solid var(--border); padding: 1rem 0; background: var(--bg2); position: sticky; top: 0; height: calc(100vh - 57px); overflow-y: auto; }
+  .sidebar-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 0 1rem 0.5rem; }
+  .skill-btn { display: block; width: 100%; text-align: left; padding: 7px 1rem; font-size: 13px; border: none; background: transparent; cursor: pointer; color: var(--muted); font-family: inherit; transition: background 0.1s, color 0.1s; }
+  .skill-btn:hover { background: var(--bg3); color: var(--text); }
+  .skill-btn.active { background: var(--bg3); color: var(--text); font-weight: 500; border-left: 2px solid var(--accent); padding-left: calc(1rem - 2px); }
+
+  .content { padding: 2rem; max-width: 720px; }
+  .skill-title { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+  .skill-desc { font-size: 13px; color: var(--muted); margin-bottom: 1.75rem; }
+
+  .bonus-group { margin-bottom: 1.5rem; }
+  .group-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .group-note { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-style: italic; }
+  .bonus-table { width: 100%; border-collapse: collapse; background: var(--bg2); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .bonus-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .bonus-table tr:last-child td { border-bottom: none; }
+  .bonus-table td:first-child { color: var(--muted); }
+  .bonus-table td:last-child { text-align: right; }
+
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .pill-phys { background: var(--phys-bg); color: var(--phys); }
+  .pill-fire { background: var(--fire-bg); color: var(--fire); }
+  .pill-cold { background: var(--cold-bg); color: var(--cold); }
+  .pill-pois { background: var(--pois-bg); color: var(--pois); }
+  .pill-nrg  { background: var(--nrg-bg);  color: var(--nrg);  }
+  .pill-off  { background: var(--off-bg);  color: var(--off);  }
+  .pill-summ { background: var(--summ-bg); color: var(--summ); }
+
+  .welcome { color: var(--muted); padding-top: 3rem; font-size: 14px; }
+  .welcome strong { color: var(--text); }
+
+  @media (max-width: 640px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 4px; padding: 0.75rem; }
+    .sidebar-label { display: none; }
+    .skill-btn { width: auto; padding: 4px 10px; border-radius: 20px; border-left: none !important; padding-left: 10px !important; font-size: 12px; }
+    .skill-btn.active { background: var(--accent); color: #fff; }
+    .content { padding: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="site-name">Aither</span>
+  <h1>Skill Synergies</h1>
+  <p>Custom bonuses for every skill</p>
+</header>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-label">Skills</div>
+    <button class="skill-btn" onclick="show('alchemy',this)">Alchemy</button>
+    <button class="skill-btn" onclick="show('anatomy',this)">Anatomy</button>
+    <button class="skill-btn" onclick="show('taming',this)">Animal Taming</button>
+    <button class="skill-btn" onclick="show('blacksmith',this)">Blacksmithy</button>
+    <button class="skill-btn" onclick="show('camping',this)">Camping</button>
+    <button class="skill-btn" onclick="show('carpentry',this)">Carpentry</button>
+    <button class="skill-btn" onclick="show('detect',this)">Detect Hidden</button>
+    <button class="skill-btn" onclick="show('fishing',this)">Fishing</button>
+    <button class="skill-btn" onclick="show('forensics',this)">Forensics</button>
+    <button class="skill-btn" onclick="show('healing',this)">Healing</button>
+    <button class="skill-btn" onclick="show('herding',this)">Herding</button>
+    <button class="skill-btn" onclick="show('hiding',this)">Hiding</button>
+    <button class="skill-btn" onclick="show('inscribe',this)">Inscribe</button>
+    <button class="skill-btn" onclick="show('lumber',this)">Lumberjacking</button>
+    <button class="skill-btn" onclick="show('mining',this)">Mining</button>
+    <button class="skill-btn" onclick="show('spiritspeak',this)">Spirit Speak</button>
+    <button class="skill-btn" onclick="show('stealth',this)">Stealth</button>
+    <button class="skill-btn" onclick="show('tasteid',this)">Taste ID</button>
+    <button class="skill-btn" onclick="show('tracking',this)">Tracking</button>
+    <button class="skill-btn" onclick="show('veterinary',this)">Veterinary</button>
+    <button class="skill-btn" onclick="show('wrestling',this)">Wrestling</button>
+  </nav>
+
+  <main class="content" id="content">
+    <div class="welcome">
+      <strong>Select a skill</strong> from the list to see all custom bonuses it provides on Aither.
+    </div>
+  </main>
+</div>
+
+<script>
+const skills = {
+alchemy:{name:'Alchemy',desc:'Potion making — also provides fire resistance and unlocks poison resist cap.',bonuses:[
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Fire resist','+12 points at GM','pill-fire'],
+    ['Poison resist','+5 points at GM','pill-pois'],
+  ]},
+  {group:'Resistance cap raises',note:'No bonus below 100 skill',rows:[
+    ['Fire resist cap','+5 at 100 / +8 at 120','pill-fire'],
+    ['Poison resist cap','+2 at 100 / +3 at 120','pill-pois'],
+  ]},
+]},
+anatomy:{name:'Anatomy',desc:'Knowledge of the body — boosts bandage healing when paired with Healing skill.',bonuses:[
+  {group:'Healing',note:'Uses the lower of Anatomy or Healing',rows:[
+    ['Bandage heal amount','Up to +50% at GM in both','pill-off'],
+  ]},
+]},
+taming:{name:'Animal Taming',desc:'Control of creatures — provides survivability bonuses and extra HP.',bonuses:[
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Physical resist','+5 points at GM','pill-phys'],
+    ['Poison resist','+5 points at GM','pill-pois'],
+  ]},
+  {group:'Resistance cap raises',note:'No bonus below 100 skill',rows:[
+    ['Poison resist cap','+2 at 100 / +3 at 120','pill-pois'],
+  ]},
+  {group:'Survivability',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Bonus hit points','+15 HP at GM','pill-off'],
+  ]},
+]},
+blacksmith:{name:'Blacksmithy',desc:'Armor and weapon crafting — best physical resist in the game, plus melee damage on most weapon types.',bonuses:[
+  {group:'Melee damage',note:'Linear — scales from 0 to GM with no floor',rows:[
+    ['Axe, Slashing, Bashing, Piercing, Polearm, Fists','+10% at GM','pill-off'],
+  ]},
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Physical resist','+10 points at GM','pill-phys'],
+    ['Fire resist','+5 points at GM','pill-fire'],
+  ]},
+  {group:'Resistance cap raises',note:'No bonus below 100 skill',rows:[
+    ['Physical resist cap','+5 at 100 / +8 at 120','pill-phys'],
+    ['Fire resist cap','+2 at 100 / +3 at 120','pill-fire'],
+  ]},
+]},
+camping:{name:'Camping',desc:'Outdoor survival — universal damage bonus, cold resistance, and the only source of HP regen multiplier.',bonuses:[
+  {group:'Melee damage',note:'Linear — scales from 0 to GM with no floor',rows:[
+    ['All weapons','+10% at GM','pill-off'],
+  ]},
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Physical resist','+5 points at GM','pill-phys'],
+    ['Cold resist','+8 points at GM','pill-cold'],
+  ]},
+  {group:'Resistance cap raises',note:'No bonus below 100 skill',rows:[
+    ['Physical resist cap','+2 at 100 / +3 at 120','pill-phys'],
+    ['Cold resist cap','+5 at 100 / +8 at 120','pill-cold'],
+  ]},
+  {group:'HP regeneration',note:'SynergyScale: no effect below 80, ramps to 2× at 100+',rows:[
+    ['HP regen multiplier','Up to 2× (double regen) at GM','pill-off'],
+  ]},
+]},
+carpentry:{name:'Carpentry',desc:'Woodworking — powers stave and bow damage, barding effectiveness, and cold resist.',bonuses:[
+  {group:'Melee damage',note:'Linear — scales from 0 to GM with no floor',rows:[
+    ['Staves and ranged weapons','+10% at GM','pill-off'],
+  ]},
+  {group:'Barding effectiveness',note:'Linear — scales from 0 to GM with no floor',rows:[
+    ['Peacemaking / Discordance / Provocation','+10% effectiveness at GM','pill-off'],
+  ]},
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Physical resist','+3 points at GM','pill-phys'],
+    ['Cold resist','+5 points at GM','pill-cold'],
+  ]},
+  {group:'Resistance cap raises',note:'No bonus below 100 skill',rows:[
+    ['Physical resist cap','+2 at 100 / +3 at 120','pill-phys'],
+  ]},
+]},
+detect:{name:'Detect Hidden',desc:'Finding the unseen — gives the highest DCI bonus of any skill.',bonuses:[
+  {group:'Defense',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Defense Chance Increase (DCI)','+10% at GM','pill-off'],
+  ]},
+]},
+fishing:{name:'Fishing',desc:'Patience and the sea — contributes bonus HP, cold and energy resist.',bonuses:[
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Cold resist','+5 points at GM','pill-cold'],
+    ['Energy resist','+3 points at GM','pill-nrg'],
+  ]},
+  {group:'Resistance cap raises',note:'No bonus below 100 skill',rows:[
+    ['Energy resist cap','+2 at 100 / +3 at 120','pill-nrg'],
+  ]},
+  {group:'Survivability',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Bonus hit points','+10 HP at GM','pill-off'],
+  ]},
+]},
+forensics:{name:'Forensics',desc:'Crime investigation — universal damage bonus, barding effectiveness, and improved bandage heals.',bonuses:[
+  {group:'Melee damage',note:'Linear — scales from 0 to GM with no floor',rows:[
+    ['All weapons','+10% at GM','pill-off'],
+  ]},
+  {group:'Barding effectiveness',note:'Linear — scales from 0 to GM with no floor',rows:[
+    ['Peacemaking / Discordance / Provocation','+10% effectiveness at GM','pill-off'],
+  ]},
+  {group:'Healing',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Bandage heal bonus','+25% heal amount at GM','pill-off'],
+  ]},
+]},
+healing:{name:'Healing',desc:'Bandage mastery — boosts heal amounts when paired with Anatomy.',bonuses:[
+  {group:'Healing',note:'Uses the lower of Anatomy or Healing',rows:[
+    ['Bandage heal amount','Up to +50% at GM in both','pill-off'],
+  ]},
+]},
+herding:{name:'Herding',desc:'Follower command — the core skill for any pet or summon build. Requires an activated Shepherd\'s Crook in hand or backpack.',bonuses:[
+  {group:'Follower damage bonus',note:'Effective skill = Herding + crook HCI bonus + crook DI bonus. Activates at effective skill 30.',rows:[
+    ['vs. monsters','22% × (effectiveSkill / 100) — up to +26.4% at 120 effective','pill-off'],
+    ['vs. players','11% × (effectiveSkill / 100) — up to +13.2% at 120 effective','pill-off'],
+  ]},
+  {group:'Follower damage reduction',note:'',rows:[
+    ['vs. monster attacks','11% × (effectiveSkill / 100) — up to −13.2% damage taken','pill-off'],
+    ['vs. player attacks','5.5% × (effectiveSkill / 100) — up to −6.6% damage taken','pill-off'],
+  ]},
+  {group:'Passive skill gain',note:'Fires on every follower hit while crook is activated. Range: 0–120.',rows:[
+    ['Below 50 Herding','10% chance per follower hit','pill-off'],
+    ['50+ Herding','5% chance per follower hit','pill-off'],
+  ]},
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Cold resist','+5 points at GM','pill-cold'],
+    ['Poison resist','+8 points at GM','pill-pois'],
+  ]},
+  {group:'Resistance cap raises',note:'No bonus below 100 skill',rows:[
+    ['Cold resist cap','+2 at 100 / +3 at 120','pill-cold'],
+    ['Poison resist cap','+2 at 100 / +3 at 120','pill-pois'],
+  ]},
+  {group:'Survivability',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Bonus hit points','+20 HP at GM','pill-off'],
+  ]},
+]},
+hiding:{name:'Hiding',desc:'Concealment — required alongside Stealth 80+ to enable backstab attacks.',bonuses:[
+  {group:'Backstab (requires Hiding 80+ and Stealth 80+)',note:'Hit bonus applies on the first swing from hidden state',rows:[
+    ['Hit chance bonus','+50% on first swing from hidden','pill-off'],
+  ]},
+]},
+inscribe:{name:'Inscribe',desc:'Scroll making — the primary source of energy resistance and energy resist cap.',bonuses:[
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Cold resist','+5 points at GM','pill-cold'],
+    ['Energy resist','+12 points at GM','pill-nrg'],
+  ]},
+  {group:'Resistance cap raises',note:'No bonus below 100 skill',rows:[
+    ['Cold resist cap','+2 at 100 / +3 at 120','pill-cold'],
+    ['Energy resist cap','+5 at 100 / +8 at 120','pill-nrg'],
+  ]},
+]},
+lumber:{name:'Lumberjacking',desc:'Woodcutting — the axe fighter\'s signature damage bonus, plus cold and physical resist.',bonuses:[
+  {group:'Melee damage',note:'Linear — scales from 0 to GM with no floor',rows:[
+    ['Axe weapons only','+10% at GM','pill-off'],
+  ]},
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Physical resist','+5 points at GM','pill-phys'],
+    ['Cold resist','+8 points at GM','pill-cold'],
+  ]},
+  {group:'Resistance cap raises',note:'No bonus below 100 skill',rows:[
+    ['Physical resist cap','+2 at 100 / +3 at 120','pill-phys'],
+    ['Cold resist cap','+2 at 100 / +3 at 120','pill-cold'],
+  ]},
+]},
+mining:{name:'Mining',desc:'Ore extraction — boosts bashing weapons and adds fire and physical resist.',bonuses:[
+  {group:'Melee damage',note:'Linear — scales from 0 to GM with no floor',rows:[
+    ['Bashing weapons only','+10% at GM','pill-off'],
+  ]},
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Physical resist','+5 points at GM','pill-phys'],
+    ['Fire resist','+5 points at GM','pill-fire'],
+  ]},
+  {group:'Resistance cap raises',note:'No bonus below 100 skill',rows:[
+    ['Fire resist cap','+2 at 100 / +3 at 120','pill-fire'],
+  ]},
+]},
+spiritspeak:{name:'Spirit Speak',desc:'Communication with the dead — scales every summoned creature you create and protects them from being dispelled.',bonuses:[
+  {group:'Summon duration',note:'Formula: 120 + 480 × (SS / 100) seconds',rows:[
+    ['At SS 50','6 minutes','pill-summ'],
+    ['At SS 100','10 minutes','pill-summ'],
+    ['At SS 110','~10 min 48 s','pill-summ'],
+    ['At SS 120','~11 min 36 s','pill-summ'],
+  ]},
+  {group:'Summon stat scaling (applied at cast time)',note:'All scale as: base × multiplier × (SS / 100)',rows:[
+    ['Hit points','+150% of base HP per SS/100','pill-summ'],
+    ['Damage','+50% of base damage per SS/100','pill-summ'],
+    ['Wrestling','+50 skill per SS/100','pill-summ'],
+    ['Virtual Armor','+25 per SS/100','pill-summ'],
+    ['Magic Resist','+50 skill per SS/100','pill-summ'],
+  ]},
+  {group:'Dispel resistance',note:'Applies when enemies try to dispel your summons',rows:[
+    ['Resist chance','50% × (SS / 100) — 55% at SS 110','pill-summ'],
+    ['Own summons','Always instantly dismissed — no formula','pill-summ'],
+  ]},
+  {group:'Timer extension',note:'Using Spirit Speak on a nearby corpse',rows:[
+    ['Effect','Extends all nearby summon timers, capped at 30 min total','pill-summ'],
+  ]},
+]},
+stealth:{name:'Stealth',desc:'Silent movement — unlocks the backstab damage multiplier when attacking from hiding. PvM only.',bonuses:[
+  {group:'Backstab damage (PvM only)',note:'Requires Hiding 80+ and Stealth 80+. Applies on first swing from hidden state only.',rows:[
+    ['Damage multiplier','(Stealth / 100) × 200% — up to +200% at GM = 3× total damage','pill-off'],
+    ['Hit chance bonus','+50% on first swing (also applies PvP via Hiding)','pill-off'],
+  ]},
+]},
+tasteid:{name:'Taste ID',desc:'Poison detection — the best poison resist skill in the game, also adds fire resist.',bonuses:[
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Poison resist','+12 points at GM','pill-pois'],
+    ['Fire resist','+5 points at GM','pill-fire'],
+  ]},
+  {group:'Resistance cap raises',note:'No bonus below 100 skill',rows:[
+    ['Poison resist cap','+5 at 100 / +8 at 120','pill-pois'],
+    ['Fire resist cap','+2 at 100 / +3 at 120','pill-fire'],
+  ]},
+]},
+tracking:{name:'Tracking',desc:'Wilderness awareness — universal damage bonus, defense chance, and barding effectiveness.',bonuses:[
+  {group:'Melee damage',note:'Linear — scales from 0 to GM with no floor',rows:[
+    ['All weapons','+10% at GM','pill-off'],
+  ]},
+  {group:'Barding effectiveness',note:'Linear — scales from 0 to GM with no floor',rows:[
+    ['Peacemaking / Discordance / Provocation','+10% effectiveness at GM','pill-off'],
+  ]},
+  {group:'Defense',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Defense Chance Increase (DCI)','+8% at GM','pill-off'],
+  ]},
+]},
+veterinary:{name:'Veterinary',desc:'Animal medicine — provides a bandage heal bonus as a synergy effect.',bonuses:[
+  {group:'Healing',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Bandage heal bonus','+20% heal amount at GM','pill-off'],
+  ]},
+]},
+wrestling:{name:'Wrestling',desc:'Unarmed combat — provides the highest single physical resist bonus of any skill.',bonuses:[
+  {group:'Resistance bonuses',note:'SynergyScale: no effect below 80, ramps to full at 100+',rows:[
+    ['Physical resist','+8 points at GM','pill-phys'],
+  ]},
+]},
+};
+
+function show(id, btn) {
+  document.querySelectorAll('.skill-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const s = skills[id];
+  if (!s) return;
+  let html = `<div class="skill-title">${s.name}</div><div class="skill-desc">${s.desc}</div>`;
+  for (const g of s.bonuses) {
+    html += `<div class="bonus-group"><div class="group-label">${g.group}</div>`;
+    if (g.note) html += `<div class="group-note">${g.note}</div>`;
+    html += `<table class="bonus-table">`;
+    for (const r of g.rows) {
+      html += `<tr><td>${r[0]}</td><td><span class="pill ${r[2]}">${r[1]}</span></td></tr>`;
+    }
+    html += `</table></div>`;
+  }
+  document.getElementById('content').innerHTML = html;
+}
+</script>
+</body>
+</html>
