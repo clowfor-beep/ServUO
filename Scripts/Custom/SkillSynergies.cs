@@ -458,16 +458,19 @@ namespace Server.Custom
             if (master == null || !master.Alive || damage <= 0) return;
 
             double effectiveSkill = GetEffectiveHerding(master);
+
+            // Passive skill gain — fires whenever a crook is activated (effectiveSkill >= 0),
+            // regardless of current skill level. Lets players train from 0 by fighting with followers.
+            if (effectiveSkill >= 0 && Utility.RandomDouble() < 0.05)
+                master.CheckSkill(SkillName.Herding, 0.0, 120.0);
+
+            // Damage bonus only applies once effective skill reaches 30
             if (effectiveSkill < 30.0) return;
 
             // PvP vs PvM multiplier
             double pct = (target is PlayerMobile) ? 0.11 : 0.22;
             double bonus = pct * (effectiveSkill / 100.0);
             damage = (int)(damage * (1.0 + bonus));
-
-            // Passive skill gain while fighting with followers (50–120 range)
-            if (Utility.RandomDouble() < 0.05)
-                master.CheckSkill(SkillName.Herding, 50.0, 120.0);
         }
 
         // Legacy overload — called from BaseCreature without a target reference
