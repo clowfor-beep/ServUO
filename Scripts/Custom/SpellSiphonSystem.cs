@@ -22,9 +22,9 @@ namespace Server.Custom
 {
     public static class SpellSiphonSystem
     {
-        private static readonly BuffIcon SiphonBuffIcon = BuffIcon.ActiveMeditation;
-        private const int SiphonBuffTitleCliloc  = 1151285; // reuse ForceArrow title cliloc as placeholder
-        private const int SiphonBuffDetailCliloc = 1151286;
+        private static readonly BuffIcon SiphonBuffIcon = BuffIcon.Resilience;
+        private const int SiphonBuffTitleCliloc  = 1075841; // ~1_val~ blank — title comes from CharacterStatsGump mapping
+        private const int SiphonBuffDetailCliloc = 1114057; // ~1_val~ blank — detail filled by args
 
         private static readonly Dictionary<Mobile, DateTime> _lastTrigger = new Dictionary<Mobile, DateTime>();
         private static readonly Dictionary<Mobile, DateTime> _buffExpiry   = new Dictionary<Mobile, DateTime>();
