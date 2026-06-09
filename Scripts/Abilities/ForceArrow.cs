@@ -57,7 +57,7 @@ namespace Server.Items
                     info.Timer.IncreaseExpiration();
 
                     BuffInfo.RemoveBuff(defender, BuffIcon.ForceArrow);
-                    BuffInfo.AddBuff(defender, new BuffInfo(BuffIcon.ForceArrow, 1151285, 1151286, info.DefenseChanceMalus.ToString()));
+                    BuffInfo.AddBuff(defender, new BuffInfo(BuffIcon.ForceArrow, 1151285, 1151286, info.Timer.RemainingTime, defender, info.DefenseChanceMalus.ToString()));
                 }
             }
 
@@ -79,7 +79,7 @@ namespace Server.Items
 
             m_Table[attacker].Add(info);
 
-            BuffInfo.AddBuff(defender, new BuffInfo(BuffIcon.ForceArrow, 1151285, 1151286, info.DefenseChanceMalus.ToString()));
+            BuffInfo.AddBuff(defender, new BuffInfo(BuffIcon.ForceArrow, 1151285, 1151286, TimeSpan.FromSeconds(10), defender, info.DefenseChanceMalus.ToString()));
         }
 
         public static void EndForceArrow(ForceArrowInfo info)
@@ -152,6 +152,8 @@ namespace Server.Items
         {
             private readonly ForceArrowInfo m_Info;
             private DateTime m_Expires;
+
+            public TimeSpan RemainingTime => m_Expires > DateTime.UtcNow ? m_Expires - DateTime.UtcNow : TimeSpan.Zero;
 
             public ForceArrowTimer(ForceArrowInfo info)
                 : base(TimeSpan.FromSeconds(1.0), TimeSpan.FromSeconds(1))
