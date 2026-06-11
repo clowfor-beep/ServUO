@@ -2,20 +2,24 @@
 // TreasureHunterNPC.cs
 // Scripts/Custom/TreasureHunterNPC.cs
 //
-// A placeable NPC offering two services for decoded treasure maps:
-//   Portal Only     — 30% of reference chest gold, opens a one-use gate
-//   Full Assistance — 80% of reference chest gold, digs/disarms/unlocks
+// Services offered for decoded (or any) treasure maps:
 //
-// Payment is withdrawn from the player's bank account upfront.
+//   Solo Portal          — 30%  gate for you + pets
+//   Party Portal         — 33%  gate for whole party + pets (60s)
+//   Solo Full            — 50%  NPC digs/disarms/unlocks, you + pets teleported
+//   Party Full           — 55%  same, whole party + pets teleported
+//   Solo Decode+Full     — 80%  NPC decodes + full service, you + pets
+//   Party Decode+Full    — 88%  same, whole party + pets
 //
+// Payment withdrawn from bank upfront.
 // Staff placement: [add TreasureHunterNPC
-//
-// Design doc: Design/TreasureHunterNPC_DesignDoc.txt
 // ============================================================
 
 using System;
+using System.Collections.Generic;
 using Server;
 using Server.Commands;
+using Server.Engines.PartySystem;
 using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
@@ -26,15 +30,19 @@ namespace Server.Custom
 {
     // ============================================================
     // TreasurePortalGate
-    // A one-use gate placed at the player's location.
-    // Only the paying player can step through.
-    // Auto-deletes after 60 seconds if unused.
+    // Solo mode:  only the paying player + their pets pass through.
+    //             Gate deletes itself after the owner steps through.
+    // Party mode: owner + party members (snapshot at purchase) + their
+    //             pets all pass through. Gate stays open for 60 seconds.
+    // Auto-deletes after 60 seconds regardless.
     // ============================================================
     public class TreasurePortalGate : Item
     {
-        private Serial  _ownerSerial;
-        private Point3D _dest;
-        private Map     _destMap;
+        private Serial      _ownerSerial;
+        private Point3D     _dest;
+        private Map         _destMap;
+        private bool        _partyGate;
+        private List<int>   _partySerials = new List<int>();
 
         [Constructable]
         public TreasurePortalGate() : base(0xF6C)
@@ -43,13 +51,21 @@ namespace Server.Custom
             Hue     = 0x481;
         }
 
-        public TreasurePortalGate(Serial ownerSerial, Point3D dest, Map destMap) : base(0xF6C)
+        // Solo portal constructor
+        public TreasurePortalGate(Serial ownerSerial, Point3D dest, Map destMap)
+            : this(ownerSerial, dest, destMap, false, null) { }
+
+        // Party portal constructor
+        public TreasurePortalGate(Serial ownerSerial, Point3D dest, Map destMap,
+                                   bool partyGate, List<int> partySerials) : base(0xF6C)
         {
-            Movable      = false;
-            Hue          = 0x481;
-            _ownerSerial = ownerSerial;
-            _dest        = dest;
-            _destMap     = destMap;
+            Movable       = false;
+            Hue           = partyGate ? 0x489 : 0x481;
+            _ownerSerial  = ownerSerial;
+            _dest         = dest;
+            _destMap      = destMap;
+            _partyGate    = partyGate;
+            _partySerials = partySerials ?? new List<int>();
             Timer.DelayCall(TimeSpan.FromSeconds(60.0), Delete);
         }
 
@@ -57,35 +73,60 @@ namespace Server.Custom
 
         public override bool OnMoveOver(Mobile from)
         {
-            if (from.Serial != _ownerSerial)
+            bool isOwner = from.Serial == _ownerSerial;
+            bool isParty = _partyGate && _partySerials.Contains((int)from.Serial);
+
+            if (!isOwner && !isParty)
             {
-                from.SendMessage("This portal was opened for someone else.");
-                return true; // let them step off without teleporting
+                from.SendMessage("This portal was not opened for you.");
+                return true;
             }
 
             from.PlaySound(0x1FE);
+
+            // Collect pets before moving player (they're still nearby)
+            List<BaseCreature> pets = TreasureHunterNPC.CollectPets(from);
             from.MoveToWorld(_dest, _destMap);
-            Delete();
+            foreach (BaseCreature pet in pets)
+                pet.MoveToWorld(_dest, _destMap);
+
+            // Solo gate: delete immediately after owner steps through
+            if (!_partyGate)
+                Delete();
+
             return false;
         }
 
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
-            writer.Write(0); // version
+            writer.Write(1); // version
             writer.Write((int)_ownerSerial);
             writer.Write(_dest);
             writer.Write(_destMap);
+            writer.Write(_partyGate);
+            writer.Write(_partySerials.Count);
+            foreach (int s in _partySerials)
+                writer.Write(s);
         }
 
         public override void Deserialize(GenericReader reader)
         {
             base.Deserialize(reader);
-            int version = reader.ReadInt();
-            _ownerSerial = (Serial)reader.ReadInt();
-            _dest        = reader.ReadPoint3D();
-            _destMap     = reader.ReadMap();
-            // Restart 60s expiry on load — don't keep stale gates
+            int version      = reader.ReadInt();
+            _ownerSerial     = (Serial)reader.ReadInt();
+            _dest            = reader.ReadPoint3D();
+            _destMap         = reader.ReadMap();
+
+            if (version >= 1)
+            {
+                _partyGate = reader.ReadBool();
+                int count  = reader.ReadInt();
+                _partySerials = new List<int>(count);
+                for (int i = 0; i < count; i++)
+                    _partySerials.Add(reader.ReadInt());
+            }
+
             Timer.DelayCall(TimeSpan.FromSeconds(60.0), Delete);
         }
     }
@@ -103,19 +144,34 @@ namespace Server.Custom
         public static int GetPortalFee(int level)
         {
             level = Math.Max(0, Math.Min(level, 4));
-            return (int)(s_RefGold[level] * 0.30); // Portal: 30%
+            return (int)(s_RefGold[level] * 0.30);
+        }
+
+        public static int GetPartyPortalFee(int level)
+        {
+            return (int)(GetPortalFee(level) * 1.10);
         }
 
         public static int GetFullFee(int level)
         {
             level = Math.Max(0, Math.Min(level, 4));
-            return (int)(s_RefGold[level] * 0.50); // Full: 50%
+            return (int)(s_RefGold[level] * 0.50);
+        }
+
+        public static int GetPartyFullFee(int level)
+        {
+            return (int)(GetFullFee(level) * 1.10);
         }
 
         public static int GetDecodeFullFee(int level)
         {
             level = Math.Max(0, Math.Min(level, 4));
-            return (int)(s_RefGold[level] * 0.80); // Decode+Full: 80%
+            return (int)(s_RefGold[level] * 0.80);
+        }
+
+        public static int GetPartyDecodeFullFee(int level)
+        {
+            return (int)(GetDecodeFullFee(level) * 1.10);
         }
 
         private static readonly string[] s_LevelNames = { "Stash", "Supply", "Cache", "Hoard", "Trove" };
@@ -142,11 +198,10 @@ namespace Server.Custom
 
             SetStr(100); SetDex(100); SetInt(100);
             SetHits(200);
-            SetSkill(SkillName.Cartography, 100.0, 100.0); // guarantees Gold chest quality
+            SetSkill(SkillName.Cartography, 100.0, 100.0);
 
-            // Weathered explorer / treasure hunter outfit
-            int leather = Utility.RandomList(1109, 2117, 2213, 2306); // earthy leather browns
-            int boot    = Utility.RandomList(1107, 2101, 2306);       // dark boot tones
+            int leather = Utility.RandomList(1109, 2117, 2213, 2306);
+            int boot    = Utility.RandomList(1107, 2101, 2306);
             AddItem(new StuddedChest  { Hue = leather });
             AddItem(new StuddedLegs   { Hue = leather });
             AddItem(new LeatherGloves { Hue = leather });
@@ -170,28 +225,16 @@ namespace Server.Custom
             from.SendGump(new TreasureHunterServiceGump(from, this));
         }
 
-        // ── Service 1: Portal Only ────────────────────────────────
+        // ── Service: Solo Portal ──────────────────────────────────
         public void BeginPortalService(Mobile from, TreasureMap tMap)
         {
             if (!ValidateMap(from, tMap)) return;
 
             int fee = GetPortalFee(tMap.Level);
-
-            if (Banker.GetBalance(from) < fee)
-            {
-                from.SendMessage(0x22, $"You need at least {fee:N0} gold in your bank for this service.");
-                return;
-            }
+            if (!WithdrawFee(from, fee)) return;
 
             Point3D dest = GetDestination(tMap);
-            if (dest == Point3D.Zero)
-            {
-                from.SendMessage(0x22, "I cannot locate a safe landing point for that map. No gold was taken.");
-                return;
-            }
-
-            Banker.Withdraw(from, fee);
-            from.SendMessage(0x44, $"{fee:N0} gold withdrawn from your bank.");
+            if (dest == Point3D.Zero) { RefundFee(from, fee); return; }
 
             Say("The portal awaits. Good hunting!");
             PlaySound(0x1FE);
@@ -200,34 +243,104 @@ namespace Server.Custom
             gate.MoveToWorld(from.Location, from.Map);
         }
 
-        // ── Service 2: Full Assistance ────────────────────────────
+        // ── Service: Party Portal ─────────────────────────────────
+        public void BeginPartyPortalService(Mobile from, TreasureMap tMap)
+        {
+            if (!ValidateMap(from, tMap)) return;
+
+            int fee = GetPartyPortalFee(tMap.Level);
+            if (!WithdrawFee(from, fee)) return;
+
+            Point3D dest = GetDestination(tMap);
+            if (dest == Point3D.Zero) { RefundFee(from, fee); return; }
+
+            List<int> partySerials = SnapshotParty(from);
+
+            int memberCount = partySerials.Count;
+            Say(memberCount > 1
+                ? $"A party gate for {memberCount} — good hunting!"
+                : "The portal awaits. Good hunting!");
+            PlaySound(0x1FE);
+
+            var gate = new TreasurePortalGate(from.Serial, dest, tMap.Facet, true, partySerials);
+            gate.MoveToWorld(from.Location, from.Map);
+        }
+
+        // ── Service: Solo Full Assistance ─────────────────────────
         public void BeginFullService(Mobile from, TreasureMap tMap)
         {
             if (!ValidateMap(from, tMap)) return;
 
             int fee = GetFullFee(tMap.Level);
-
-            if (Banker.GetBalance(from) < fee)
-            {
-                from.SendMessage(0x22, $"You need at least {fee:N0} gold in your bank for this service.");
-                return;
-            }
+            if (!WithdrawFee(from, fee)) return;
 
             Point3D dest = GetDestination(tMap);
-            if (dest == Point3D.Zero)
-            {
-                from.SendMessage(0x22, "I cannot locate a safe landing point for that map. No gold was taken.");
-                return;
-            }
-
-            Banker.Withdraw(from, fee);
-            from.SendMessage(0x44, $"{fee:N0} gold withdrawn from your bank.");
+            if (dest == Point3D.Zero) { RefundFee(from, fee); return; }
 
             Say("Follow me through the portal!");
-            RunFullServiceSequence(from, tMap, dest);
+            RunFullServiceSequence(from, tMap, dest, false, null);
         }
 
-        private void RunFullServiceSequence(Mobile from, TreasureMap tMap, Point3D dest)
+        // ── Service: Party Full Assistance ────────────────────────
+        public void BeginPartyFullService(Mobile from, TreasureMap tMap)
+        {
+            if (!ValidateMap(from, tMap)) return;
+
+            int fee = GetPartyFullFee(tMap.Level);
+            if (!WithdrawFee(from, fee)) return;
+
+            Point3D dest = GetDestination(tMap);
+            if (dest == Point3D.Zero) { RefundFee(from, fee); return; }
+
+            List<int> partySerials = SnapshotParty(from);
+
+            int memberCount = partySerials.Count;
+            Say(memberCount > 1
+                ? $"Bringing your party of {memberCount} — follow me!"
+                : "Follow me through the portal!");
+            RunFullServiceSequence(from, tMap, dest, true, partySerials);
+        }
+
+        // ── Service: Solo Decode + Full ───────────────────────────
+        public void BeginDecodeFullService(Mobile from, TreasureMap tMap)
+        {
+            if (!ValidateMap(from, tMap, requireDecoded: false)) return;
+
+            int fee = GetDecodeFullFee(tMap.Level);
+            if (!WithdrawFee(from, fee)) return;
+
+            Point3D dest = GetDestination(tMap);
+            if (dest == Point3D.Zero) { RefundFee(from, fee); return; }
+
+            tMap.Decoder = from;
+            Say("I've decoded your map. Now follow me!");
+            RunFullServiceSequence(from, tMap, dest, false, null);
+        }
+
+        // ── Service: Party Decode + Full ──────────────────────────
+        public void BeginPartyDecodeFullService(Mobile from, TreasureMap tMap)
+        {
+            if (!ValidateMap(from, tMap, requireDecoded: false)) return;
+
+            int fee = GetPartyDecodeFullFee(tMap.Level);
+            if (!WithdrawFee(from, fee)) return;
+
+            Point3D dest = GetDestination(tMap);
+            if (dest == Point3D.Zero) { RefundFee(from, fee); return; }
+
+            List<int> partySerials = SnapshotParty(from);
+
+            tMap.Decoder = from;
+            int memberCount = partySerials.Count;
+            Say(memberCount > 1
+                ? $"Map decoded. Bringing your party of {memberCount} — follow me!"
+                : "I've decoded your map. Now follow me!");
+            RunFullServiceSequence(from, tMap, dest, true, partySerials);
+        }
+
+        // ── Shared: full service sequence ─────────────────────────
+        private void RunFullServiceSequence(Mobile from, TreasureMap tMap, Point3D dest,
+                                             bool partyMode, List<int> partySerials)
         {
             Point3D origin       = Location;
             Map     originMap    = Map;
@@ -235,14 +348,36 @@ namespace Server.Custom
 
             PlaySound(0x1FE);
 
-            // T+0.5s: teleport both to treasure location
+            // T+0.5s: teleport everyone to treasure location
             Timer.DelayCall(TimeSpan.FromSeconds(0.5), () =>
             {
                 Mobile player = World.FindMobile(playerSerial);
                 if (player == null || player.Deleted || Deleted) return;
 
                 player.PlaySound(0x1FE);
-                player.MoveToWorld(dest, tMap.Facet);
+
+                if (partyMode && partySerials != null)
+                {
+                    foreach (int serial in partySerials)
+                    {
+                        Mobile member = World.FindMobile((Serial)serial);
+                        if (member != null && !member.Deleted)
+                        {
+                            List<BaseCreature> memberPets = CollectPets(member);
+                            member.MoveToWorld(dest, tMap.Facet);
+                            foreach (BaseCreature pet in memberPets)
+                                pet.MoveToWorld(dest, tMap.Facet);
+                        }
+                    }
+                }
+                else
+                {
+                    List<BaseCreature> playerPets = CollectPets(player);
+                    player.MoveToWorld(dest, tMap.Facet);
+                    foreach (BaseCreature pet in playerPets)
+                        pet.MoveToWorld(dest, tMap.Facet);
+                }
+
                 MoveToWorld(dest, tMap.Facet);
 
                 // T+2.0s: digging emote
@@ -259,13 +394,11 @@ namespace Server.Custom
 
                         Mobile pl = World.FindMobile(playerSerial);
 
-                        // Spawn the chest
                         var chest = new TreasureMapChest(pl, tMap.Level, false);
                         chest.TreasureMap = tMap;
                         tMap.AssignChestQuality(this, chest);
                         TreasureMapInfo.Fill(pl ?? this, chest, tMap);
 
-                        // Disarm and unlock
                         chest.Locked   = false;
                         chest.TrapType = TrapType.None;
                         chest.MoveToWorld(dest, tMap.Facet);
@@ -273,7 +406,6 @@ namespace Server.Custom
                         tMap.Completed   = true;
                         tMap.CompletedBy = pl ?? this;
 
-                        // Spawn 4 guardians — same count as normal digging in the new system
                         for (int i = 0; i < 4; i++)
                         {
                             bool isGuardian = Utility.RandomDouble() >= 0.3;
@@ -293,14 +425,17 @@ namespace Server.Custom
                             Say("My work here is done. Safe travels!");
                             PlaySound(0x1FE);
 
-                            // Return gate for the player at the chest location
                             if (pl != null && !pl.Deleted)
                             {
-                                var returnGate = new TreasurePortalGate(pl.Serial, origin, originMap);
+                                TreasurePortalGate returnGate;
+                                if (partyMode && partySerials != null)
+                                    returnGate = new TreasurePortalGate(pl.Serial, origin, originMap, true, partySerials);
+                                else
+                                    returnGate = new TreasurePortalGate(pl.Serial, origin, originMap);
+
                                 returnGate.MoveToWorld(dest, tMap.Facet);
                             }
 
-                            // NPC returns to its spawn location
                             MoveToWorld(origin, originMap);
                         });
                     });
@@ -308,38 +443,40 @@ namespace Server.Custom
             });
         }
 
-        // ── Service 3: Decode + Full Assistance ──────────────────
-        public void BeginDecodeFullService(Mobile from, TreasureMap tMap)
+        // ── Shared helpers ────────────────────────────────────────
+
+        // Snapshot all party serials (including the payer)
+        private static List<int> SnapshotParty(Mobile from)
         {
-            if (!ValidateMap(from, tMap, requireDecoded: false)) return;
-
-            int fee = GetDecodeFullFee(tMap.Level);
-
-            if (Banker.GetBalance(from) < fee)
+            var serials = new List<int> { (int)from.Serial };
+            Party party = Party.Get(from);
+            if (party != null)
             {
-                from.SendMessage(0x22, $"You need at least {fee:N0} gold in your bank for this service.");
-                return;
+                foreach (PartyMemberInfo info in party.Members)
+                {
+                    if (info.Mobile != null && info.Mobile != from)
+                        serials.Add((int)info.Mobile.Serial);
+                }
             }
-
-            Point3D dest = GetDestination(tMap);
-            if (dest == Point3D.Zero)
-            {
-                from.SendMessage(0x22, "I cannot locate a safe landing point for that map. No gold was taken.");
-                return;
-            }
-
-            Banker.Withdraw(from, fee);
-            from.SendMessage(0x44, $"{fee:N0} gold withdrawn from your bank.");
-
-            // Decode the map now on the player's behalf
-            tMap.Decoder = from;
-            Say("I've decoded your map. Now follow me!");
-
-            // Reuse the full service sequence from here
-            RunFullServiceSequence(from, tMap, dest);
+            return serials;
         }
 
-        // ── Shared helpers ────────────────────────────────────────
+        // Collect all live controlled pets near a mobile (before moving them)
+        public static List<BaseCreature> CollectPets(Mobile owner)
+        {
+            var pets = new List<BaseCreature>();
+            if (owner.Map == null) return pets;
+
+            IPooledEnumerable<Mobile> eable = owner.Map.GetMobilesInRange(owner.Location, 30);
+            foreach (Mobile m in eable)
+            {
+                if (m is BaseCreature bc && bc.Controlled && bc.ControlMaster == owner && !bc.IsDeadPet)
+                    pets.Add(bc);
+            }
+            eable.Free();
+            return pets;
+        }
+
         private bool ValidateMap(Mobile from, TreasureMap tMap, bool requireDecoded = true)
         {
             if (!tMap.IsChildOf(from.Backpack))
@@ -360,6 +497,24 @@ namespace Server.Custom
             return true;
         }
 
+        private bool WithdrawFee(Mobile from, int fee)
+        {
+            if (Banker.GetBalance(from) < fee)
+            {
+                from.SendMessage(0x22, $"You need at least {fee:N0} gold in your bank for this service.");
+                return false;
+            }
+            Banker.Withdraw(from, fee);
+            from.SendMessage(0x44, $"{fee:N0} gold withdrawn from your bank.");
+            return true;
+        }
+
+        private void RefundFee(Mobile from, int fee)
+        {
+            Banker.Deposit(from, fee);
+            from.SendMessage(0x22, "I cannot locate a safe landing point for that map. Your gold has been refunded.");
+        }
+
         private static Point3D GetDestination(TreasureMap tMap)
         {
             Map map = tMap.Facet;
@@ -369,13 +524,9 @@ namespace Server.Custom
             int y = tMap.ChestLocation.Y;
             int z = map.GetAverageZ(x, y);
 
-            // Use CanFit as the authoritative check — mirrors what the dig system does
-            // and avoids the old z <= -20 threshold that incorrectly blocked valid marsh
-            // and coastal terrain with legitimate negative Z values.
             if (map.CanFit(x, y, z, 16, false, false))
                 return new Point3D(x, y, z);
 
-            // If the exact spot is blocked, search a small radius for a valid tile.
             for (int dx = -2; dx <= 2; dx++)
             {
                 for (int dy = -2; dy <= 2; dy++)
@@ -383,7 +534,6 @@ namespace Server.Custom
                     int nx = x + dx;
                     int ny = y + dy;
                     int nz = map.GetAverageZ(nx, ny);
-
                     if (map.CanFit(nx, ny, nz, 16, false, false))
                         return new Point3D(nx, ny, nz);
                 }
@@ -392,7 +542,7 @@ namespace Server.Custom
             return Point3D.Zero;
         }
 
-        public override bool IsInvulnerable   => true;
+        public override bool IsInvulnerable  => true;
         public override bool AlwaysInnocent  => true;
         public override bool CanBeRenamedBy(Mobile from) => false;
         public override bool HandlesOnSpeech(Mobile from) => false;
@@ -400,20 +550,28 @@ namespace Server.Custom
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
-            writer.Write(0); // version
+            writer.Write(0);
         }
 
         public override void Deserialize(GenericReader reader)
         {
             base.Deserialize(reader);
-            reader.ReadInt(); // version
+            reader.ReadInt();
         }
     }
 
     // ============================================================
     // ServiceType enum
     // ============================================================
-    public enum THServiceType { Portal, Full, DecodeAndFull }
+    public enum THServiceType
+    {
+        Portal,
+        PartyPortal,
+        Full,
+        PartyFull,
+        DecodeAndFull,
+        PartyDecodeAndFull
+    }
 
     // ============================================================
     // MapTarget — targeting cursor to pick a TreasureMap
@@ -444,9 +602,13 @@ namespace Server.Custom
                 from.SendMessage("The map must be in your pack.");
                 return;
             }
-            if (_service != THServiceType.DecodeAndFull && tMap.Decoder == null)
+
+            bool needsDecoded = (_service != THServiceType.DecodeAndFull &&
+                                 _service != THServiceType.PartyDecodeAndFull);
+
+            if (needsDecoded && tMap.Decoder == null)
             {
-                from.SendMessage("The map must be decoded first. Choose 'Decode + Full Assistance' if you need that done too.");
+                from.SendMessage("The map must be decoded first. Choose a Decode + Full Assistance option if you need that done too.");
                 return;
             }
             if (tMap.Completed)
@@ -467,66 +629,95 @@ namespace Server.Custom
 
     // ============================================================
     // TreasureHunterServiceGump — step 1: pick service
+    // Six options: solo/party for each of portal, full, decode+full
     // ============================================================
     public class TreasureHunterServiceGump : Gump
     {
         private readonly Mobile            _from;
         private readonly TreasureHunterNPC _npc;
 
-        private const int BTN_CLOSE       = 0;
-        private const int BTN_PORTAL      = 1;
-        private const int BTN_FULL        = 2;
-        private const int BTN_DECODE_FULL = 3;
+        private const int BTN_CLOSE             = 0;
+        private const int BTN_PORTAL            = 1;
+        private const int BTN_PARTY_PORTAL      = 2;
+        private const int BTN_FULL              = 3;
+        private const int BTN_PARTY_FULL        = 4;
+        private const int BTN_DECODE_FULL       = 5;
+        private const int BTN_PARTY_DECODE_FULL = 6;
 
-        public TreasureHunterServiceGump(Mobile from, TreasureHunterNPC npc) : base(100, 100)
+        public TreasureHunterServiceGump(Mobile from, TreasureHunterNPC npc) : base(100, 80)
         {
             _from = from;
             _npc  = npc;
 
-            AddBackground(0, 0, 440, 290, 9200);
-            AddAlphaRegion(10, 10, 420, 270);
+            AddBackground(0, 0, 460, 460, 9200);
+            AddAlphaRegion(10, 10, 440, 440);
 
-            AddLabel(145, 16, 0x44, "Treasure Hunter Services");
+            AddLabel(150, 16, 0x44, "Treasure Hunter Services");
+            AddLabel(20, 46, 1153, "Choose a service — payment withdrawn from your bank.");
 
-            AddLabel(20, 50, 1153, "I offer three services for treasure maps.");
-            AddLabel(20, 66, 1153, "Payment is taken from your bank account upfront.");
+            // ── Solo Portal ──────────────────────────────────────
+            AddButton(20, 80, 0xFA5, 0xFA7, BTN_PORTAL, GumpButtonType.Reply, 0);
+            AddLabel(55, 81,  0x44,  "Solo Portal");
+            AddLabel(55, 98,  1153, "Gate for you and your pets. Requires decoded map.");
 
-            // Portal Only (requires decoded map)
-            AddButton(20, 100, 0xFA5, 0xFA7, BTN_PORTAL, GumpButtonType.Reply, 0);
-            AddLabel(55, 101, 0x44,   "Portal Only  (30% fee)");
-            AddLabel(55, 118, 1153,  "I open a gate to the treasure. Map must be decoded.");
+            // ── Party Portal ─────────────────────────────────────
+            AddButton(20, 128, 0xFA5, 0xFA7, BTN_PARTY_PORTAL, GumpButtonType.Reply, 0);
+            AddLabel(55, 129, 0x44,  "Party Portal  (+10%)");
+            AddLabel(55, 146, 1153, "Gate for your whole party and all pets. Open 60 seconds.");
 
-            // Full Assistance (requires decoded map)
-            AddButton(20, 148, 0xFA5, 0xFA7, BTN_FULL, GumpButtonType.Reply, 0);
-            AddLabel(55, 149, 0x44,   "Full Assistance  (80% fee)");
-            AddLabel(55, 166, 1153,  "I travel with you, dig, disarm and unlock. Map must be decoded.");
+            // ── Solo Full Assistance ─────────────────────────────
+            AddButton(20, 176, 0xFA5, 0xFA7, BTN_FULL, GumpButtonType.Reply, 0);
+            AddLabel(55, 177, 0x44,  "Solo Full Assistance");
+            AddLabel(55, 194, 1153, "I travel with you, dig, disarm and unlock. You and pets teleported.");
 
-            // Decode + Full Assistance (works on any undecoded map)
-            AddButton(20, 196, 0xFA5, 0xFA7, BTN_DECODE_FULL, GumpButtonType.Reply, 0);
-            AddLabel(55, 197, 0x44,   "Decode + Full Assistance  (90% fee)");
-            AddLabel(55, 214, 1153,  "I decode the map, travel with you, dig, disarm and unlock.");
+            // ── Party Full Assistance ────────────────────────────
+            AddButton(20, 224, 0xFA5, 0xFA7, BTN_PARTY_FULL, GumpButtonType.Reply, 0);
+            AddLabel(55, 225, 0x44,  "Party Full Assistance  (+10%)");
+            AddLabel(55, 242, 1153, "Same — whole party and all pets teleported.");
 
-            AddButton(400, 10, 0xFB1, 0xFB2, BTN_CLOSE, GumpButtonType.Reply, 0);
+            // ── Solo Decode + Full ───────────────────────────────
+            AddButton(20, 272, 0xFA5, 0xFA7, BTN_DECODE_FULL, GumpButtonType.Reply, 0);
+            AddLabel(55, 273, 0x44,  "Solo Decode + Full Assistance");
+            AddLabel(55, 290, 1153, "I decode the map, travel with you, dig, disarm and unlock.");
+
+            // ── Party Decode + Full ──────────────────────────────
+            AddButton(20, 320, 0xFA5, 0xFA7, BTN_PARTY_DECODE_FULL, GumpButtonType.Reply, 0);
+            AddLabel(55, 321, 0x44,  "Party Decode + Full Assistance  (+10%)");
+            AddLabel(55, 338, 1153, "Same — decodes undecoded map, whole party and pets.");
+
+            AddButton(420, 10, 0xFB1, 0xFB2, BTN_CLOSE, GumpButtonType.Reply, 0);
         }
 
         public override void OnResponse(NetState sender, RelayInfo info)
         {
             if (_npc == null || _npc.Deleted) return;
 
-            if (info.ButtonID == BTN_PORTAL)
+            switch (info.ButtonID)
             {
-                _from.SendMessage("Which decoded map should I use?");
-                _from.Target = new TreasureMapTarget(_npc, THServiceType.Portal);
-            }
-            else if (info.ButtonID == BTN_FULL)
-            {
-                _from.SendMessage("Which decoded map should I use?");
-                _from.Target = new TreasureMapTarget(_npc, THServiceType.Full);
-            }
-            else if (info.ButtonID == BTN_DECODE_FULL)
-            {
-                _from.SendMessage("Which map should I decode and assist with?");
-                _from.Target = new TreasureMapTarget(_npc, THServiceType.DecodeAndFull);
+                case BTN_PORTAL:
+                    _from.SendMessage("Which decoded map should I use?");
+                    _from.Target = new TreasureMapTarget(_npc, THServiceType.Portal);
+                    break;
+                case BTN_PARTY_PORTAL:
+                    _from.SendMessage("Which decoded map should I use?");
+                    _from.Target = new TreasureMapTarget(_npc, THServiceType.PartyPortal);
+                    break;
+                case BTN_FULL:
+                    _from.SendMessage("Which decoded map should I use?");
+                    _from.Target = new TreasureMapTarget(_npc, THServiceType.Full);
+                    break;
+                case BTN_PARTY_FULL:
+                    _from.SendMessage("Which decoded map should I use?");
+                    _from.Target = new TreasureMapTarget(_npc, THServiceType.PartyFull);
+                    break;
+                case BTN_DECODE_FULL:
+                    _from.SendMessage("Which map should I decode and assist with?");
+                    _from.Target = new TreasureMapTarget(_npc, THServiceType.DecodeAndFull);
+                    break;
+                case BTN_PARTY_DECODE_FULL:
+                    _from.SendMessage("Which map should I decode and assist with?");
+                    _from.Target = new TreasureMapTarget(_npc, THServiceType.PartyDecodeAndFull);
+                    break;
             }
         }
     }
@@ -551,36 +742,50 @@ namespace Server.Custom
             _map     = map;
             _service = service;
 
-            int    level    = map.Level;
-            string lvlName  = TreasureHunterNPC.GetLevelName(level);
-            int fee;
+            int    level   = map.Level;
+            string lvlName = TreasureHunterNPC.GetLevelName(level);
+            int    fee;
             string svcLabel;
+
             switch (service)
             {
                 case THServiceType.Portal:
                     fee      = TreasureHunterNPC.GetPortalFee(level);
-                    svcLabel = "Portal Only — I open a gate to the treasure";
+                    svcLabel = "Solo Portal — gate for you and your pets";
+                    break;
+                case THServiceType.PartyPortal:
+                    fee      = TreasureHunterNPC.GetPartyPortalFee(level);
+                    svcLabel = "Party Portal — gate for whole party and pets (60s)";
+                    break;
+                case THServiceType.Full:
+                    fee      = TreasureHunterNPC.GetFullFee(level);
+                    svcLabel = "Solo Full — I dig, disarm and unlock";
+                    break;
+                case THServiceType.PartyFull:
+                    fee      = TreasureHunterNPC.GetPartyFullFee(level);
+                    svcLabel = "Party Full — I dig/disarm, whole party teleported";
                     break;
                 case THServiceType.DecodeAndFull:
                     fee      = TreasureHunterNPC.GetDecodeFullFee(level);
-                    svcLabel = "Decode + Full Assistance — I do everything";
+                    svcLabel = "Solo Decode + Full — I decode, dig, disarm and unlock";
                     break;
-                default: // Full
-                    fee      = TreasureHunterNPC.GetFullFee(level);
-                    svcLabel = "Full Assistance — I dig, disarm and unlock";
+                default: // PartyDecodeAndFull
+                    fee      = TreasureHunterNPC.GetPartyDecodeFullFee(level);
+                    svcLabel = "Party Decode + Full — I decode and do everything, whole party";
                     break;
             }
-            int  balance    = Banker.GetBalance(from);
-            bool canAfford  = balance >= fee;
 
-            AddBackground(0, 0, 440, 240, 9200);
-            AddAlphaRegion(10, 10, 420, 220);
+            int  balance   = Banker.GetBalance(from);
+            bool canAfford = balance >= fee;
 
-            AddLabel(165, 16, 0x44, "Confirm Service");
+            AddBackground(0, 0, 460, 240, 9200);
+            AddAlphaRegion(10, 10, 440, 220);
+
+            AddLabel(175, 16, 0x44, "Confirm Service");
 
             AddLabel(20, 52, 1153, $"Map:     A {lvlName} treasure map");
             AddLabel(20, 72, 1153, $"Service: {svcLabel}");
-            AddLabel(20, 92, 0x44,   $"Cost:    {fee:N0} gold (from bank)");
+            AddLabel(20, 92, 0x44,  $"Cost:    {fee:N0} gold (from bank)");
 
             if (canAfford)
                 AddLabel(20, 112, 0x44, $"Bank:    {balance:N0} gold available");
@@ -593,10 +798,10 @@ namespace Server.Custom
                 AddLabel(115, 179, 0x44, "Confirm");
             }
 
-            AddButton(250, 178, 0xFA5, 0xFA7, BTN_CANCEL, GumpButtonType.Reply, 0);
-            AddLabel(285, 179, 1153, "Cancel");
+            AddButton(260, 178, 0xFA5, 0xFA7, BTN_CANCEL, GumpButtonType.Reply, 0);
+            AddLabel(295, 179, 1153, "Cancel");
 
-            AddButton(400, 10, 0xFB1, 0xFB2, BTN_CLOSE, GumpButtonType.Reply, 0);
+            AddButton(420, 10, 0xFB1, 0xFB2, BTN_CLOSE, GumpButtonType.Reply, 0);
         }
 
         public override void OnResponse(NetState sender, RelayInfo info)
@@ -608,12 +813,14 @@ namespace Server.Custom
             {
                 switch (_service)
                 {
-                    case THServiceType.Portal:        _npc.BeginPortalService(from, _map);      break;
-                    case THServiceType.Full:          _npc.BeginFullService(from, _map);         break;
-                    case THServiceType.DecodeAndFull: _npc.BeginDecodeFullService(from, _map);   break;
+                    case THServiceType.Portal:            _npc.BeginPortalService(from, _map);           break;
+                    case THServiceType.PartyPortal:       _npc.BeginPartyPortalService(from, _map);      break;
+                    case THServiceType.Full:              _npc.BeginFullService(from, _map);              break;
+                    case THServiceType.PartyFull:         _npc.BeginPartyFullService(from, _map);         break;
+                    case THServiceType.DecodeAndFull:     _npc.BeginDecodeFullService(from, _map);        break;
+                    case THServiceType.PartyDecodeAndFull:_npc.BeginPartyDecodeFullService(from, _map);   break;
                 }
             }
-            // Cancel / Close: do nothing
         }
     }
 }
