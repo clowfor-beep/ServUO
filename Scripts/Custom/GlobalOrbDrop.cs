@@ -20,22 +20,19 @@ namespace Server.Custom
     {
         public static void Initialize()
         {
-            EventSink.Death += OnDeath;
+            EventSink.CreatureDeath += OnCreatureDeath;
         }
 
-        private static void OnDeath(DeathEventArgs e)
+        private static void OnCreatureDeath(CreatureDeathEventArgs e)
         {
-            Mobile m = e.Mobile;
-
-            // Players and vendors never drop orbs this way
-            if (m is PlayerMobile) return;
-            if (!(m is BaseCreature bc)) return;
+            BaseCreature bc = e.Creature as BaseCreature;
+            if (bc == null) return;
             if (bc is BaseVendor) return;
 
             // Tamed / summoned creatures don't count
             if (bc.Controlled || bc.Summoned) return;
 
-            Container corpse = bc.Corpse as Container;
+            Container corpse = e.Corpse ?? bc.Corpse as Container;
             if (corpse == null) return;
 
             // Champion bosses get a dedicated enhanced drop
