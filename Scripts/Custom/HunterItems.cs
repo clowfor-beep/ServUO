@@ -870,4 +870,207 @@ namespace Server.Custom
         public override void Serialize(GenericWriter writer) { base.Serialize(writer); writer.Write(0); }
         public override void Deserialize(GenericReader reader) { base.Deserialize(reader); reader.ReadInt(); }
     }
+
+    // ============================================================
+    // HuntersMap — shows all active hunt targets with dungeon,
+    // floor/level, and coordinates. Reusable, blessed.
+    // Data is cached for 30 minutes per use.
+    // Sold in the Hunter Token Shop for 5 tokens.
+    // ============================================================
+    public class HuntersMap : Item
+    {
+        private static readonly TimeSpan CooldownDuration = TimeSpan.FromMinutes(30);
+
+        // Cached snapshot entry
+        public struct SnapEntry
+        {
+            public string Type;      // "[Hunt]" or "[Wanted]"
+            public string Name;
+            public string Location;
+            public int    X;
+            public int    Y;
+        }
+
+        private DateTime         _lastRefresh = DateTime.MinValue;
+        private List<SnapEntry>  _snapshot    = new List<SnapEntry>();
+
+        [Constructable]
+        public HuntersMap() : base(0x14EC)  // map graphic
+        {
+            Name     = "Hunter's Map";
+            Hue      = 0x4AA;
+            Weight   = 1.0;
+            LootType = LootType.Blessed;
+        }
+
+        public HuntersMap(Serial serial) : base(serial) { }
+
+        public override void GetProperties(ObjectPropertyList list)
+        {
+            base.GetProperties(list);
+            list.Add("Shows all active hunt targets");
+            list.Add("Dungeon, floor and coordinates per target");
+            list.Add("Updates every 30 minutes");
+        }
+
+        public override void OnDoubleClick(Mobile from)
+        {
+            if (!IsChildOf(from.Backpack))
+            {
+                from.SendLocalizedMessage(1042001);
+                return;
+            }
+
+            bool expired = DateTime.UtcNow - _lastRefresh >= CooldownDuration;
+
+            if (expired)
+            {
+                // Refresh snapshot
+                _snapshot.Clear();
+
+                foreach (var t in HunterSystem.GetAllActiveHunts())
+                    _snapshot.Add(new SnapEntry { Type = "[Hunt]",   Name = t.Name, Location = t.Location, X = t.Position.X, Y = t.Position.Y });
+
+                foreach (var t in HunterSystem.GetAllActiveWanted())
+                    _snapshot.Add(new SnapEntry { Type = "[Wanted]", Name = t.Name, Location = t.Location, X = t.Position.X, Y = t.Position.Y });
+
+                _lastRefresh = DateTime.UtcNow;
+                InvalidateProperties();
+            }
+
+            from.PlaySound(0x249);
+            from.CloseGump(typeof(HuntersMapGump));
+            from.SendGump(new HuntersMapGump(_snapshot, _lastRefresh, CooldownDuration));
+        }
+
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.Write(1); // version
+
+            writer.Write(_lastRefresh);
+            writer.Write(_snapshot.Count);
+            foreach (var e in _snapshot)
+            {
+                writer.Write(e.Type);
+                writer.Write(e.Name);
+                writer.Write(e.Location);
+                writer.Write(e.X);
+                writer.Write(e.Y);
+            }
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            int version = reader.ReadInt();
+
+            if (version >= 1)
+            {
+                _lastRefresh = reader.ReadDateTime();
+                int count = reader.ReadInt();
+                _snapshot = new List<SnapEntry>(count);
+                for (int i = 0; i < count; i++)
+                {
+                    _snapshot.Add(new SnapEntry
+                    {
+                        Type     = reader.ReadString(),
+                        Name     = reader.ReadString(),
+                        Location = reader.ReadString(),
+                        X        = reader.ReadInt(),
+                        Y        = reader.ReadInt(),
+                    });
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // HuntersMapGump
+    // ============================================================
+    public class HuntersMapGump : Gump
+    {
+        private const int W       = 480;
+        private const int RowH    = 46;
+        private const int HeaderH = 80;
+        private const int FooterH = 20;
+
+        public HuntersMapGump(
+            List<HuntersMap.SnapEntry> snapshot,
+            DateTime lastRefresh,
+            TimeSpan cooldown)
+            : base(80, 80)
+        {
+            // Cooldown status line
+            TimeSpan age        = lastRefresh == DateTime.MinValue ? cooldown : DateTime.UtcNow - lastRefresh;
+            bool     stale      = age >= cooldown;
+            string   statusText;
+            string   statusCol;
+            if (lastRefresh == DateTime.MinValue)
+            {
+                statusText = "Never consulted.";
+                statusCol  = "#886655";
+            }
+            else if (stale)
+            {
+                statusText = "Data is current — map refreshed on next open.";
+                statusCol  = "#44AA66";
+            }
+            else
+            {
+                TimeSpan remaining = cooldown - age;
+                int mins = (int)remaining.TotalMinutes + 1;
+                statusText = $"Snapshot taken {(int)age.TotalMinutes} min ago — refreshes in ~{mins} min.";
+                statusCol  = "#AAAAAA";
+            }
+
+            int rows  = snapshot.Count > 0 ? snapshot.Count : 1;
+            int gumpH = HeaderH + rows * RowH + FooterH + 10;
+
+            AddBackground(0, 0, W, gumpH, 9200);
+            AddAlphaRegion(8, 8, W - 16, gumpH - 16);
+
+            // Title
+            AddHtml(0, 12, W, 22,
+                "<CENTER><BASEFONT COLOR=#C8A428><BIG>Hunter's Map</BIG></BASEFONT></CENTER>",
+                false, false);
+
+            // Cooldown status
+            AddHtml(18, 34, W - 36, 18,
+                $"<BASEFONT COLOR={statusCol}>{statusText}</BASEFONT>",
+                false, false);
+
+            // Column headers
+            AddHtml(18,  56, 70,  16, "<BASEFONT COLOR=#666655>Type</BASEFONT>",     false, false);
+            AddHtml(90,  56, 160, 16, "<BASEFONT COLOR=#666655>Target</BASEFONT>",   false, false);
+            AddHtml(255, 56, 130, 16, "<BASEFONT COLOR=#666655>Location</BASEFONT>", false, false);
+            AddHtml(390, 56, 80,  16, "<BASEFONT COLOR=#666655>Coords</BASEFONT>",   false, false);
+            AddImageTiled(12, 72, W - 24, 1, 9264);
+
+            if (snapshot.Count == 0)
+            {
+                AddHtml(18, HeaderH + 10, W - 36, 22,
+                    "<BASEFONT COLOR=#886655>No active hunts at this time.</BASEFONT>",
+                    false, false);
+            }
+            else
+            {
+                for (int i = 0; i < snapshot.Count; i++)
+                {
+                    int  y       = HeaderH + i * RowH;
+                    var  e       = snapshot[i];
+                    bool isWanted = e.Type == "[Wanted]";
+                    string typeCol  = isWanted ? "#CC6644" : "#44AA66";
+
+                    AddHtml(18,  y, 70,  RowH, $"<BASEFONT COLOR={typeCol}>{e.Type}</BASEFONT>",    false, false);
+                    AddHtml(90,  y, 160, RowH, $"<BASEFONT COLOR=#DDCCAA>{e.Name}</BASEFONT>",      false, false);
+                    AddHtml(255, y, 130, RowH, $"<BASEFONT COLOR=#AABBCC>{e.Location}</BASEFONT>",  false, false);
+                    AddHtml(390, y, 80,  RowH, $"<BASEFONT COLOR=#888888>{e.X}, {e.Y}</BASEFONT>",  false, false);
+
+                    if (i < snapshot.Count - 1)
+                        AddImageTiled(12, y + RowH - 2, W - 24, 1, 9264);
+                }
+            }
+        }
+    }
 }
