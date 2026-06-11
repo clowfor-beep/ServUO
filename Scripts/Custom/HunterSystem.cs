@@ -715,8 +715,20 @@ namespace Server.Custom
         {
             switch (tier)
             {
-                case 2: return 0.10;
-                case 3: return 0.25;
+                case 1: return 0.10;
+                case 2: return 0.30;
+                case 3: return 0.55;
+                case 4: return 1.00; // guaranteed; second orb handled separately in OnDeath
+                default: return 0.0;
+            }
+        }
+
+        // Chance for a bonus second orb drop on top of the first
+        public static double TierBonusOrbChance(int tier)
+        {
+            switch (tier)
+            {
+                case 3: return 0.20;
                 case 4: return 0.50;
                 default: return 0.0;
             }

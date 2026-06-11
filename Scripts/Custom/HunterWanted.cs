@@ -105,10 +105,51 @@ namespace Server.Custom
             if (tokens > 0)
                 corpse.DropItem(new HunterToken(tokens));
 
-            // Orb drop (Murderer 15%, Dread Lord 35%)
-            double orbChance = WantedTier == 11 ? 0.15 : WantedTier == 12 ? 0.35 : 0.0;
-            if (Utility.RandomDouble() < orbChance)
-                corpse.DropItem(new OrbOfEnhancement(Utility.RandomMinMax(1, 2)));
+            // Orb drop — tiered pool per Wanted rank
+            // Cutthroat (T10): 10% EssenceShard
+            // Murderer   (T11): 25% full Cat1 T1 pool
+            // Dread Lord (T12): 45% Cat1 T1-2 pool + bonus 10% Cat2 item orb
+            if (WantedTier == 10 && Utility.RandomDouble() < 0.10)
+            {
+                corpse.DropItem(new EssenceShard(Utility.RandomMinMax(8, 15)));
+            }
+            else if (WantedTier == 11 && Utility.RandomDouble() < 0.25)
+            {
+                switch (Utility.Random(5))
+                {
+                    case 0: corpse.DropItem(new OrbOfEnhancement(1)); break;
+                    case 1: corpse.DropItem(new OrbOfMastery(1));     break;
+                    case 2: corpse.DropItem(new OrbOfExpansion(1));   break;
+                    case 3: corpse.DropItem(new OrbOfFortitude(1));   break;
+                    default: corpse.DropItem(new EssenceShard(Utility.RandomMinMax(12, 22))); break;
+                }
+            }
+            else if (WantedTier == 12)
+            {
+                if (Utility.RandomDouble() < 0.45)
+                {
+                    switch (Utility.Random(7))
+                    {
+                        case 0: corpse.DropItem(new OrbOfEnhancement(Utility.RandomMinMax(1, 2))); break;
+                        case 1: corpse.DropItem(new OrbOfMastery(1));                              break;
+                        case 2: corpse.DropItem(new OrbOfExpansion(Utility.RandomMinMax(1, 2)));   break;
+                        case 3: corpse.DropItem(new OrbOfFortitude(1));                            break;
+                        case 4: corpse.DropItem(new OrbOfAlacrity(1));                             break;
+                        case 5: corpse.DropItem(new OrbOfBalance(1));                              break;
+                        default: corpse.DropItem(new EssenceShard(Utility.RandomMinMax(18, 30)));  break;
+                    }
+                }
+                // Bonus Cat2 item orb (10%)
+                if (Utility.RandomDouble() < 0.10)
+                {
+                    switch (Utility.Random(3))
+                    {
+                        case 0: corpse.DropItem(new OrbOfEnchantment()); break;
+                        case 1: corpse.DropItem(new OrbOfTempering());   break;
+                        default: corpse.DropItem(new OrbOfCorruption()); break;
+                    }
+                }
+            }
 
             // Named item (Murderer 10%, Dread Lord 20%)
             double namedChance = WantedTier == 11 ? 0.10 : WantedTier == 12 ? 0.20 : 0.0;

@@ -565,16 +565,43 @@ namespace Server.Custom
 
         protected BaseBagOfHolding(Serial serial) : base(serial) { }
 
+        // ── Item slot limit — direct children only ────────────────────────
+        // ServUO's base CheckHold uses recursive TotalItems which counts all
+        // nested items toward MaxItems.  A BagOfHolding (MaxItems=2) with one
+        // container-with-1-item inside would already show TotalItems=2 and
+        // reject any further additions, making it appear to "hold only 1 item".
+        // We enforce the limit as a DIRECT child count (Items.Count) so each
+        // tier correctly holds N top-level items regardless of their contents.
+        public override bool CheckHold(Mobile m, Item item, bool message, bool checkItems, int plusItems, int plusWeight)
+        {
+            if (checkItems && Items.Count >= BagMaxItems)
+            {
+                if (message)
+                    m.SendMessage("The bag is full.");
+                return false;
+            }
+            return true;
+        }
+
         // ── Weight reduction ──────────────────────────────────────────────
-        // Override GetTotal() so the reduction is applied at query time from
-        // the stored full m_TotalWeight.  This is identical to how BaseQuiver
-        // implements weight reduction and is the correct ServUO pattern.
+        // TWO-PART fix to cover both code paths that contribute to carried weight:
         //
-        // Why not UpdateTotal(): UpdateTotals() (called on every world load)
-        // resets m_TotalWeight from scratch by summing children, bypassing
-        // UpdateTotal entirely — causing the doubled-weight-on-login bug.
-        // GetTotal() is called by the TotalWeight property everywhere, so it
-        // works correctly both at runtime and after load without any extra hook.
+        // 1. GetTotal() — covers the full-rebuild path.
+        //    UpdateTotals() (called on login / every world load) rebuilds
+        //    m_TotalWeight from scratch by summing children, then the parent
+        //    queries TotalWeight → GetTotal() → we apply reduction here.
+        //    Result: correct weight after every server restart / login. ✓
+        //
+        // 2. UpdateTotal() correction — covers the incremental-delta path.
+        //    When an item is added/removed at runtime, base.UpdateTotal()
+        //    propagates the FULL unreduced delta up to the parent container
+        //    (backpack → player).  We immediately follow with a negative
+        //    correction delta so the net change reaching the parent equals
+        //    the reduced amount.  This also fixes edge cases like trade and
+        //    banking that bypass our AddItem/RemoveItem overrides.
+        //    The correction uses sender=this so our own override ignores it
+        //    (sender == this is filtered by Container.UpdateTotal), preventing
+        //    infinite recursion.
         public override int GetTotal(TotalType type)
         {
             int total = base.GetTotal(type);
@@ -585,24 +612,37 @@ namespace Server.Custom
             return total;
         }
 
-        // Force the owning mobile to recalculate totals on every content change
-        // so carried weight stays accurate (same pattern as BaseQuiver).
-        private void InvalidateWeight()
+        public override void UpdateTotal(Item sender, TotalType type, int delta)
         {
-            if (RootParent is Mobile m)
-                m.UpdateTotals();
+            base.UpdateTotal(sender, type, delta);
+
+            // Only intercept weight deltas from child items (not self-updates)
+            if (type == TotalType.Weight && sender != this && delta != 0 && WeightReductionPct > 0)
+            {
+                // base.UpdateTotal already propagated the full delta upward.
+                // Send a correction = (reduced_delta - full_delta) to cancel
+                // the excess.  Net effect on parent: full + correction = reduced.
+                int reducedDelta  = (int)Math.Round(delta * (100 - WeightReductionPct) / 100.0, MidpointRounding.AwayFromZero);
+                int correctionDelta = reducedDelta - delta; // negative value
+
+                if (correctionDelta != 0)
+                {
+                    if (Parent is Item pi)
+                        pi.UpdateTotal(this, type, correctionDelta);
+                    else if (Parent is Mobile pm)
+                        pm.UpdateTotal(this, type, correctionDelta);
+                }
+            }
         }
 
         public override void AddItem(Item item)
         {
             base.AddItem(item);
-            InvalidateWeight();
         }
 
         public override void RemoveItem(Item item)
         {
             base.RemoveItem(item);
-            InvalidateWeight();
         }
 
         // ── One bag per player ────────────────────────────────────────────

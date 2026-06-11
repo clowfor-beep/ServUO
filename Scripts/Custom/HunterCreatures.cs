@@ -174,10 +174,15 @@ namespace Server.Custom
                     corpse.DropItem(artifact);
             }
 
-            // Orb drop
+            // Orb drop — first orb
             double orbChance = HunterSystem.TierOrbChance(HunterTier);
             if (Utility.RandomDouble() < orbChance)
-                corpse.DropItem(GenerateOrb());
+                corpse.DropItem(GenerateOrb(HunterTier));
+
+            // Bonus second orb (T3: 20%, T4: 50%)
+            double bonusOrbChance = HunterSystem.TierBonusOrbChance(HunterTier);
+            if (bonusOrbChance > 0.0 && Utility.RandomDouble() < bonusOrbChance)
+                corpse.DropItem(GenerateOrb(HunterTier));
 
             // Clear active spawn slot and fire FBEventBus kill event
             // (killer already resolved above with pet-owner walk-up)
@@ -233,15 +238,57 @@ namespace Server.Custom
             return Loot.Construct(t);
         }
 
-        private static Item GenerateOrb()
+        private static Item GenerateOrb(int tier)
         {
-            // Drop a random Category 1 orb, higher tiers more likely at higher hunt tiers
-            switch (Utility.Random(4))
+            switch (tier)
             {
-                case 0: return new OrbOfEnhancement(Utility.RandomMinMax(1, 2));
-                case 1: return new OrbOfMastery(1);
-                case 2: return new OrbOfExpansion(Utility.RandomMinMax(1, 2));
-                default: return new EssenceShard(Utility.RandomMinMax(3, 8));
+                case 1:
+                    // T1: EssenceShard only — reward for engaging at all
+                    return new EssenceShard(Utility.RandomMinMax(5, 12));
+
+                case 2:
+                    // T2: Cat 1 T1 orbs + Essences
+                    switch (Utility.Random(5))
+                    {
+                        case 0: return new OrbOfEnhancement(1);
+                        case 1: return new OrbOfMastery(1);
+                        case 2: return new OrbOfExpansion(1);
+                        case 3: return new OrbOfFortitude(1);
+                        default: return new EssenceShard(Utility.RandomMinMax(8, 18));
+                    }
+
+                case 3:
+                    // T3: Cat 1 T1-2 + Alacrity + Insight + richer Essences
+                    switch (Utility.Random(8))
+                    {
+                        case 0: return new OrbOfEnhancement(Utility.RandomMinMax(1, 2));
+                        case 1: return new OrbOfMastery(1);
+                        case 2: return new OrbOfExpansion(Utility.RandomMinMax(1, 2));
+                        case 3: return new OrbOfFortitude(1);
+                        case 4: return new OrbOfAlacrity(1);
+                        case 5: return new OrbOfInsight();
+                        case 6: return new OrbOfBalance(1);
+                        default: return new EssenceShard(Utility.RandomMinMax(15, 30));
+                    }
+
+                case 4:
+                default:
+                    // T4: Full pool — Cat 1 T2-3, Cat 2 item orbs, Cat 3 scrolls
+                    switch (Utility.Random(12))
+                    {
+                        case 0:  return new OrbOfEnhancement(Utility.RandomMinMax(2, 3));
+                        case 1:  return new OrbOfMastery(Utility.RandomMinMax(1, 2));
+                        case 2:  return new OrbOfExpansion(Utility.RandomMinMax(2, 3));
+                        case 3:  return new OrbOfFortitude(Utility.RandomMinMax(1, 2));
+                        case 4:  return new OrbOfAlacrity(Utility.RandomMinMax(1, 2));
+                        case 5:  return new OrbOfBalance(Utility.RandomMinMax(1, 2));
+                        case 6:  return new OrbOfEnchantment();
+                        case 7:  return new OrbOfTempering();
+                        case 8:  return new OrbOfCorruption();
+                        case 9:  return new OrbOfResonance();
+                        case 10: return new ScrollOfExecution(Utility.RandomMinMax(1, 2));
+                        default: return new EssenceShard(Utility.RandomMinMax(25, 50));
+                    }
             }
         }
 

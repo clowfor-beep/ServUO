@@ -40,6 +40,40 @@ namespace Server.Custom
 
         public BasePKNPC(Serial serial) : base(serial) { }
 
+        // Detect Newbie / Advanced / Expert from class name suffix
+        private int PKLevel()
+        {
+            string n = GetType().Name;
+            if (n.EndsWith("Expert"))   return 3;
+            if (n.EndsWith("Advanced")) return 2;
+            return 1;
+        }
+
+        public override void OnDeath(Container corpse)
+        {
+            base.OnDeath(corpse);
+
+            int level = PKLevel();
+
+            // Expert: 15% Cat1 T1 orb pool
+            if (level == 3 && Utility.RandomDouble() < 0.15)
+            {
+                switch (Utility.Random(5))
+                {
+                    case 0: corpse.DropItem(new OrbOfEnhancement(1)); break;
+                    case 1: corpse.DropItem(new OrbOfMastery(1));     break;
+                    case 2: corpse.DropItem(new OrbOfExpansion(1));   break;
+                    case 3: corpse.DropItem(new OrbOfFortitude(1));   break;
+                    default: corpse.DropItem(new EssenceShard(Utility.RandomMinMax(10, 20))); break;
+                }
+            }
+            // Advanced: 8% EssenceShard
+            else if (level == 2 && Utility.RandomDouble() < 0.08)
+            {
+                corpse.DropItem(new EssenceShard(Utility.RandomMinMax(5, 12)));
+            }
+        }
+
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
