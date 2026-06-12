@@ -449,7 +449,7 @@ namespace Server.Custom
         private static List<int> SnapshotParty(Mobile from)
         {
             var serials = new List<int> { (int)from.Serial };
-            Party party = Party.Get(from);
+            Server.Engines.PartySystem.Party party = Server.Engines.PartySystem.Party.Get(from);
             if (party != null)
             {
                 foreach (PartyMemberInfo info in party.Members)
