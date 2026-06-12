@@ -93239,4 +93239,46 @@
     <IsHomeRangeRelative>True</IsHomeRangeRelative>
     <Objects2>paladin:MX=20:SB=0:RT=0:TO=0:KL=0:RK=0:CA=1:DN=-1:DX=-1:SP=1:PR=-1</Objects2>
   </Points>
+  <Points>
+    <Name>farmer/farmablecotton</Name>
+    <UniqueId>bf26e409-d694-4a70-92e0-4c8d44c66868</UniqueId>
+    <Map>Felucca</Map>
+    <X>3744</X>
+    <Y>2699</Y>
+    <Width>10</Width>
+    <Height>10</Height>
+    <CentreX>3749</CentreX>
+    <CentreY>2704</CentreY>
+    <CentreZ>40</CentreZ>
+    <Range>5</Range>
+    <MaxCount>42</MaxCount>
+    <MinDelay>1</MinDelay>
+    <MaxDelay>2</MaxDelay>
+    <DelayInSec>False</DelayInSec>
+    <Duration>0</Duration>
+    <DespawnTime>0</DespawnTime>
+    <ProximityRange>-1</ProximityRange>
+    <ProximityTriggerSound>500</ProximityTriggerSound>
+    <TriggerProbability>1</TriggerProbability>
+    <InContainer>False</InContainer>
+    <MinRefractory>0</MinRefractory>
+    <MaxRefractory>0</MaxRefractory>
+    <TODStart>0</TODStart>
+    <TODEnd>0</TODEnd>
+    <TODMode>0</TODMode>
+    <KillReset>1</KillReset>
+    <ExternalTriggering>False</ExternalTriggering>
+    <SequentialSpawning>-1</SequentialSpawning>
+    <AllowGhostTriggering>False</AllowGhostTriggering>
+    <AllowNPCTriggering>False</AllowNPCTriggering>
+    <SpawnOnTrigger>False</SpawnOnTrigger>
+    <SmartSpawning>False</SmartSpawning>
+    <TickReset>False</TickReset>
+    <Team>0</Team>
+    <Amount>1</Amount>
+    <IsGroup>False</IsGroup>
+    <IsRunning>True</IsRunning>
+    <IsHomeRangeRelative>True</IsHomeRangeRelative>
+    <Objects2>Farmer:MX=1:SB=0:RT=0:TO=0:KL=0:RK=0:CA=1:DN=-1:DX=-1:SP=1:PR=-1:OBJ=farmablecotton:MX=40:SB=0:RT=0:TO=0:KL=0:RK=0:CA=1:DN=-1:DX=-1:SP=1:PR=-1</Objects2>
+  </Points>
 </Spawns>
