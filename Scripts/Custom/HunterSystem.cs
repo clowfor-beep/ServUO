@@ -78,7 +78,7 @@ namespace Server.Custom
                 "Bedlam",          // removed by request
             };
 
-        private static readonly TimeSpan WantedTTL = TimeSpan.FromMinutes(10);
+        private static readonly TimeSpan WantedTTL = TimeSpan.FromMinutes(20);
 
         private static void PruneHunts()  =>
             _activeHunts.RemoveAll(r => { Mobile m = World.FindMobile(r.Serial); return m == null || m.Deleted; });
@@ -937,6 +937,18 @@ namespace Server.Custom
         public WantedSpawnTimer()
             : base(TimeSpan.FromMinutes(Utility.RandomMinMax(10, 13)),
                    TimeSpan.FromMinutes(Utility.RandomMinMax(10, 13)))
+        {
+            Priority = TimerPriority.OneMinute;
+        }
+
+        protected override void OnTick()
+        {
+            HunterSystem.SpawnWantedTarget();
+            Delay    = TimeSpan.FromMinutes(Utility.RandomMinMax(10, 13));
+            Interval = Delay;
+        }
+    }
+}
         {
             Priority = TimerPriority.OneMinute;
         }
