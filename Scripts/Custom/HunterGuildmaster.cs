@@ -375,7 +375,7 @@ namespace Server.Custom
 
         private static readonly (string name, int cost, System.Type itemType)[] ShopItems = {
             ("Hunter's Tabard (cosmetic robe)",               10,  typeof(Robe)),
-            ("Hunter's Map (highlights spawn zones)",          5,  typeof(BlankScroll)),
+            ("Hunter's Map (active hunts: dungeon, floor, coords)", 5, typeof(HuntersMap)),
             ("Hunter's Compass (find active hunts)",           8,  typeof(HunterCompass)),
             ("Lesser Bag of Holding (1 item, -33% weight)",   10,  typeof(LesserBagOfHolding)),
             ("Bag of Holding (2 items, -50% weight)",         25,  typeof(BagOfHolding)),
@@ -387,6 +387,14 @@ namespace Server.Custom
             ("Orb of Alacrity (rare) — 2x skill gains 20 min",      4,  typeof(OrbOfAlacrity)),
             ("Orb of Alacrity (very rare) — 2x skill gains 40 min", 5,  typeof(OrbOfAlacrity)),
             ("Elixir of Rebirth (resurrect a dead bonded pet)",      2,  typeof(ElixirOfRebirth)),
+            // ── Ethereal Mounts ──────────────────────────────────────────────
+            ("Ethereal Llama Statuette",        50,  typeof(EtherealLlama)),
+            ("Ethereal Horse Statuette",        50,  typeof(EtherealHorse)),
+            ("Ethereal Ostard Statuette",       50,  typeof(EtherealOstard)),
+            ("Ethereal Reptalon Statuette",     100, typeof(EtherealReptalon)),
+            ("Ethereal Beetle Statuette",       100, typeof(EtherealBeetle)),
+            ("Ethereal Swamp Dragon Statuette", 150, typeof(EtherealSwampDragon)),
+            ("Ethereal Tiger Statuette",        150, typeof(EtherealTiger)),
         };
 
         public HunterShopGump(Mobile from, HunterGuildmaster npc) : base(50, 50)
@@ -502,12 +510,9 @@ namespace Server.Custom
                     _from.SendMessage(0x35, "You receive a Hunter's Tabard.");
                     break;
 
-                case 1: // Hunter's Map (placeholder)
-                    var scroll = new BlankScroll();
-                    scroll.Name = "Hunter's Map";
-                    scroll.Hue  = 0x4AA;
-                    _from.AddToBackpack(scroll);
-                    _from.SendMessage(0x35, "You receive a Hunter's Map.");
+                case 1: // Hunter's Map
+                    _from.AddToBackpack(new HuntersMap());
+                    _from.SendMessage(0x35, "You receive a Hunter's Map. Double-click it to see all active hunt targets.");
                     break;
 
                 case 2: // Hunter's Compass
@@ -558,6 +563,47 @@ namespace Server.Custom
                 case 11: // Orb of Alacrity — very rare (40 min)
                     _from.AddToBackpack(new OrbOfAlacrity(3));
                     _from.SendMessage(0x35, "You receive an Orb of Alacrity (very rare). Double-click to double skill gains for 40 minutes.");
+                    break;
+
+                case 12: // Elixir of Rebirth
+                    _from.AddToBackpack(new ElixirOfRebirth());
+                    _from.SendMessage(0x35, "You receive an Elixir of Rebirth. Use it to resurrect a dead bonded pet.");
+                    break;
+
+                // ── Ethereal Mounts ──────────────────────────────────────────
+                case 13: // Ethereal Llama
+                    _from.AddToBackpack(new EtherealLlama());
+                    _from.SendMessage(0x35, "You receive an Ethereal Llama Statuette.");
+                    break;
+
+                case 14: // Ethereal Horse
+                    _from.AddToBackpack(new EtherealHorse());
+                    _from.SendMessage(0x35, "You receive an Ethereal Horse Statuette.");
+                    break;
+
+                case 15: // Ethereal Ostard
+                    _from.AddToBackpack(new EtherealOstard());
+                    _from.SendMessage(0x35, "You receive an Ethereal Ostard Statuette.");
+                    break;
+
+                case 16: // Ethereal Reptalon
+                    _from.AddToBackpack(new EtherealReptalon());
+                    _from.SendMessage(0x35, "You receive an Ethereal Reptalon Statuette.");
+                    break;
+
+                case 17: // Ethereal Beetle
+                    _from.AddToBackpack(new EtherealBeetle());
+                    _from.SendMessage(0x35, "You receive an Ethereal Beetle Statuette.");
+                    break;
+
+                case 18: // Ethereal Swamp Dragon
+                    _from.AddToBackpack(new EtherealSwampDragon());
+                    _from.SendMessage(0x35, "You receive an Ethereal Swamp Dragon Statuette.");
+                    break;
+
+                case 19: // Ethereal Tiger
+                    _from.AddToBackpack(new EtherealTiger());
+                    _from.SendMessage(0x35, "You receive an Ethereal Tiger Statuette.");
                     break;
             }
         }
