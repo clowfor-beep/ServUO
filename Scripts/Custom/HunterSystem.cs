@@ -949,15 +949,3 @@ namespace Server.Custom
         }
     }
 }
-        {
-            Priority = TimerPriority.OneMinute;
-        }
-
-        protected override void OnTick()
-        {
-            HunterSystem.SpawnWantedTarget();
-            Delay    = TimeSpan.FromMinutes(Utility.RandomMinMax(10, 13));
-            Interval = Delay;
-        }
-    }
-}
