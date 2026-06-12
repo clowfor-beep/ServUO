@@ -1826,6 +1826,7 @@ namespace Server.Custom
     {
         private DateTime _nextHideTime    = DateTime.MinValue;
         private DateTime _nextStealTime   = DateTime.MinValue; // transient — not serialized
+        private DateTime _nextSnoopTime   = DateTime.MinValue; // transient — not serialized
 
         public ShadowHandSimPlayer(string memberName, Point3D home,
                                    SpawnZone zone, ScheduleProfile schedule)
@@ -1863,6 +1864,9 @@ namespace Server.Custom
             var boots = new Boots();
             boots.Hue = 1109;
             AddItem(boots);
+
+            // Concealed weapon -- hidden under the robe
+            AddItem(new Dagger());
         }
 
         // -- Idle hook -------------------------------------------------
@@ -1883,6 +1887,10 @@ namespace Server.Custom
                 FleeFrom(wolf);
                 return; // don't steal while fleeing
             }
+
+            // Snoop nearby packs (wider range, flavour + precursor to steal)
+            if (Hidden && DateTime.UtcNow >= _nextSnoopTime)
+                TrySnoop();
 
             // Attempt pickpocket if cooldown has passed
             if (Hidden && DateTime.UtcNow >= _nextStealTime)
@@ -1964,6 +1972,128 @@ namespace Server.Custom
                 // Failed silently -- try again later
                 _nextStealTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(3, 6));
             }
+        }
+
+        // -- Snoop logic -----------------------------------------------
+
+        private void TrySnoop()
+        {
+            // Slightly wider range than steal — casing the area
+            PlayerMobile target = null;
+            foreach (Mobile m in GetMobilesInRange(4))
+            {
+                if (m is PlayerMobile pm
+                    && !pm.Deleted && pm.Alive
+                    && pm.AccessLevel == AccessLevel.Player
+                    && pm.Map == Map)
+                {
+                    target = pm;
+                    break;
+                }
+            }
+
+            if (target == null)
+            {
+                _nextSnoopTime = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(30, 90));
+                return;
+            }
+
+            // Snooping skill check vs target's Detect Hidden
+            double snoopChance  = Skills[SkillName.Snooping].Value / 100.0 * 0.80;
+            double detectChance = target.Skills[SkillName.DetectHidden].Value / 100.0 * 0.35;
+
+            bool caught  = Utility.RandomDouble() < detectChance;
+            bool success = !caught && Utility.RandomDouble() < snoopChance;
+
+            if (success)
+            {
+                // Player feels their pack being examined
+                target.SendMessage(0x35, $"You feel someone's hands rifling through your belongings!");
+                _nextSnoopTime = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(45, 120));
+                // Reset steal cooldown so they may follow up quickly
+                if (_nextStealTime > DateTime.UtcNow + TimeSpan.FromSeconds(10))
+                    _nextStealTime = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(5, 10));
+            }
+            else if (caught)
+            {
+                target.SendMessage(0x22, $"You catch {Name} peeking into your pack!");
+                this.Hidden = false;
+                FleeFrom(target);
+                _nextSnoopTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(8, 12));
+            }
+            else
+            {
+                // Failed silently
+                _nextSnoopTime = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(30, 60));
+            }
+        }
+
+        // -- Death loot ------------------------------------------------
+
+        public override void OnDeath(Container c)
+        {
+            base.OnDeath(c);
+
+            // Always: lockpicks, bandages, gold
+            c.DropItem(new Lockpick(Utility.RandomMinMax(2, 8)));
+            c.DropItem(new Bandage(Utility.RandomMinMax(5, 20)));
+            c.DropItem(new Gold(Utility.RandomMinMax(25, 100)));
+
+            // Random reagents — 2 types
+            Type[] allRegs = new Type[]
+            {
+                typeof(Garlic), typeof(Ginseng), typeof(Bloodmoss),
+                typeof(Nightshade), typeof(MandrakeRoot), typeof(BlackPearl),
+                typeof(SulfurousAsh), typeof(SpidersSilk)
+            };
+            for (int i = 0; i < 2; i++)
+            {
+                Type regType = allRegs[Utility.Random(allRegs.Length)];
+                Item reg = (Item)Activator.CreateInstance(regType);
+                reg.Amount = Utility.RandomMinMax(3, 8);
+                c.DropItem(reg);
+            }
+
+            // Treasure map: level 1 (35%) or level 2 (15%)
+            double mapRoll = Utility.RandomDouble();
+            if (mapRoll < 0.15)
+                c.DropItem(new TreasureMap(2, Map.Felucca));
+            else if (mapRoll < 0.50)
+                c.DropItem(new TreasureMap(1, Map.Felucca));
+
+            // Lesser Poison Potion (25%)
+            if (Utility.RandomDouble() < 0.25)
+                c.DropItem(new LesserPoisonPotion());
+
+            // Stolen jewelry (20%)
+            if (Utility.RandomDouble() < 0.20)
+            {
+                Item jewelry = Utility.RandomBool()
+                    ? (Item)new GoldRing()
+                    : (Item)new GoldBracelet();
+                c.DropItem(jewelry);
+            }
+
+            // Tinker's Tools (10%)
+            if (Utility.RandomDouble() < 0.10)
+                c.DropItem(new TinkersTools());
+
+            // Random orb (1%)
+            if (Utility.RandomDouble() < 0.01)
+                c.DropItem(RandomOrb());
+        }
+
+        private static Item RandomOrb()
+        {
+            Type[] orbs = new Type[]
+            {
+                typeof(OrbOfEnhancement), typeof(OrbOfMastery),   typeof(OrbOfExpansion),
+                typeof(OrbOfFortitude),   typeof(OrbOfAlacrity),   typeof(OrbOfInsight),
+                typeof(OrbOfBalance),     typeof(OrbOfCorruption), typeof(OrbOfResonance),
+                typeof(OrbOfCleansing),   typeof(OrbOfTempering),  typeof(OrbOfEnchantment),
+                typeof(OrbOfReforging)
+            };
+            return (Item)Activator.CreateInstance(orbs[Utility.Random(orbs.Length)]);
         }
 
         // -- Staff hooks -----------------------------------------------
