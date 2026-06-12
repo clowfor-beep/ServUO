@@ -1720,6 +1720,49 @@ namespace Server.Custom
     // ============================================================
     public class ArcaneBrotherhoodSimPlayer : SimPlayer
     {
+        // ---- Transient AI cooldowns (reset on restart, that's fine) ----
+        private DateTime _nextBuffTime   = DateTime.MinValue;
+        private DateTime _nextPortalTime = DateTime.MinValue;
+        private DateTime _nextFlavorTime = DateTime.MinValue;
+        private bool     _isOnExpedition = false;
+
+        // Per-player buff tracking: Serial → last buff time
+        private readonly Dictionary<int, DateTime> _buffedPlayers = new Dictionary<int, DateTime>();
+
+        private static readonly TimeSpan BuffDuration = TimeSpan.FromMinutes(15);
+        private static readonly int      BuffBonus    = 10;
+
+        // Dungeon destinations the Brotherhood likes to research
+        private static readonly (Point3D Loc, Map Map, string Name)[] _dungeons =
+        {
+            (new Point3D(5456, 1863,   0), Map.Felucca, "Covetous"),
+            (new Point3D(5188,  638,   0), Map.Felucca, "Deceit"),
+            (new Point3D(5501,  570,  59), Map.Felucca, "Despise"),
+            (new Point3D(5243, 1006,   0), Map.Felucca, "Destard"),
+            (new Point3D(5905,   20,  46), Map.Felucca, "Hythloth"),
+            (new Point3D(5395,  126,   0), Map.Felucca, "Shame"),
+            (new Point3D(5825,  630,   0), Map.Felucca, "Wrong"),
+            (new Point3D(5571, 1302,   0), Map.Felucca, "Khaldun"),
+            (new Point3D(5875,  150,  15), Map.Felucca, "the Ice Dungeon"),
+            (new Point3D(5790, 1416,  40), Map.Felucca, "the Fire Dungeon"),
+        };
+
+        private static readonly string[] _flavorLines =
+        {
+            "The ley lines pulse with unusual energy today...",
+            "I sense an elemental convergence forming nearby.",
+            "The weave of magic is particularly strong in this place.",
+            "*scribbles notes on a piece of parchment*",
+            "Fascinating... the mana currents shift with the tides.",
+            "The ancient texts speak of such arcane patterns.",
+            "One must study the flow of magical energies constantly.",
+            "The Brotherhood's research continues unabated.",
+            "These reagent concentrations are worth documenting.",
+            "*mutters an incantation under their breath*",
+        };
+
+        // ----------------------------------------------------------------
+
         public ArcaneBrotherhoodSimPlayer(string memberName, Point3D home,
                                           SpawnZone zone, ScheduleProfile schedule)
             : base(FBGuilds.ArcaneBrotherhood, memberName, home, zone, schedule) { }
@@ -1750,6 +1793,182 @@ namespace Server.Custom
             PackItem(new Spellbook()); // always PackItem for spellbooks
         }
 
+        // -- Idle hook ---------------------------------------------------
+
+        protected override void OnTickIdle()
+        {
+            if (_isOnExpedition) return; // hands-off while in a dungeon
+
+            if (DateTime.UtcNow >= _nextFlavorTime)
+                TryFlavorSpeech();
+
+            if (DateTime.UtcNow >= _nextBuffTime)
+                TryBuff();
+
+            if (DateTime.UtcNow >= _nextPortalTime)
+                TryOpenPortal();
+        }
+
+        // -- Flavor speech -----------------------------------------------
+
+        private void TryFlavorSpeech()
+        {
+            Say(_flavorLines[Utility.Random(_flavorLines.Length)]);
+            _nextFlavorTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(2, 5));
+        }
+
+        // -- Buff a nearby player ----------------------------------------
+
+        private void TryBuff()
+        {
+            PlayerMobile target = null;
+
+            foreach (Mobile m in GetMobilesInRange(8))
+            {
+                if (!(m is PlayerMobile pm)) continue;
+                if (pm.Deleted || !pm.Alive)  continue;
+                if (pm.AccessLevel != AccessLevel.Player) continue;
+                if (pm.Map != Map) continue;
+
+                // Per-player 15-minute cooldown
+                if (_buffedPlayers.TryGetValue((int)pm.Serial, out DateTime last)
+                    && DateTime.UtcNow - last < BuffDuration)
+                    continue;
+
+                target = pm;
+                break;
+            }
+
+            if (target == null)
+            {
+                _nextBuffTime = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(30, 60));
+                return;
+            }
+
+            // Cast animation + speech
+            Animate(203, 7, 1, true, false, 0);
+            Say($"*extends an arcane blessing upon {target.Name}*");
+
+            // Unique key per mage so multiple mages stack independently
+            string keyBase = $"ArcBro_{(int)Serial}";
+            target.AddStatMod(new StatMod(StatType.Str, keyBase + "_S", BuffBonus, BuffDuration));
+            target.AddStatMod(new StatMod(StatType.Dex, keyBase + "_D", BuffBonus, BuffDuration));
+            target.AddStatMod(new StatMod(StatType.Int, keyBase + "_I", BuffBonus, BuffDuration));
+
+            target.FixedParticles(0x375A, 9, 20, 5016, EffectLayer.Waist);
+            target.PlaySound(0x1EE);
+            target.SendMessage(0x35,
+                $"{Name} bestows an arcane blessing upon you. " +
+                $"(+{BuffBonus} STR / DEX / INT for 15 minutes)");
+
+            _buffedPlayers[(int)target.Serial] = DateTime.UtcNow;
+            _nextBuffTime = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(60, 120));
+        }
+
+        // -- Open a dungeon portal ---------------------------------------
+
+        private void TryOpenPortal()
+        {
+            var dungeon = _dungeons[Utility.Random(_dungeons.Length)];
+
+            Animate(203, 7, 1, true, false, 0);
+            Say($"*feels the ley lines drawing toward {dungeon.Name}...*");
+
+            Point3D here  = Location;
+            Map     myMap = Map;
+
+            // Small delay so the speech appears before the portal pops
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            {
+                if (Deleted) return;
+
+                var portal = new BrotherhoodPortal(dungeon.Loc, dungeon.Map, dungeon.Name);
+                portal.MoveToWorld(here, myMap);
+
+                Effects.SendLocationParticles(
+                    EffectItem.Create(here, myMap, EffectItem.DefaultDuration),
+                    0x376A, 9, 32, 5023);
+                Effects.PlaySound(here, myMap, 0x20E);
+
+                // 50% chance: step through and investigate
+                if (Utility.RandomBool())
+                    EnterDungeon(dungeon.Loc, dungeon.Map, dungeon.Name);
+            });
+
+            _nextPortalTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(5, 10));
+        }
+
+        // -- Dungeon expedition logic ------------------------------------
+
+        private void EnterDungeon(Point3D dest, Map destMap, string name)
+        {
+            if (Deleted || !Alive) return;
+
+            _isOnExpedition = true;
+            Point3D savedHome = _homeLocation;
+
+            Timer.DelayCall(TimeSpan.FromSeconds(2.5), () =>
+            {
+                if (Deleted || !Alive) { _isOnExpedition = false; return; }
+
+                Say("*steps through the portal*");
+                MoveToWorld(dest, destMap);
+
+                // Find a wild creature to engage after arriving
+                Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+                {
+                    if (Deleted || !Alive) { _isOnExpedition = false; return; }
+
+                    BaseCreature combatTarget = null;
+                    foreach (Mobile m in GetMobilesInRange(10))
+                    {
+                        if (m is BaseCreature bc
+                            && !bc.Deleted && bc.Alive
+                            && bc.ControlMaster == null  // wild, not a pet
+                            && !bc.IsDeadBondedPet)
+                        {
+                            combatTarget = bc;
+                            break;
+                        }
+                    }
+
+                    if (combatTarget != null)
+                    {
+                        Say($"*engages a {combatTarget.Name}!*");
+                        this.Combatant = combatTarget;
+                    }
+                    else
+                    {
+                        Say("*finds no prey nearby — recalls home*");
+                    }
+
+                    // Return home after 45-60 seconds regardless of outcome
+                    int delay = Utility.RandomMinMax(45, 60);
+                    Timer.DelayCall(TimeSpan.FromSeconds(delay), () => RecallHome(savedHome));
+                });
+            });
+        }
+
+        private void RecallHome(Point3D home)
+        {
+            _isOnExpedition = false;
+
+            if (Deleted || !Alive) return; // death/respawn handles it
+
+            this.Combatant = null;
+
+            Animate(203, 7, 1, true, false, 0);
+            Say("*recalls back to the city*");
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            {
+                if (!Deleted && Alive)
+                    MoveToWorld(home, Map.Felucca);
+            });
+        }
+
+        // ----------------------------------------------------------------
+
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
@@ -1760,6 +1979,90 @@ namespace Server.Custom
         {
             base.Deserialize(reader);
             reader.ReadInt(); // version
+        }
+    }
+
+    // ============================================================
+    // BrotherhoodPortal
+    // A public one-way moongate opened by Arcane Brotherhood mages.
+    // Anyone can step through — no player restriction.
+    // Auto-closes after 3 minutes.
+    // ============================================================
+    public class BrotherhoodPortal : Item
+    {
+        private Point3D _destination;
+        private Map     _destMap;
+        private string  _dungeonName;
+
+        public BrotherhoodPortal(Point3D destination, Map destMap, string dungeonName)
+            : base(0xF6C)   // moongate graphic
+        {
+            _destination = destination;
+            _destMap     = destMap;
+            _dungeonName = dungeonName;
+
+            Movable = false;
+            Hue     = 1152;   // arcane blue
+            Name    = $"a Brotherhood portal to {dungeonName}";
+            Light   = LightType.Circle300;
+
+            // Auto-close after 3 minutes
+            Timer.DelayCall(TimeSpan.FromMinutes(3.0), ClosePortal);
+        }
+
+        public BrotherhoodPortal(Serial serial) : base(serial) { }
+
+        public override bool OnMoveOver(Mobile m)
+        {
+            UsePortal(m);
+            return true;
+        }
+
+        public override void OnDoubleClick(Mobile from)
+        {
+            UsePortal(from);
+        }
+
+        private void UsePortal(Mobile m)
+        {
+            if (Deleted || m == null || m.Deleted || !m.Alive) return;
+
+            Effects.SendLocationParticles(
+                EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                0x376A, 9, 32, 5023);
+            Effects.PlaySound(Location, Map, 0x1FE);
+
+            m.MoveToWorld(_destination, _destMap);
+            m.SendMessage(0x35, $"The Brotherhood portal carries you to {_dungeonName}...");
+
+            Effects.SendLocationParticles(
+                EffectItem.Create(_destination, _destMap, EffectItem.DefaultDuration),
+                0x376A, 9, 32, 5023);
+            Effects.PlaySound(_destination, _destMap, 0x20E);
+        }
+
+        private void ClosePortal()
+        {
+            if (Deleted) return;
+            Effects.SendLocationParticles(
+                EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                0x3728, 8, 20, 5042);
+            Effects.PlaySound(Location, Map, 0x1FE);
+            Delete();
+        }
+
+        // Transient — delete on server restart
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.Write(0);
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            reader.ReadInt();
+            Timer.DelayCall(TimeSpan.Zero, Delete);
         }
     }
 
