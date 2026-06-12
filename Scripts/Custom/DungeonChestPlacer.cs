@@ -96,8 +96,8 @@ namespace Server.Custom
         {
             var spawner = new Spawner(
                 amount:     1,
-                minDelay:   TimeSpan.FromMinutes(5),
-                maxDelay:   TimeSpan.FromMinutes(15),
+                minDelay:   5,
+                maxDelay:   15,
                 team:       0,
                 spawnRange: 0,
                 spawnName:  "TreasureLevel5"
