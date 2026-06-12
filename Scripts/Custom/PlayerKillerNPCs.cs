@@ -110,11 +110,11 @@ namespace Server.Custom
         {
             Title = "the ruffian";
 
-            SetStr(72, 76);
-            SetDex(46, 51);
+            SetStr(90, 96);
+            SetDex(57, 62);
             SetInt(20, 25);
-            SetHits(72, 76);
-            SetStam(46, 51);
+            SetHits(90, 96);
+            SetStam(57, 62);
             SetMana(0);
 
             SetSkill(SkillName.Swords,      76.0, 80.0);
@@ -123,11 +123,11 @@ namespace Server.Custom
             SetSkill(SkillName.Healing,     72.0, 76.0);
             SetSkill(SkillName.Parry,       67.0, 71.0);
             SetSkill(SkillName.Hiding,      27.0, 31.0);
-            SetSkill(SkillName.MagicResist, 47.0, 51.0);
+            SetSkill(SkillName.MagicResist, 57.0, 62.0);
 
             Fame         = 1500;
             Karma        = -1500;
-            VirtualArmor = 20;
+            VirtualArmor = 30;
 
             AddItem(new Katana());
 
@@ -173,11 +173,11 @@ namespace Server.Custom
         {
             Title = "the brigand";
 
-            SetStr(82, 88);
-            SetDex(62, 68);
+            SetStr(110, 116);
+            SetDex(72, 78);
             SetInt(27, 33);
-            SetHits(82, 88);
-            SetStam(62, 68);
+            SetHits(110, 116);
+            SetStam(72, 78);
             SetMana(0);
 
             SetSkill(SkillName.Swords,      97.0, 100.0);
@@ -186,11 +186,11 @@ namespace Server.Custom
             SetSkill(SkillName.Healing,     87.0, 92.0);
             SetSkill(SkillName.Parry,       97.0, 100.0);
             SetSkill(SkillName.Hiding,      57.0, 62.0);
-            SetSkill(SkillName.MagicResist, 57.0, 62.0);
+            SetSkill(SkillName.MagicResist, 72.0, 77.0);
 
             Fame         = 5000;
             Karma        = -5000;
-            VirtualArmor = 35;
+            VirtualArmor = 45;
 
             AddItem(new Katana());
             AddItem(new RingmailChest());
@@ -234,11 +234,11 @@ namespace Server.Custom
         {
             Title = "the warlord";
 
-            SetStr(97, 103);
-            SetDex(77, 83);
+            SetStr(130, 138);
+            SetDex(87, 93);
             SetInt(42, 48);
-            SetHits(97, 103);
-            SetStam(77, 83);
+            SetHits(130, 138);
+            SetStam(87, 93);
             SetMana(42, 48);
 
             SetSkill(SkillName.Swords,      97.0, 100.0);
@@ -247,12 +247,12 @@ namespace Server.Custom
             SetSkill(SkillName.Healing,     97.0, 100.0);
             SetSkill(SkillName.Parry,       97.0, 100.0);
             SetSkill(SkillName.Hiding,      67.0, 72.0);
-            SetSkill(SkillName.MagicResist, 67.0, 72.0);
+            SetSkill(SkillName.MagicResist, 82.0, 87.0);
             SetSkill(SkillName.Chivalry,    57.0, 62.0);
 
             Fame         = 12500;
             Karma        = -12500;
-            VirtualArmor = 50;
+            VirtualArmor = 62;
 
             AddItem(new Katana());
 
@@ -304,16 +304,16 @@ namespace Server.Custom
         {
             Title = "the dark mage";
 
-            SetStr(27, 33);
-            SetDex(27, 33);
+            SetStr(48, 54);
+            SetDex(38, 43);
             SetInt(87, 93);
-            SetHits(27, 33);
-            SetStam(27, 33);
+            SetHits(48, 54);
+            SetStam(38, 43);
             SetMana(87, 93);
 
             SetSkill(SkillName.Magery,      77.0, 82.0);
             SetSkill(SkillName.EvalInt,     72.0, 77.0);
-            SetSkill(SkillName.MagicResist, 67.0, 72.0);
+            SetSkill(SkillName.MagicResist, 72.0, 77.0);
             SetSkill(SkillName.Meditation,  72.0, 77.0);
             SetSkill(SkillName.Wrestling,   57.0, 62.0);
             SetSkill(SkillName.Hiding,      37.0, 42.0);
@@ -321,7 +321,7 @@ namespace Server.Custom
 
             Fame         = 2000;
             Karma        = -2000;
-            VirtualArmor = 10;
+            VirtualArmor = 18;
 
             var robe = new Robe { Hue = Utility.RandomList(1175, 1109, 1102, 1153, 0x01) };
             AddItem(robe);
@@ -362,11 +362,11 @@ namespace Server.Custom
         {
             Title = "the war mage";
 
-            SetStr(32, 38);
-            SetDex(32, 38);
+            SetStr(60, 67);
+            SetDex(47, 52);
             SetInt(107, 113);
-            SetHits(32, 38);
-            SetStam(32, 38);
+            SetHits(60, 67);
+            SetStam(47, 52);
             SetMana(107, 113);
 
             SetSkill(SkillName.Magery,      97.0, 100.0);
@@ -379,7 +379,7 @@ namespace Server.Custom
 
             Fame         = 5000;
             Karma        = -5000;
-            VirtualArmor = 15;
+            VirtualArmor = 23;
 
             var robe = new Robe { Hue = Utility.RandomList(0x01, 1175, 1102) };
             AddItem(robe);
@@ -422,11 +422,11 @@ namespace Server.Custom
         {
             Title = "the archmage";
 
-            SetStr(37, 43);
-            SetDex(37, 43);
+            SetStr(75, 82);
+            SetDex(58, 64);
             SetInt(142, 148);
-            SetHits(37, 43);
-            SetStam(37, 43);
+            SetHits(75, 82);
+            SetStam(58, 64);
             SetMana(142, 148);
 
             SetSkill(SkillName.Magery,      97.0, 100.0);
@@ -439,7 +439,7 @@ namespace Server.Custom
 
             Fame         = 12500;
             Karma        = -12500;
-            VirtualArmor = 20;
+            VirtualArmor = 30;
 
             var robe = new Robe { Hue = 0x01 };
             AddItem(robe);
@@ -492,16 +492,16 @@ namespace Server.Custom
         {
             Title = "the blood mage";
 
-            SetStr(27, 33);
-            SetDex(27, 33);
+            SetStr(48, 54);
+            SetDex(38, 43);
             SetInt(87, 93);
-            SetHits(27, 33);
-            SetStam(27, 33);
+            SetHits(48, 54);
+            SetStam(38, 43);
             SetMana(87, 93);
 
             SetSkill(SkillName.Magery,      67.0, 72.0);
             SetSkill(SkillName.EvalInt,     57.0, 62.0);
-            SetSkill(SkillName.MagicResist, 57.0, 62.0);
+            SetSkill(SkillName.MagicResist, 65.0, 70.0);
             SetSkill(SkillName.Necromancy,  77.0, 82.0);
             SetSkill(SkillName.SpiritSpeak, 67.0, 72.0);
             SetSkill(SkillName.Meditation,  57.0, 62.0);
@@ -509,7 +509,7 @@ namespace Server.Custom
 
             Fame         = 2000;
             Karma        = -2000;
-            VirtualArmor = 10;
+            VirtualArmor = 18;
 
             var robe = new Robe { Hue = 0x01 };
             AddItem(robe);
@@ -551,16 +551,16 @@ namespace Server.Custom
         {
             Title = "the soul reaper";
 
-            SetStr(32, 38);
-            SetDex(32, 38);
+            SetStr(60, 67);
+            SetDex(47, 52);
             SetInt(107, 113);
-            SetHits(32, 38);
-            SetStam(32, 38);
+            SetHits(60, 67);
+            SetStam(47, 52);
             SetMana(107, 113);
 
             SetSkill(SkillName.Magery,      97.0, 100.0);
             SetSkill(SkillName.EvalInt,     87.0, 92.0);
-            SetSkill(SkillName.MagicResist, 87.0, 92.0);
+            SetSkill(SkillName.MagicResist, 90.0, 95.0);
             SetSkill(SkillName.Necromancy,  97.0, 100.0);
             SetSkill(SkillName.SpiritSpeak, 97.0, 100.0);
             SetSkill(SkillName.Meditation,  57.0, 62.0);
@@ -568,7 +568,7 @@ namespace Server.Custom
 
             Fame         = 6000;
             Karma        = -6000;
-            VirtualArmor = 15;
+            VirtualArmor = 23;
 
             var chest = new BoneChest { Hue = 0x01 };
             AddItem(chest);
@@ -614,11 +614,11 @@ namespace Server.Custom
         {
             Title = "the dread lord";
 
-            SetStr(47, 53);
-            SetDex(42, 48);
+            SetStr(75, 82);
+            SetDex(60, 66);
             SetInt(127, 133);
-            SetHits(47, 53);
-            SetStam(42, 48);
+            SetHits(75, 82);
+            SetStam(60, 66);
             SetMana(127, 133);
 
             SetSkill(SkillName.Magery,      97.0, 100.0);
@@ -631,7 +631,7 @@ namespace Server.Custom
 
             Fame         = 15000;
             Karma        = -15000;
-            VirtualArmor = 25;
+            VirtualArmor = 35;
 
             var chest = new BoneChest { Hue = 0x01 };
             AddItem(chest);
@@ -691,24 +691,25 @@ namespace Server.Custom
         {
             Title = "the cutthroat";
 
-            SetStr(47, 53);
-            SetDex(67, 73);
+            SetStr(65, 72);
+            SetDex(80, 86);
             SetInt(27, 33);
-            SetHits(47, 53);
-            SetStam(67, 73);
+            SetHits(65, 72);
+            SetStam(80, 86);
             SetMana(27, 33);
 
-            SetSkill(SkillName.Fencing,  72.0, 77.0);
-            SetSkill(SkillName.Tactics,  67.0, 72.0);
-            SetSkill(SkillName.Ninjitsu, 72.0, 77.0);
-            SetSkill(SkillName.Hiding,   72.0, 77.0);
-            SetSkill(SkillName.Stealth,  72.0, 77.0);
-            SetSkill(SkillName.Anatomy,  37.0, 42.0);
-            SetSkill(SkillName.Healing,  37.0, 42.0);
+            SetSkill(SkillName.Fencing,     72.0, 77.0);
+            SetSkill(SkillName.Tactics,     67.0, 72.0);
+            SetSkill(SkillName.Ninjitsu,    72.0, 77.0);
+            SetSkill(SkillName.Hiding,      72.0, 77.0);
+            SetSkill(SkillName.Stealth,     72.0, 77.0);
+            SetSkill(SkillName.Anatomy,     37.0, 42.0);
+            SetSkill(SkillName.Healing,     37.0, 42.0);
+            SetSkill(SkillName.MagicResist, 50.0, 55.0);
 
             Fame         = 1500;
             Karma        = -1500;
-            VirtualArmor = 15;
+            VirtualArmor = 25;
 
             AddItem(new Kryss());
             AddItem(new Kasa());
@@ -748,24 +749,25 @@ namespace Server.Custom
         {
             Title = "the shadow blade";
 
-            SetStr(52, 58);
-            SetDex(82, 88);
+            SetStr(82, 88);
+            SetDex(97, 103);
             SetInt(37, 43);
-            SetHits(52, 58);
-            SetStam(82, 88);
+            SetHits(82, 88);
+            SetStam(97, 103);
             SetMana(37, 43);
 
-            SetSkill(SkillName.Fencing,  97.0, 100.0);
-            SetSkill(SkillName.Tactics,  97.0, 100.0);
-            SetSkill(SkillName.Ninjitsu, 97.0, 100.0);
-            SetSkill(SkillName.Hiding,   97.0, 100.0);
-            SetSkill(SkillName.Stealth,  97.0, 100.0);
-            SetSkill(SkillName.Anatomy,  57.0, 62.0);
-            SetSkill(SkillName.Healing,  37.0, 42.0);
+            SetSkill(SkillName.Fencing,     97.0, 100.0);
+            SetSkill(SkillName.Tactics,     97.0, 100.0);
+            SetSkill(SkillName.Ninjitsu,    97.0, 100.0);
+            SetSkill(SkillName.Hiding,      97.0, 100.0);
+            SetSkill(SkillName.Stealth,     97.0, 100.0);
+            SetSkill(SkillName.Anatomy,     57.0, 62.0);
+            SetSkill(SkillName.Healing,     37.0, 42.0);
+            SetSkill(SkillName.MagicResist, 65.0, 70.0);
 
             Fame         = 5000;
             Karma        = -5000;
-            VirtualArmor = 25;
+            VirtualArmor = 37;
 
             AddItem(new Kryss());
 
@@ -810,25 +812,26 @@ namespace Server.Custom
         {
             Title = "the phantom lord";
 
-            SetStr(57, 63);
-            SetDex(107, 113);
+            SetStr(100, 107);
+            SetDex(115, 121);
             SetInt(52, 58);
-            SetHits(57, 63);
-            SetStam(107, 113);
+            SetHits(100, 107);
+            SetStam(115, 121);
             SetMana(52, 58);
 
-            SetSkill(SkillName.Fencing,  97.0, 100.0);
-            SetSkill(SkillName.Tactics,  97.0, 100.0);
-            SetSkill(SkillName.Ninjitsu, 97.0, 100.0);
-            SetSkill(SkillName.Hiding,   97.0, 100.0);
-            SetSkill(SkillName.Stealth,  97.0, 100.0);
-            SetSkill(SkillName.Anatomy,  97.0, 100.0);
-            SetSkill(SkillName.Healing,  47.0, 52.0);
-            SetSkill(SkillName.Focus,    47.0, 52.0);
+            SetSkill(SkillName.Fencing,     97.0, 100.0);
+            SetSkill(SkillName.Tactics,     97.0, 100.0);
+            SetSkill(SkillName.Ninjitsu,    97.0, 100.0);
+            SetSkill(SkillName.Hiding,      97.0, 100.0);
+            SetSkill(SkillName.Stealth,     97.0, 100.0);
+            SetSkill(SkillName.Anatomy,     97.0, 100.0);
+            SetSkill(SkillName.Healing,     47.0, 52.0);
+            SetSkill(SkillName.Focus,       47.0, 52.0);
+            SetSkill(SkillName.MagicResist, 78.0, 83.0);
 
             Fame         = 12500;
             Karma        = -12500;
-            VirtualArmor = 35;
+            VirtualArmor = 47;
 
             AddItem(new Kryss());
 
@@ -880,24 +883,25 @@ namespace Server.Custom
         {
             Title = "the fallen knight";
 
-            SetStr(67, 73);
-            SetDex(47, 53);
+            SetStr(90, 96);
+            SetDex(57, 63);
             SetInt(27, 33);
-            SetHits(67, 73);
-            SetStam(47, 53);
+            SetHits(90, 96);
+            SetStam(57, 63);
             SetMana(27, 33);
 
-            SetSkill(SkillName.Swords,   72.0, 77.0);
-            SetSkill(SkillName.Tactics,  67.0, 72.0);
-            SetSkill(SkillName.Chivalry, 77.0, 82.0);
-            SetSkill(SkillName.Healing,  67.0, 72.0);
-            SetSkill(SkillName.Anatomy,  67.0, 72.0);
-            SetSkill(SkillName.Parry,    52.0, 57.0);
-            SetSkill(SkillName.Hiding,   27.0, 32.0);
+            SetSkill(SkillName.Swords,      72.0, 77.0);
+            SetSkill(SkillName.Tactics,     67.0, 72.0);
+            SetSkill(SkillName.Chivalry,    77.0, 82.0);
+            SetSkill(SkillName.Healing,     67.0, 72.0);
+            SetSkill(SkillName.Anatomy,     67.0, 72.0);
+            SetSkill(SkillName.Parry,       52.0, 57.0);
+            SetSkill(SkillName.Hiding,      27.0, 32.0);
+            SetSkill(SkillName.MagicResist, 52.0, 57.0);
 
             Fame         = 1500;
             Karma        = -1500;
-            VirtualArmor = 30;
+            VirtualArmor = 40;
 
             AddItem(new Broadsword());
             AddItem(new StuddedChest());
@@ -941,24 +945,25 @@ namespace Server.Custom
         {
             Title = "the black knight";
 
-            SetStr(77, 83);
-            SetDex(57, 63);
+            SetStr(112, 118);
+            SetDex(68, 74);
             SetInt(37, 43);
-            SetHits(77, 83);
-            SetStam(57, 63);
+            SetHits(112, 118);
+            SetStam(68, 74);
             SetMana(37, 43);
 
-            SetSkill(SkillName.Swords,   97.0, 100.0);
-            SetSkill(SkillName.Tactics,  97.0, 100.0);
-            SetSkill(SkillName.Chivalry, 97.0, 100.0);
-            SetSkill(SkillName.Healing,  87.0, 92.0);
-            SetSkill(SkillName.Anatomy,  87.0, 92.0);
-            SetSkill(SkillName.Parry,    67.0, 72.0);
-            SetSkill(SkillName.Focus,    47.0, 52.0);
+            SetSkill(SkillName.Swords,      97.0, 100.0);
+            SetSkill(SkillName.Tactics,     97.0, 100.0);
+            SetSkill(SkillName.Chivalry,    97.0, 100.0);
+            SetSkill(SkillName.Healing,     87.0, 92.0);
+            SetSkill(SkillName.Anatomy,     87.0, 92.0);
+            SetSkill(SkillName.Parry,       67.0, 72.0);
+            SetSkill(SkillName.Focus,       47.0, 52.0);
+            SetSkill(SkillName.MagicResist, 67.0, 72.0);
 
             Fame         = 5000;
             Karma        = -5000;
-            VirtualArmor = 40;
+            VirtualArmor = 52;
 
             AddItem(new Broadsword());
             AddItem(new RingmailChest());
@@ -1004,24 +1009,25 @@ namespace Server.Custom
         {
             Title = "the dark crusader";
 
-            SetStr(92, 98);
-            SetDex(72, 78);
+            SetStr(135, 142);
+            SetDex(82, 88);
             SetInt(52, 58);
-            SetHits(92, 98);
-            SetStam(72, 78);
+            SetHits(135, 142);
+            SetStam(82, 88);
             SetMana(52, 58);
 
-            SetSkill(SkillName.Swords,   97.0, 100.0);
-            SetSkill(SkillName.Tactics,  97.0, 100.0);
-            SetSkill(SkillName.Chivalry, 97.0, 100.0);
-            SetSkill(SkillName.Healing,  97.0, 100.0);
-            SetSkill(SkillName.Anatomy,  97.0, 100.0);
-            SetSkill(SkillName.Parry,    97.0, 100.0);
-            SetSkill(SkillName.Focus,    97.0, 100.0);
+            SetSkill(SkillName.Swords,      97.0, 100.0);
+            SetSkill(SkillName.Tactics,     97.0, 100.0);
+            SetSkill(SkillName.Chivalry,    97.0, 100.0);
+            SetSkill(SkillName.Healing,     97.0, 100.0);
+            SetSkill(SkillName.Anatomy,     97.0, 100.0);
+            SetSkill(SkillName.Parry,       97.0, 100.0);
+            SetSkill(SkillName.Focus,       97.0, 100.0);
+            SetSkill(SkillName.MagicResist, 80.0, 85.0);
 
             Fame         = 12500;
             Karma        = -12500;
-            VirtualArmor = 55;
+            VirtualArmor = 68;
 
             AddItem(new Broadsword());
 
@@ -1081,23 +1087,24 @@ namespace Server.Custom
         {
             Title = "the road archer";
 
-            SetStr(47, 53);
-            SetDex(72, 78);
+            SetStr(62, 68);
+            SetDex(85, 91);
             SetInt(22, 28);
-            SetHits(47, 53);
-            SetStam(72, 78);
+            SetHits(62, 68);
+            SetStam(85, 91);
             SetMana(22, 28);
 
-            SetSkill(SkillName.Archery,  77.0, 82.0);
-            SetSkill(SkillName.Tactics,  72.0, 77.0);
-            SetSkill(SkillName.Anatomy,  67.0, 72.0);
-            SetSkill(SkillName.Healing,  72.0, 77.0);
-            SetSkill(SkillName.Hiding,   72.0, 77.0);
-            SetSkill(SkillName.Stealth,  72.0, 77.0);
+            SetSkill(SkillName.Archery,     77.0, 82.0);
+            SetSkill(SkillName.Tactics,     72.0, 77.0);
+            SetSkill(SkillName.Anatomy,     67.0, 72.0);
+            SetSkill(SkillName.Healing,     72.0, 77.0);
+            SetSkill(SkillName.Hiding,      72.0, 77.0);
+            SetSkill(SkillName.Stealth,     72.0, 77.0);
+            SetSkill(SkillName.MagicResist, 48.0, 53.0);
 
             Fame         = 1500;
             Karma        = -1500;
-            VirtualArmor = 15;
+            VirtualArmor = 23;
 
             AddItem(new Bow());
             AddItem(new Arrow(50));
@@ -1137,11 +1144,11 @@ namespace Server.Custom
         {
             Title = "the sniper";
 
-            SetStr(57, 63);
-            SetDex(87, 93);
+            SetStr(78, 84);
+            SetDex(100, 106);
             SetInt(27, 33);
-            SetHits(57, 63);
-            SetStam(87, 93);
+            SetHits(78, 84);
+            SetStam(100, 106);
             SetMana(27, 33);
 
             SetSkill(SkillName.Archery,     97.0, 100.0);
@@ -1150,11 +1157,11 @@ namespace Server.Custom
             SetSkill(SkillName.Healing,     87.0, 92.0);
             SetSkill(SkillName.Hiding,      97.0, 100.0);
             SetSkill(SkillName.Stealth,     97.0, 100.0);
-            SetSkill(SkillName.MagicResist, 17.0, 22.0);
+            SetSkill(SkillName.MagicResist, 62.0, 67.0);
 
             Fame         = 5000;
             Karma        = -5000;
-            VirtualArmor = 25;
+            VirtualArmor = 36;
 
             AddItem(new CompositeBow());
             AddItem(new Arrow(100));
@@ -1197,24 +1204,25 @@ namespace Server.Custom
         {
             Title = "the deadeye";
 
-            SetStr(67, 73);
-            SetDex(107, 113);
+            SetStr(95, 102);
+            SetDex(118, 124);
             SetInt(42, 48);
-            SetHits(67, 73);
-            SetStam(107, 113);
+            SetHits(95, 102);
+            SetStam(118, 124);
             SetMana(42, 48);
 
-            SetSkill(SkillName.Archery,  97.0, 100.0);
-            SetSkill(SkillName.Tactics,  97.0, 100.0);
-            SetSkill(SkillName.Anatomy,  97.0, 100.0);
-            SetSkill(SkillName.Healing,  97.0, 100.0);
-            SetSkill(SkillName.Hiding,   97.0, 100.0);
-            SetSkill(SkillName.Stealth,  97.0, 100.0);
-            SetSkill(SkillName.Ninjitsu, 97.0, 100.0);
+            SetSkill(SkillName.Archery,     97.0, 100.0);
+            SetSkill(SkillName.Tactics,     97.0, 100.0);
+            SetSkill(SkillName.Anatomy,     97.0, 100.0);
+            SetSkill(SkillName.Healing,     97.0, 100.0);
+            SetSkill(SkillName.Hiding,      97.0, 100.0);
+            SetSkill(SkillName.Stealth,     97.0, 100.0);
+            SetSkill(SkillName.Ninjitsu,    97.0, 100.0);
+            SetSkill(SkillName.MagicResist, 75.0, 80.0);
 
             Fame         = 12500;
             Karma        = -12500;
-            VirtualArmor = 30;
+            VirtualArmor = 44;
 
             var kasa = new Kasa { Hue = 0x01 };
             AddItem(kasa);
@@ -1266,11 +1274,11 @@ namespace Server.Custom
         {
             Title = "the blood warrior";
 
-            SetStr(62, 68);
-            SetDex(57, 63);
+            SetStr(88, 95);
+            SetDex(70, 76);
             SetInt(22, 28);
-            SetHits(62, 68);
-            SetStam(57, 63);
+            SetHits(88, 95);
+            SetStam(70, 76);
             SetMana(22, 28);
 
             SetSkill(SkillName.Swords,      77.0, 82.0);
@@ -1279,10 +1287,11 @@ namespace Server.Custom
             SetSkill(SkillName.Necromancy,  77.0, 82.0);
             SetSkill(SkillName.SpiritSpeak, 72.0, 77.0);
             SetSkill(SkillName.Parry,       57.0, 62.0);
+            SetSkill(SkillName.MagicResist, 50.0, 55.0);
 
             Fame         = 2000;
             Karma        = -2000;
-            VirtualArmor = 20;
+            VirtualArmor = 30;
 
             AddItem(new Katana());
             AddItem(new LeatherChest());
@@ -1333,11 +1342,11 @@ namespace Server.Custom
         {
             Title = "the blood knight";
 
-            SetStr(72, 78);
-            SetDex(72, 78);
+            SetStr(108, 114);
+            SetDex(85, 91);
             SetInt(27, 33);
-            SetHits(72, 78);
-            SetStam(72, 78);
+            SetHits(108, 114);
+            SetStam(85, 91);
             SetMana(27, 33);
 
             SetSkill(SkillName.Swords,      97.0, 100.0);
@@ -1346,10 +1355,11 @@ namespace Server.Custom
             SetSkill(SkillName.Necromancy,  97.0, 100.0);
             SetSkill(SkillName.SpiritSpeak, 97.0, 100.0);
             SetSkill(SkillName.Parry,       97.0, 100.0);
+            SetSkill(SkillName.MagicResist, 65.0, 70.0);
 
             Fame         = 7000;
             Karma        = -7000;
-            VirtualArmor = 35;
+            VirtualArmor = 46;
 
             AddItem(new Katana());
             AddItem(new RingmailChest());
@@ -1401,11 +1411,11 @@ namespace Server.Custom
         {
             Title = "the vampire lord";
 
-            SetStr(87, 93);
-            SetDex(82, 88);
+            SetStr(128, 135);
+            SetDex(97, 103);
             SetInt(47, 53);
-            SetHits(87, 93);
-            SetStam(82, 88);
+            SetHits(128, 135);
+            SetStam(97, 103);
             SetMana(47, 53);
 
             SetSkill(SkillName.Swords,      97.0, 100.0);
@@ -1415,10 +1425,11 @@ namespace Server.Custom
             SetSkill(SkillName.SpiritSpeak, 97.0, 100.0);
             SetSkill(SkillName.Parry,       97.0, 100.0);
             SetSkill(SkillName.Chivalry,    97.0, 100.0);
+            SetSkill(SkillName.MagicResist, 78.0, 83.0);
 
             Fame         = 15000;
             Karma        = -15000;
-            VirtualArmor = 45;
+            VirtualArmor = 58;
 
             AddItem(new Katana());
 
