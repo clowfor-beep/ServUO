@@ -2072,6 +2072,40 @@ namespace Server.Custom
     // ============================================================
     public class SilverWolvesSimPlayer : SimPlayer
     {
+        // ---- Transient AI state ----------------------------------------
+        private bool     _isOnPatrol    = false;
+        private DateTime _nextFlavorTime  = DateTime.MinValue;
+        private DateTime _nextDetectTime  = DateTime.MinValue;
+        private DateTime _nextJourneyTime = DateTime.MinValue;
+        private DateTime _nextScoutTime   = DateTime.MinValue;
+
+        // Dungeon entrance coords (overworld, outside dungeon mouths)
+        // NOTE: these are approximate — verify/adjust in-game with [where
+        private static readonly (Point3D Loc, Map Map, string Name)[] _dungeonEntrances =
+        {
+            (new Point3D(5290, 605,  0), Map.Felucca, "Deceit"),
+            (new Point3D(5490, 534,  0), Map.Felucca, "Despise"),
+            (new Point3D(5262, 977,  0), Map.Felucca, "Destard"),
+            (new Point3D(5450, 1860, 0), Map.Felucca, "Covetous"),
+            (new Point3D(5798, 636,  0), Map.Felucca, "Wrong"),
+            (new Point3D(5381, 100,  0), Map.Felucca, "Shame"),
+            (new Point3D(5910,  49,  0), Map.Felucca, "Hythloth"),
+        };
+
+        private static readonly string[] _flavorLines =
+        {
+            "*scans the area for threats*",
+            "Stay vigilant. The Shadow Hand operates in these parts.",
+            "These roads belong to the innocent.",
+            "For the protection of all citizens.",
+            "*checks patrol route*",
+            "No murderer walks free while we stand watch.",
+            "Criminal activity will not be tolerated here.",
+            "The weak deserve protection. That is our purpose.",
+        };
+
+        // ----------------------------------------------------------------
+
         public SilverWolvesSimPlayer(string memberName, Point3D home,
                                      SpawnZone zone, ScheduleProfile schedule)
             : base(FBGuilds.SilverWolves, memberName, home, zone, schedule) { }
@@ -2096,15 +2130,249 @@ namespace Server.Custom
             Karma = 3000;
             Kills = 0;
 
-            AddItem(new ChainChest());
+            // --- Enchanted gear — drops on corpse naturally via AddItem ---
+
+            // Longsword: Silver slayer (undead/vampires), +HCI, +DI
+            var sword = new Longsword();
+            sword.Slayer              = SlayerName.Silver;
+            sword.Attributes.AttackChance  = 10;
+            sword.Attributes.WeaponDamage  = 15;
+            sword.MaxHitPoints = 200; sword.HitPoints = 200;
+            AddItem(sword);
+
+            // Chain armour: defensive bonuses on chest piece
+            var chest = new ChainChest();
+            chest.Attributes.DefendChance = 8;
+            chest.Attributes.RegenHits    = 2;
+            chest.MaxHitPoints = 200; chest.HitPoints = 200;
+            AddItem(chest);
+
+            // Heater shield: extra defence chance
+            var shield = new HeaterShield();
+            shield.Attributes.DefendChance = 7;
+            shield.MaxHitPoints = 200; shield.HitPoints = 200;
+            AddItem(shield);
+
+            // Plain armour pieces
             AddItem(new ChainLegs());
             AddItem(new LeatherGorget());
             AddItem(new LeatherArms());
             AddItem(new LeatherGloves());
             AddItem(new Boots());
-            AddItem(new Longsword());
-            AddItem(new HeaterShield());
+
+            // Jewelry
+            var ring = new GoldRing();
+            ring.Attributes.BonusHits  = 5;
+            ring.Attributes.RegenHits  = 1;
+            AddItem(ring);
+
+            var bracelet = new GoldBracelet();
+            bracelet.Attributes.BonusStam = 5;
+            AddItem(bracelet);
         }
+
+        // -- Idle hook ---------------------------------------------------
+
+        protected override void OnTickIdle()
+        {
+            if (_isOnPatrol)
+            {
+                // While at a dungeon entrance — periodically scan for PKs
+                if (DateTime.UtcNow >= _nextScoutTime)
+                    TryScoutForPK();
+                return;
+            }
+
+            if (DateTime.UtcNow >= _nextFlavorTime)
+                TryFlavorSpeech();
+
+            if (DateTime.UtcNow >= _nextDetectTime)
+                TryDetectHidden();
+
+            if (DateTime.UtcNow >= _nextJourneyTime)
+                DoSacredJourney();
+        }
+
+        // -- Flavor speech -----------------------------------------------
+
+        private void TryFlavorSpeech()
+        {
+            Say(_flavorLines[Utility.Random(_flavorLines.Length)]);
+            _nextFlavorTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(3, 6));
+        }
+
+        // -- DetectHidden — counter the Shadow Hand in town --------------
+
+        private void TryDetectHidden()
+        {
+            foreach (Mobile m in GetMobilesInRange(8))
+            {
+                if (!(m is ShadowHandSimPlayer sh) || !sh.Hidden || sh.Deleted || !sh.Alive)
+                    continue;
+
+                // Skill check: DetectHidden vs Stealth
+                double detectChance = Skills[SkillName.DetectHidden].Value / 100.0 * 0.55;
+                double stealthChance = sh.Skills[SkillName.Stealth].Value / 100.0 * 0.50;
+
+                if (Utility.RandomDouble() < detectChance && Utility.RandomDouble() > stealthChance)
+                {
+                    sh.Hidden = false;
+                    Say($"*calls out* Thief! {sh.Name} is unmasked!");
+                    this.Combatant = sh;
+                    break;
+                }
+            }
+
+            _nextDetectTime = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(30, 60));
+        }
+
+        // -- Sacred Journey to dungeon entrance --------------------------
+
+        private void DoSacredJourney()
+        {
+            var entrance = _dungeonEntrances[Utility.Random(_dungeonEntrances.Length)];
+
+            Animate(203, 7, 1, true, false, 0);
+            Say($"*invokes Sacred Journey — scouting {entrance.Name}*");
+
+            Point3D dest    = entrance.Loc;
+            Map     destMap = entrance.Map;
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            {
+                if (Deleted || !Alive) return;
+
+                // Depart effect
+                Effects.SendLocationParticles(
+                    EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                    0x376A, 9, 20, 2023);
+                PlaySound(0x20E);
+
+                MoveToWorld(dest, destMap);
+
+                // Arrive effect
+                Effects.SendLocationParticles(
+                    EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                    0x376A, 9, 20, 2023);
+                PlaySound(0x1FE);
+
+                _isOnPatrol   = true;
+                _nextScoutTime = DateTime.MinValue; // scan immediately on arrival
+
+                // Return home after 60-90 seconds (extended if still in combat)
+                int patrolTime = Utility.RandomMinMax(60, 90);
+                Timer.DelayCall(TimeSpan.FromSeconds(patrolTime), ReturnHome);
+            });
+
+            _nextJourneyTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(8, 15));
+        }
+
+        // -- Scout dungeon entrance for PKs ------------------------------
+
+        private void TryScoutForPK()
+        {
+            // Look for red (murderer) players
+            foreach (Mobile m in GetMobilesInRange(15))
+            {
+                if (m is PlayerMobile pm && pm.Murderer && pm.Alive && !pm.Deleted && pm.Map == Map)
+                {
+                    Say($"*calls out* Murderer! {pm.Name} will face justice!");
+                    this.Combatant = pm;
+                    _nextScoutTime = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+                    return;
+                }
+            }
+
+            // Also engage PK NPCs if present
+            foreach (Mobile m in GetMobilesInRange(15))
+            {
+                if (m is BasePKNPC pk && pk.Alive && !pk.Deleted && pk.Map == Map)
+                {
+                    Say("*draws sword* Hostile threat spotted!");
+                    this.Combatant = pk;
+                    _nextScoutTime = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+                    return;
+                }
+            }
+
+            Say("*area appears clear*");
+            _nextScoutTime = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(15, 25));
+        }
+
+        // -- Return home via Sacred Journey ------------------------------
+
+        private void ReturnHome()
+        {
+            // Stay if still actively fighting — check again in 30s
+            if (Combatant != null && !Combatant.Deleted && Combatant.Alive)
+            {
+                Timer.DelayCall(TimeSpan.FromSeconds(30), ReturnHome);
+                return;
+            }
+
+            _isOnPatrol = false;
+            if (Deleted || !Alive) return;
+
+            Animate(203, 7, 1, true, false, 0);
+            Say("*invokes Sacred Journey — returning to the city*");
+
+            Point3D home = _homeLocation;
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            {
+                if (Deleted || !Alive) return;
+
+                Effects.SendLocationParticles(
+                    EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                    0x376A, 9, 20, 2023);
+                PlaySound(0x20E);
+
+                MoveToWorld(home, Map.Felucca);
+
+                Effects.SendLocationParticles(
+                    EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                    0x376A, 9, 20, 2023);
+                PlaySound(0x1FE);
+            });
+        }
+
+        // -- Death loot --------------------------------------------------
+
+        public override void OnDeath(Container c)
+        {
+            base.OnDeath(c); // enchanted gear already drops via AddItem
+
+            c.DropItem(new Gold(Utility.RandomMinMax(100, 300)));
+            c.DropItem(new Bandage(Utility.RandomMinMax(10, 25)));
+
+            // Healing potions (they're field medics)
+            if (Utility.RandomDouble() < 0.50)
+                c.DropItem(new HealPotion());
+            if (Utility.RandomDouble() < 0.20)
+                c.DropItem(new GreaterHealPotion());
+
+            // Treasure map (2% L3, 13% L2)
+            double mapRoll = Utility.RandomDouble();
+            if (mapRoll < 0.02)
+                c.DropItem(new TreasureMap(3, Map.Felucca));
+            else if (mapRoll < 0.15)
+                c.DropItem(new TreasureMap(2, Map.Felucca));
+
+            // Random orb (1%)
+            if (Utility.RandomDouble() < 0.01)
+            {
+                Type[] orbs = new Type[]
+                {
+                    typeof(OrbOfEnhancement), typeof(OrbOfMastery),   typeof(OrbOfExpansion),
+                    typeof(OrbOfFortitude),   typeof(OrbOfAlacrity),   typeof(OrbOfInsight),
+                    typeof(OrbOfBalance),     typeof(OrbOfCorruption), typeof(OrbOfResonance),
+                    typeof(OrbOfCleansing),   typeof(OrbOfTempering),  typeof(OrbOfEnchantment),
+                    typeof(OrbOfReforging)
+                };
+                c.DropItem((Item)Activator.CreateInstance(orbs[Utility.Random(orbs.Length)]));
+            }
+        }
+
+        // ----------------------------------------------------------------
 
         public override void Serialize(GenericWriter writer)
         {
