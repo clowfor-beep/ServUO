@@ -2819,6 +2819,7 @@ namespace Server.Custom
         private DateTime _nextHuntTime   = DateTime.MinValue;
         private DateTime _huntReturnTime = DateTime.MinValue;
         private DateTime _nextFlavorTime = DateTime.MinValue;
+        private int      _lastDungeonIndex = -1;
 
         private static readonly (Point3D Loc, Map Map, string Name)[] _allDungeons =
         {
@@ -3078,7 +3079,12 @@ namespace Server.Custom
         {
             if (Deleted || !Alive) return;
 
-            var pick = _allDungeons[Utility.Random(_allDungeons.Length)];
+            // Pick a dungeon different from the last one visited
+            int idx;
+            do { idx = Utility.Random(_allDungeons.Length); }
+            while (idx == _lastDungeonIndex && _allDungeons.Length > 1);
+            _lastDungeonIndex = idx;
+            var pick = _allDungeons[idx];
 
             Animate(203, 7, 1, true, false, 0);
             Say(_isWraithMage
@@ -3186,8 +3192,8 @@ namespace Server.Custom
                     0x376A, 9, 32, 5023);
                 Effects.PlaySound(Location, Map, 0x20E);
 
-                // Rest 5-10 min before next hunt
-                _nextHuntTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(5, 10));
+                // Brief pause for gate animation, then head straight to next dungeon
+                _nextHuntTime = DateTime.UtcNow + TimeSpan.FromSeconds(10);
             });
         }
 
@@ -3526,4 +3532,340 @@ namespace Server.Custom
             new HuntSpot { Loc = new Point3D( 596, 1132,  0), HMap = Map.Felucca, Name = "the Yew Cemetery"            },
             new HuntSpot { Loc = new Point3D(2728,  776,  0), HMap = Map.Felucca, Name = "the Vesper Cemetery"         },
             new HuntSpot { Loc = new Point3D( 596, 2161,  0), HMap = Map.Felucca, Name = "the Skara Brae Cemetery"     },
-            new Hu
+            new HuntSpot { Loc = new Point3D(2530,  530,  0), HMap = Map.Felucca, Name = "the Minoc outskirts"         },
+            new HuntSpot { Loc = new Point3D(1828, 2820,  0), HMap = Map.Felucca, Name = "the Trinsic south gate"      },
+            new HuntSpot { Loc = new Point3D(1315, 1280,  0), HMap = Map.Felucca, Name = "Despise (first level)"       },
+            new HuntSpot { Loc = new Point3D(4111,  434,  5), HMap = Map.Felucca, Name = "Deceit (first level)"        },
+            new HuntSpot { Loc = new Point3D(2523, 1001,  0), HMap = Map.Felucca, Name = "Covetous (first level)"      },
+            new HuntSpot { Loc = new Point3D(1172, 1665,  0), HMap = Map.Felucca, Name = "the Orc Cave entrance"       },
+        };
+
+        // Britain bank anchor + restock spot (provisioner row near west bank)
+        private static readonly Point3D BritBankLoc   = new Point3D(1430, 1695, 0);
+        private static readonly Point3D BritRestockLoc = new Point3D(1457, 1706, 0);
+        private static readonly Map     BritMap        = Map.Felucca;
+
+        // ── Phase enum ─────────────────────────────────────────
+        private enum WanderPhase { None, Banking, Restocking, Hunting, Recalling }
+
+        // ── State fields ───────────────────────────────────────
+        private WanderPhase _wanderPhase    = WanderPhase.None;
+        private DateTime    _phaseEndsAt    = DateTime.MinValue;
+        private DateTime    _nextSpeechAt   = DateTime.MinValue;
+        private int         _currentHuntIdx = -1;
+        private bool        _recalling      = false;
+
+        // ── Ambient speech ─────────────────────────────────────
+        private static readonly string[] BankLines =
+        {
+            "Anyone seen any good loot lately?",
+            "Just got back from a long road. My feet are killing me.",
+            "The roads are dangerous these days. Watch yourselves.",
+            "I need to find work. Coin doesn't grow on trees.",
+            "Heard there's trouble near Despise again.",
+            "A traveller's life isn't glamorous, but it's honest.",
+            "Have you got any spare regs? I'm running low.",
+        };
+
+        private static readonly string[] HuntLines =
+        {
+            "Stay alert — this place is no joke.",
+            "I've seen worse... I think.",
+            "Keep moving. Standing still gets you killed.",
+            "Watch my back and I'll watch yours.",
+            "*scans the area carefully*",
+            "Good hunting grounds if you know where to look.",
+        };
+
+        // ── Constructor ────────────────────────────────────────
+        public WandererSimPlayer(string memberName, Point3D home, SpawnZone zone, ScheduleProfile schedule)
+            : base(FBGuilds.Wanderers, memberName, home, zone, schedule)
+        {
+        }
+
+        public WandererSimPlayer(Serial serial) : base(serial) { }
+
+        // ── Overrides ──────────────────────────────────────────
+        // Suppress the base state machine (Idle/Travelling) whenever the wander
+        // loop is running. WanderPhase.None is only a transient state that
+        // immediately transitions to Hunting, so this covers all active phases.
+        protected override bool SkipStateTick =>
+            base.SkipStateTick || _wanderPhase != WanderPhase.None;
+
+        // Wanderers manage their own banking inside the wander loop — never
+        // let the base SimPlayer banking logic fire on top of it.
+        protected override bool CanBank => false;
+
+        // ── OnThink ────────────────────────────────────────────
+        public override void OnThink()
+        {
+            base.OnThink();
+            if (Deleted || Map == Map.Internal) return;
+
+            // Snap back to hunt anchor if combat pushed us away
+            if (_wanderPhase == WanderPhase.Hunting && _currentHuntIdx >= 0)
+            {
+                HuntSpot spot = HuntSpots[_currentHuntIdx];
+                if (Map != spot.HMap || !InRange(spot.Loc, 20))
+                    MoveToWorld(spot.Loc, spot.HMap);
+            }
+
+            ManageWanderLoop();
+        }
+
+        // ── Wander loop logic ──────────────────────────────────
+        private void ManageWanderLoop()
+        {
+            switch (_wanderPhase)
+            {
+                case WanderPhase.None:
+                    StartHuntPhase();
+                    break;
+
+                case WanderPhase.Hunting:
+                    if (DateTime.UtcNow >= _phaseEndsAt)
+                        RecallToBritain();
+                    else
+                        TrySpeakAmbient(HuntLines);
+                    break;
+
+                case WanderPhase.Banking:
+                    if (DateTime.UtcNow >= _phaseEndsAt)
+                        StartRestockPhase();
+                    else
+                        TrySpeakAmbient(BankLines);
+                    break;
+
+                case WanderPhase.Restocking:
+                    if (DateTime.UtcNow >= _phaseEndsAt)
+                        StartHuntPhase();
+                    break;
+
+                case WanderPhase.Recalling:
+                    // DoRecall timer is running; nothing to do until callback fires
+                    break;
+            }
+        }
+
+        private void StartRestockPhase()
+        {
+            _wanderPhase = WanderPhase.Restocking;
+            _phaseEndsAt = DateTime.UtcNow + TimeSpan.FromMinutes(10.0);
+            MoveToWorld(BritRestockLoc, BritMap);
+        }
+
+        private void StartHuntPhase()
+        {
+            _currentHuntIdx = Utility.Random(HuntSpots.Length);
+            HuntSpot spot   = HuntSpots[_currentHuntIdx];
+
+            _phaseEndsAt = DateTime.UtcNow + TimeSpan.FromMinutes(40.0);
+
+            if (Map == Map.Internal)
+            {
+                // First activation — place directly into the hunt spot
+                MoveToWorld(spot.Loc, spot.HMap);
+                _wanderPhase = WanderPhase.Hunting;
+                SayIfVisible(string.Format("Heading out to {0}.", spot.Name));
+            }
+            else
+            {
+                // Subsequent loops — Recall from Britain to hunt spot
+                _wanderPhase = WanderPhase.Recalling;  // guard during cast delay
+                SayIfVisible(string.Format("*prepares a Recall scroll for {0}*", spot.Name));
+                DoRecall(spot.Loc, spot.HMap, () =>
+                {
+                    _wanderPhase = WanderPhase.Hunting; // 40-min clock starts on arrival
+                    SayIfVisible(string.Format("Made it to {0}.", spot.Name));
+                });
+            }
+        }
+
+        private void RecallToBritain()
+        {
+            // Recalling phase blocks ManageWanderLoop from re-entering until arrival.
+            _wanderPhase = WanderPhase.Recalling;
+
+            Say("That's enough hunting for now.");
+            DoRecall(BritBankLoc, BritMap, () =>
+            {
+                // Arrive at bank — start the 10 min bank hang-out
+                _wanderPhase = WanderPhase.Banking;
+                _phaseEndsAt = DateTime.UtcNow + TimeSpan.FromMinutes(10.0);
+                Say("Back to Britain.");
+            });
+        }
+
+        // ── Recall helper — visual + sound + 1.5 s delay ──────
+        private void DoRecall(Point3D dest, Map destMap, System.Action onArrival)
+        {
+            if (_recalling) return;
+            _recalling = true;
+
+            // Cast animation (spell cast effect)
+            PlaySound(0x1FC);
+            FixedParticles(0x3728, 8, 20, 5042, EffectLayer.Head);
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            {
+                if (Deleted) { _recalling = false; return; }
+
+                // Arrival flash at source
+                Effects.SendLocationEffect(Location, Map, 0x3728, 13, 1, 0, 0);
+
+                MoveToWorld(dest, destMap);
+
+                // Arrival flash at destination
+                Effects.SendLocationEffect(Location, Map, 0x3728, 13, 1, 0, 0);
+                PlaySound(0x1FC);
+
+                _recalling = false;
+                if (onArrival != null) onArrival();
+            });
+        }
+
+        // ── Small ambient speech helper ────────────────────────
+        private void TrySpeakAmbient(string[] lines)
+        {
+            if (DateTime.UtcNow < _nextSpeechAt) return;
+            if (!Utility.RandomBool()) return;  // 50% chance each tick
+
+            _nextSpeechAt = DateTime.UtcNow
+                + TimeSpan.FromSeconds(Utility.RandomMinMax(60, 180));
+
+            string line = lines[Utility.Random(lines.Length)];
+            Say(line);
+        }
+
+        private void SayIfVisible(string text)
+        {
+            if (Map != null && Map != Map.Internal)
+                Say(text);
+        }
+
+        // ── Status / health ────────────────────────────────────
+        public override string GetStatusDetail()
+        {
+            switch (_wanderPhase)
+            {
+                case WanderPhase.Banking:
+                {
+                    int mins = (int)(_phaseEndsAt - DateTime.UtcNow).TotalMinutes;
+                    return string.Format("Banking ({0}m left)", Math.Max(0, mins));
+                }
+                case WanderPhase.Restocking:
+                {
+                    int mins = (int)(_phaseEndsAt - DateTime.UtcNow).TotalMinutes;
+                    return string.Format("Restocking ({0}m left)", Math.Max(0, mins));
+                }
+                case WanderPhase.Hunting:
+                {
+                    string spot = _currentHuntIdx >= 0 && _currentHuntIdx < HuntSpots.Length
+                        ? HuntSpots[_currentHuntIdx].Name : "unknown";
+                    int mins = (int)(_phaseEndsAt - DateTime.UtcNow).TotalMinutes;
+                    return string.Format("Hunting: {0} ({1}m left)", spot, Math.Max(0, mins));
+                }
+                case WanderPhase.Recalling:
+                    return "Recalling...";
+                default:
+                    return "Idle (wander)";
+            }
+        }
+
+        public override SimHealthStatus GetHealth()
+        {
+            if (Deleted)                        return SimHealthStatus.Stuck;
+            if (Map == Map.Internal)            return SimHealthStatus.Stuck;
+            if (!Alive)                         return SimHealthStatus.Warning;
+            if (Hits < HitsMax / 4 && Alive)   return SimHealthStatus.Warning;
+
+            // Stuck hunting for more than 50 min (phase should last 40 max)
+            if (_wanderPhase == WanderPhase.Hunting &&
+                DateTime.UtcNow > _phaseEndsAt + TimeSpan.FromMinutes(10.0))
+                return SimHealthStatus.Stuck;
+
+            // Do NOT call base.GetHealth() — the base checks SimState.Travelling
+            // which stays set permanently because SkipStateTick suppresses the
+            // state machine. That would cause the watchdog to AutoFix every 15 min.
+            return SimHealthStatus.Healthy;
+        }
+
+        public override void AutoFix()
+        {
+            _wanderPhase    = WanderPhase.None;
+            _recalling      = false;
+            _phaseEndsAt    = DateTime.MinValue;
+            _currentHuntIdx = -1;
+            base.AutoFix();
+        }
+
+        // ── Template ───────────────────────────────────────────
+        protected override void ApplyTemplate()
+        {
+            SetStr(85,  95);
+            SetDex(80,  90);
+            SetInt(60,  70);
+            SetHits(110, 130);
+
+            SetSkill(SkillName.Swords,      65.0, 80.0);
+            SetSkill(SkillName.Tactics,     65.0, 80.0);
+            SetSkill(SkillName.Healing,     60.0, 75.0);
+            SetSkill(SkillName.Anatomy,     55.0, 70.0);
+            SetSkill(SkillName.Magery,      70.0, 85.0);  // needed for Recall
+            SetSkill(SkillName.EvalInt,     50.0, 65.0);
+            SetSkill(SkillName.MagicResist, 55.0, 70.0);
+
+            VirtualArmor = 18;
+            Fame  = 1500;
+            Karma = 1500;
+            Kills = 0;
+
+            // Travelling gear — lootable on death
+            var chest  = new StuddedChest();   chest.Hue  = 0x96D; AddItem(chest);
+            var arms   = new StuddedArms();    arms.Hue   = 0x96D; AddItem(arms);
+            var legs   = new StuddedLegs();    legs.Hue   = 0x96D; AddItem(legs);
+            var gloves = new StuddedGloves();  gloves.Hue = 0x96D; AddItem(gloves);
+            var gorget = new StuddedGorget();  gorget.Hue = 0x96D; AddItem(gorget);
+            var cloak  = new Cloak();          cloak.Hue  = 0x55;  AddItem(cloak);
+
+            AddItem(new Longsword());
+
+            // Gold so the corpse is worth looting
+            PackItem(new Gold(Utility.RandomMinMax(50, 150)));
+
+            // Spellbook for Recall (rules: spellbooks always PackItem)
+            var book = new Spellbook();
+            book.Content = 0xFFFFFFFFFFFFFFFF; // all spells
+            PackItem(book);
+        }
+
+        // ── Serialize / Deserialize ────────────────────────────
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.Write(1); // version
+
+            writer.Write((int)_wanderPhase);
+            writer.Write(_phaseEndsAt);
+            writer.Write(_currentHuntIdx);
+            writer.Write(_nextSpeechAt);  // v1
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            int version = reader.ReadInt();
+
+            if (version >= 0)
+            {
+                _wanderPhase    = (WanderPhase)reader.ReadInt();
+                _phaseEndsAt    = reader.ReadDateTime();
+                _currentHuntIdx = reader.ReadInt();
+            }
+            if (version >= 1)
+            {
+                _nextSpeechAt = reader.ReadDateTime();
+            }
+        }
+    }
+}
