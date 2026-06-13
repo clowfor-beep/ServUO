@@ -2806,11 +2806,9 @@ namespace Server.Custom
     //   Wraith Mage (_isWraithMage=true) — robes, dual spellbooks, AI_Mage
     // Both grey (AlwaysAttackable), Karma -100.
     //
-    // AI: Primary dungeon hunters.
-    //   - Spawn at home briefly, then gate to a random dungeon
-    //   - Hunt for 20-30 min: seek monsters / Blood Pact / reds
-    //   - Return home, rest 5-10 min, repeat
-    //   - Death Knight engages in melee; Wraith Mage casts spells
+    // AI: Dungeon hunters. Travel in groups of 1-4, never the same
+    //     dungeon twice in a row. Death Knights melee, Wraith Mages cast.
+    //     Hunt 20-30 min, return home, immediately form next group.
     // ============================================================
     public class DeadWatchersSimPlayer : SimPlayer
     {
@@ -2819,7 +2817,15 @@ namespace Server.Custom
         private DateTime _nextHuntTime   = DateTime.MinValue;
         private DateTime _huntReturnTime = DateTime.MinValue;
         private DateTime _nextFlavorTime = DateTime.MinValue;
-        private int      _lastDungeonIndex = -1;
+
+        // ── Static group coordination ─────────────────────────────
+        // One member picks the dungeon and sets group size; others join
+        // within the 90-second window. Members beyond the cap wait for
+        // the next group.
+        private static int      _groupDungeonIdx  = -1;  // active group destination
+        private static int      _lastGroupDungeonIdx = -1; // prevent repeats
+        private static DateTime _groupWindowEnd   = DateTime.MinValue;
+        private static int      _groupSlotsLeft   = 0;
 
         private static readonly (Point3D Loc, Map Map, string Name)[] _allDungeons =
         {
@@ -3079,12 +3085,38 @@ namespace Server.Custom
         {
             if (Deleted || !Alive) return;
 
-            // Pick a dungeon different from the last one visited
             int idx;
-            do { idx = Utility.Random(_allDungeons.Length); }
-            while (idx == _lastDungeonIndex && _allDungeons.Length > 1);
-            _lastDungeonIndex = idx;
-            var pick = _allDungeons[idx];
+
+            if (DateTime.UtcNow < _groupWindowEnd && _groupSlotsLeft > 0)
+            {
+                // Join the existing group
+                _groupSlotsLeft--;
+                idx = _groupDungeonIdx;
+            }
+            else if (DateTime.UtcNow >= _groupWindowEnd)
+            {
+                // Start a new group — pick dungeon different from last group
+                do { idx = Utility.Random(_allDungeons.Length); }
+                while (idx == _lastGroupDungeonIdx && _allDungeons.Length > 1);
+
+                _groupDungeonIdx     = idx;
+                _lastGroupDungeonIdx = idx;
+                _groupWindowEnd      = DateTime.UtcNow + TimeSpan.FromSeconds(90);
+                _groupSlotsLeft      = Utility.RandomMinMax(0, 3); // leader + 0-3 followers = 1-4 total
+            }
+            else
+            {
+                // Group full — wait for next cycle
+                _nextHuntTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(2, 5));
+                return;
+            }
+
+            var pick  = _allDungeons[idx];
+
+            // Stagger departures within a group so they don't all gate at once
+            int travelDelay = _groupSlotsLeft == 0
+                ? 0
+                : Utility.RandomMinMax(5, 25); // followers offset by 5-25s
 
             Animate(203, 7, 1, true, false, 0);
             Say(_isWraithMage
@@ -3094,11 +3126,10 @@ namespace Server.Custom
             Point3D dest    = pick.Loc;
             Map     destMap = pick.Map;
 
-            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5 + travelDelay), () =>
             {
                 if (Deleted || !Alive) return;
 
-                // Gate effects at origin
                 Effects.SendLocationParticles(
                     EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
                     0x376A, 9, 32, 5023);
@@ -3106,7 +3137,6 @@ namespace Server.Custom
 
                 MoveToWorld(dest, destMap);
 
-                // Gate effects at destination
                 Effects.SendLocationParticles(
                     EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
                     0x376A, 9, 32, 5023);
