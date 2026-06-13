@@ -416,6 +416,32 @@ namespace Server.Custom
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Ashrift",
                 deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(-15)));
 
+            // Dead Watchers (2) -- Yew crypts, near the old graveyard
+            // Death Knights: Corthis the Ashen, Grimvale
+            Point3D deadYew = FBZones.DeadWatchers_Home_Yew;
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("Corthis the Ashen",
+                deadYew, SpawnZone.Yew_City, ScheduleProfile.DeadWatchers(0)));
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("Grimvale",
+                deadYew, SpawnZone.Yew_City, ScheduleProfile.DeadWatchers(-30)));
+
+            // Dead Watchers (2) -- Vesper outskirts, swamp roads near Covetous
+            // Death Knight: The Bonewarden
+            // Wraith Mage:  The Pale Scribe
+            Point3D deadVesper = FBZones.DeadWatchers_Home_Vesper;
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("The Bonewarden",
+                deadVesper, SpawnZone.Vesper_City, ScheduleProfile.DeadWatchers(15)));
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("The Pale Scribe",
+                deadVesper, SpawnZone.Vesper_City, ScheduleProfile.DeadWatchers(-10), isWraithMage: true));
+
+            // Dead Watchers (2) -- Moonglow, drawn to the moongate convergence
+            // Death Knight: Ashwick
+            // Wraith Mage:  Vex of the Shroud
+            Point3D deadMoonglow = FBZones.DeadWatchers_Home_Moonglow;
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("Ashwick",
+                deadMoonglow, SpawnZone.Moonglow_City, ScheduleProfile.DeadWatchers(20)));
+            _allSimPlayers.Add(new DeadWatchersSimPlayer("Vex of the Shroud",
+                deadMoonglow, SpawnZone.Moonglow_City, ScheduleProfile.DeadWatchers(-20), isWraithMage: true));
+
             // Iron Company (3) -- Skara Brae chapter, guards the island docks
             _allSimPlayers.Add(new IronCompanySimPlayer("Harborguard Mads",
                 ironSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.IronCompany(0)));

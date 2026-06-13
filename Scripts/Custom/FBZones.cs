@@ -588,17 +588,17 @@ namespace Server.Custom
 
         public static readonly HunterSpawnEntry[] HunterTier1Spawns =
         {
-            new HunterSpawnEntry(SpawnZone.Despise_L1,        "Despise"),
-            new HunterSpawnEntry(SpawnZone.Despise_L1,        "Despise"),
+            new HunterSpawnEntry(SpawnZone.Despise_L1,        "Despise (Level 1)"),
+            new HunterSpawnEntry(SpawnZone.Despise_L1,        "Despise (Level 1)"),
             new HunterSpawnEntry(SpawnZone.Ilshenar_Rock,     "Rock Dungeon"),
             new HunterSpawnEntry(SpawnZone.Ilshenar_Spectre,  "Spectre Dungeon"),
-            new HunterSpawnEntry(SpawnZone.Ilshenar_Ankh_L1,  "Ankh Dungeon"),
+            new HunterSpawnEntry(SpawnZone.Ilshenar_Ankh_L1,  "Ankh Dungeon (Level 1)"),
         };
 
         public static readonly HunterSpawnEntry[] HunterTier2Spawns =
         {
-            new HunterSpawnEntry(SpawnZone.Covetous_L1,         "Covetous"),
-            new HunterSpawnEntry(SpawnZone.Deceit_L1,           "Deceit"),
+            new HunterSpawnEntry(SpawnZone.Covetous_L1,         "Covetous (Level 1)"),
+            new HunterSpawnEntry(SpawnZone.Deceit_L1,           "Deceit (Level 1)"),
             new HunterSpawnEntry(SpawnZone.Ilshenar_SpiderCave, "Spider Cave"),
             new HunterSpawnEntry(SpawnZone.Tokuno_Yomotsu,      "Yomotsu Mines"),
             new HunterSpawnEntry(SpawnZone.Tokuno_FanDancer,    "Fan Dancer's Dojo"),
@@ -606,20 +606,20 @@ namespace Server.Custom
 
         public static readonly HunterSpawnEntry[] HunterTier3Spawns =
         {
-            new HunterSpawnEntry(SpawnZone.Deceit_L2,          "Deceit"),
-            new HunterSpawnEntry(SpawnZone.Destard_L2,         "Destard"),
-            new HunterSpawnEntry(SpawnZone.Ilshenar_Exodus_L1, "Exodus Dungeon"),
+            new HunterSpawnEntry(SpawnZone.Deceit_L2,          "Deceit (Level 2)"),
+            new HunterSpawnEntry(SpawnZone.Destard_L2,         "Destard (Level 2)"),
+            new HunterSpawnEntry(SpawnZone.Ilshenar_Exodus_L1, "Exodus Dungeon (Level 1)"),
             new HunterSpawnEntry(SpawnZone.Malas_Labyrinth,    "Labyrinth"),
             new HunterSpawnEntry(SpawnZone.Ilshenar_Blood,     "Blood Dungeon"),
         };
 
         public static readonly HunterSpawnEntry[] HunterTier4Spawns =
         {
-            new HunterSpawnEntry(SpawnZone.Hythloth_L3,        "Hythloth"),
-            new HunterSpawnEntry(SpawnZone.Hythloth_L3,        "Hythloth"),
+            new HunterSpawnEntry(SpawnZone.Hythloth_L3,        "Hythloth (Level 3)"),
+            new HunterSpawnEntry(SpawnZone.Hythloth_L3,        "Hythloth (Level 3)"),
             new HunterSpawnEntry(SpawnZone.Malas_Doom,         "Doom"),
             new HunterSpawnEntry(SpawnZone.Malas_Citadel,      "Citadel"),
-            new HunterSpawnEntry(SpawnZone.Ilshenar_Exodus_L2, "Exodus Dungeon"),
+            new HunterSpawnEntry(SpawnZone.Ilshenar_Exodus_L2, "Exodus Dungeon (Level 2)"),
         };
 
         // Wanted NPCs lurk on the overworld surface near dungeon entrances.
@@ -732,6 +732,9 @@ namespace Server.Custom
         public static readonly Point3D Wanderers_Home_SkaraBrae        = new Point3D(588, 2130, 0);
         public static readonly Point3D CraftsmensLeague_Home_SkaraBrae = new Point3D(592, 2130, 0);
         public static readonly Point3D DeadWatchers_Home_SkaraBrae     = new Point3D(596, 2134, 0);
+        public static readonly Point3D DeadWatchers_Home_Yew           = new Point3D(560, 990,  0); // near Yew crypts
+        public static readonly Point3D DeadWatchers_Home_Vesper        = new Point3D(2840, 600, 0); // Vesper outskirts
+        public static readonly Point3D DeadWatchers_Home_Moonglow      = new Point3D(4440, 1120, 0); // Moonglow graveyard
         public static readonly Point3D IronCompany_Home_SkaraBrae      = new Point3D(600, 2134, 0);
 
         // Dungeon outskirt expansion homes (CanBank = false for all these guilds)
