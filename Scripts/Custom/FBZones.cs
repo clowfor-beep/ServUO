@@ -588,37 +588,38 @@ namespace Server.Custom
 
         public static readonly HunterSpawnEntry[] HunterTier1Spawns =
         {
-            new HunterSpawnEntry(SpawnZone.Despise_L1, "Despise"),
-            new HunterSpawnEntry(SpawnZone.Despise_L1, "Despise"),
-            new HunterSpawnEntry(SpawnZone.Despise_L1, "Despise"),
-            new HunterSpawnEntry(SpawnZone.Shame_L1,   "Shame"),
-            new HunterSpawnEntry(SpawnZone.Shame_L1,   "Shame"),
+            new HunterSpawnEntry(SpawnZone.Despise_L1,        "Despise"),
+            new HunterSpawnEntry(SpawnZone.Despise_L1,        "Despise"),
+            new HunterSpawnEntry(SpawnZone.Ilshenar_Rock,     "Rock Dungeon"),
+            new HunterSpawnEntry(SpawnZone.Ilshenar_Spectre,  "Spectre Dungeon"),
+            new HunterSpawnEntry(SpawnZone.Ilshenar_Ankh_L1,  "Ankh Dungeon"),
         };
 
         public static readonly HunterSpawnEntry[] HunterTier2Spawns =
         {
-            new HunterSpawnEntry(SpawnZone.Covetous_L1, "Covetous"),
-            new HunterSpawnEntry(SpawnZone.Covetous_L1, "Covetous"),
-            new HunterSpawnEntry(SpawnZone.Wrong_L1,    "Wrong"),
-            new HunterSpawnEntry(SpawnZone.Shame_L1,    "Shame"),
-            new HunterSpawnEntry(SpawnZone.Deceit_L1,   "Deceit"),
+            new HunterSpawnEntry(SpawnZone.Covetous_L1,         "Covetous"),
+            new HunterSpawnEntry(SpawnZone.Deceit_L1,           "Deceit"),
+            new HunterSpawnEntry(SpawnZone.Ilshenar_SpiderCave, "Spider Cave"),
+            new HunterSpawnEntry(SpawnZone.Tokuno_Yomotsu,      "Yomotsu Mines"),
+            new HunterSpawnEntry(SpawnZone.Tokuno_FanDancer,    "Fan Dancer's Dojo"),
         };
 
         public static readonly HunterSpawnEntry[] HunterTier3Spawns =
         {
-            new HunterSpawnEntry(SpawnZone.Deceit_L2,  "Deceit"),
-            new HunterSpawnEntry(SpawnZone.Deceit_L2,  "Deceit"),
-            new HunterSpawnEntry(SpawnZone.Destard_L2, "Destard"),
-            new HunterSpawnEntry(SpawnZone.Destard_L2, "Destard"),
-            new HunterSpawnEntry(SpawnZone.Destard_L2, "Destard"),
+            new HunterSpawnEntry(SpawnZone.Deceit_L2,          "Deceit"),
+            new HunterSpawnEntry(SpawnZone.Destard_L2,         "Destard"),
+            new HunterSpawnEntry(SpawnZone.Ilshenar_Exodus_L1, "Exodus Dungeon"),
+            new HunterSpawnEntry(SpawnZone.Malas_Labyrinth,    "Labyrinth"),
+            new HunterSpawnEntry(SpawnZone.Ilshenar_Blood,     "Blood Dungeon"),
         };
 
         public static readonly HunterSpawnEntry[] HunterTier4Spawns =
         {
-            new HunterSpawnEntry(SpawnZone.Hythloth_L3, "Hythloth"),
-            new HunterSpawnEntry(SpawnZone.Hythloth_L3, "Hythloth"),
-            new HunterSpawnEntry(SpawnZone.Hythloth_L3, "Hythloth"),
-            new HunterSpawnEntry(SpawnZone.Hythloth_L3, "Hythloth"),
+            new HunterSpawnEntry(SpawnZone.Hythloth_L3,        "Hythloth"),
+            new HunterSpawnEntry(SpawnZone.Hythloth_L3,        "Hythloth"),
+            new HunterSpawnEntry(SpawnZone.Malas_Doom,         "Doom"),
+            new HunterSpawnEntry(SpawnZone.Malas_Citadel,      "Citadel"),
+            new HunterSpawnEntry(SpawnZone.Ilshenar_Exodus_L2, "Exodus Dungeon"),
         };
 
         // Wanted NPCs lurk on the overworld surface near dungeon entrances.

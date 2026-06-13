@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Server;
 using Server.Commands;
 using Server.Items;
@@ -76,6 +77,8 @@ namespace Server.Custom
                 "Wind",            // mage city — guarded
                 "Sanctuary",       // peaceful haven — no aggression
                 "Bedlam",          // removed by request
+                "Shame",           // excluded by request
+                "Wrong",           // excluded by request
             };
 
         private static readonly TimeSpan WantedTTL = TimeSpan.FromMinutes(20);
@@ -410,13 +413,12 @@ namespace Server.Custom
             BaseWantedNPC npc = CreateWantedNPC(wantedTier);
             if (npc == null) return;
 
-            // Pick a random dungeon — skip guarded / peaceful zones where guards
-            // would kill the wanted NPC immediately on spawn.
-            var dungeons = Server.Items.AtlasGump.Dungeons;
-            AtlasLocation dungeon;
-            int pickAttempts = 0;
-            do { dungeon = dungeons[Utility.Random(dungeons.Count)]; }
-            while (_guardedDungeons.Contains(dungeon.Name) && ++pickAttempts < 50);
+            // Pick a random dungeon — skip guarded / peaceful zones.
+            var eligible = Server.Items.AtlasGump.Dungeons
+                .Where(d => !_guardedDungeons.Contains(d.Name))
+                .ToList();
+            if (eligible.Count == 0) { npc.Delete(); return; }
+            AtlasLocation dungeon = eligible[Utility.Random(eligible.Count)];
 
             // Find a valid tile near the dungeon entrance with a small random jitter
             Point3D loc = Point3D.Zero;
