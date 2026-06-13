@@ -174,16 +174,16 @@ namespace Server.Custom
             _allSimPlayers.Add(new PaladinOrderSimPlayer("Sir Edwyn the Pure",
                 paladinHome, SpawnZone.Britain_Roads, ScheduleProfile.PaladinOrder(-15)));
 
-            // DEAD WATCHERS -- 3 members (Britain)
+            // DEAD WATCHERS -- 3 members (Britain graveyard)
             // Death Knights: The Pale Warden, Ashborn
             // Wraith Mage:   Morwen of the Veil
             Point3D deadHome = FBZones.DeadWatchers_Home;
             _allSimPlayers.Add(new DeadWatchersSimPlayer("The Pale Warden",
-                deadHome, SpawnZone.Britain_Roads, ScheduleProfile.DeadWatchers(0)));
+                deadHome, SpawnZone.Britain_Graveyard, ScheduleProfile.DeadWatchers(0)));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Morwen of the Veil",
-                deadHome, SpawnZone.Britain_Roads, ScheduleProfile.DeadWatchers(30), isWraithMage: true));
+                deadHome, SpawnZone.Britain_Graveyard, ScheduleProfile.DeadWatchers(30), isWraithMage: true));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Ashborn",
-                deadHome, SpawnZone.Britain_Roads, ScheduleProfile.DeadWatchers(-20)));
+                deadHome, SpawnZone.Britain_Graveyard, ScheduleProfile.DeadWatchers(-20)));
 
             // DREAD HUNTERS -- 3 members
             Point3D dreadHome = FBZones.DreadHunters_Home;
@@ -406,41 +406,41 @@ namespace Server.Custom
             _allSimPlayers.Add(new CraftsmensLeagueSimPlayer("Boatwright Edda",
                 craftSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.CraftsmensLeague(-25)));
 
-            // Dead Watchers (3) -- the island's graveyard has its appeal
+            // Dead Watchers (3) -- Skara Brae cemetery
             // Death Knights: Isle Shade, Ashrift
             // Wraith Mage:   The Ferryman
             _allSimPlayers.Add(new DeadWatchersSimPlayer("The Ferryman",
-                deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(0), isWraithMage: true));
+                deadSkara, SpawnZone.SkaraBrae_Graveyard, ScheduleProfile.DeadWatchers(0), isWraithMage: true));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Isle Shade",
-                deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(20)));
+                deadSkara, SpawnZone.SkaraBrae_Graveyard, ScheduleProfile.DeadWatchers(20)));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Ashrift",
-                deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(-15)));
+                deadSkara, SpawnZone.SkaraBrae_Graveyard, ScheduleProfile.DeadWatchers(-15)));
 
-            // Dead Watchers (2) -- Yew crypts, near the old graveyard
+            // Dead Watchers (2) -- Yew crypts
             // Death Knights: Corthis the Ashen, Grimvale
             Point3D deadYew = FBZones.DeadWatchers_Home_Yew;
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Corthis the Ashen",
-                deadYew, SpawnZone.Yew_City, ScheduleProfile.DeadWatchers(0)));
+                deadYew, SpawnZone.Yew_Crypts, ScheduleProfile.DeadWatchers(0)));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Grimvale",
-                deadYew, SpawnZone.Yew_City, ScheduleProfile.DeadWatchers(-30)));
+                deadYew, SpawnZone.Yew_Crypts, ScheduleProfile.DeadWatchers(-30)));
 
-            // Dead Watchers (2) -- Vesper outskirts, swamp roads near Covetous
+            // Dead Watchers (2) -- Vesper cemetery
             // Death Knight: The Bonewarden
             // Wraith Mage:  The Pale Scribe
             Point3D deadVesper = FBZones.DeadWatchers_Home_Vesper;
             _allSimPlayers.Add(new DeadWatchersSimPlayer("The Bonewarden",
-                deadVesper, SpawnZone.Vesper_City, ScheduleProfile.DeadWatchers(15)));
+                deadVesper, SpawnZone.Vesper_Graveyard, ScheduleProfile.DeadWatchers(15)));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("The Pale Scribe",
-                deadVesper, SpawnZone.Vesper_City, ScheduleProfile.DeadWatchers(-10), isWraithMage: true));
+                deadVesper, SpawnZone.Vesper_Graveyard, ScheduleProfile.DeadWatchers(-10), isWraithMage: true));
 
-            // Dead Watchers (2) -- Moonglow, drawn to the moongate convergence
+            // Dead Watchers (2) -- Moonglow graveyard
             // Death Knight: Ashwick
             // Wraith Mage:  Vex of the Shroud
             Point3D deadMoonglow = FBZones.DeadWatchers_Home_Moonglow;
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Ashwick",
-                deadMoonglow, SpawnZone.Moonglow_City, ScheduleProfile.DeadWatchers(20)));
+                deadMoonglow, SpawnZone.Moonglow_Graveyard, ScheduleProfile.DeadWatchers(20)));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Vex of the Shroud",
-                deadMoonglow, SpawnZone.Moonglow_City, ScheduleProfile.DeadWatchers(-20), isWraithMage: true));
+                deadMoonglow, SpawnZone.Moonglow_Graveyard, ScheduleProfile.DeadWatchers(-20), isWraithMage: true));
 
             // Iron Company (3) -- Skara Brae chapter, guards the island docks
             _allSimPlayers.Add(new IronCompanySimPlayer("Harborguard Mads",

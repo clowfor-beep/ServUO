@@ -139,6 +139,13 @@ namespace Server.Custom
         Vesper_City,
         Moonglow_City,
         SkaraBrae_City,
+
+        // ── SimPlayer graveyard wander zones ─────────────────────────────────────
+        // Dark/dead areas where the Dead Watchers loiter between dungeon runs.
+        Yew_Crypts,
+        Vesper_Graveyard,
+        Moonglow_Graveyard,
+        SkaraBrae_Graveyard,
     }
 
     // ── Hunter spawn entry ────────────────────────────────────────────────
@@ -469,6 +476,19 @@ namespace Server.Custom
 
                 [SpawnZone.SkaraBrae_City] = new ZoneData(Map.Felucca,
                     new Rectangle2D(525, 2000, 180, 200)),
+
+                // ── Dead Watcher graveyard wander zones ──────────────────────────
+                [SpawnZone.Yew_Crypts] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(506, 965, 92, 53)),   // Yew crypts and surrounding graveyard
+
+                [SpawnZone.Vesper_Graveyard] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(2814, 636, 86, 64)),  // Vesper cemetery east of town
+
+                [SpawnZone.Moonglow_Graveyard] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(4420, 1105, 60, 65)), // Moonglow graveyard
+
+                [SpawnZone.SkaraBrae_Graveyard] = new ZoneData(Map.Felucca,
+                    new Rectangle2D(570, 2090, 60, 70)),  // Skara Brae cemetery near the shore
             };
         }
 
@@ -732,9 +752,9 @@ namespace Server.Custom
         public static readonly Point3D Wanderers_Home_SkaraBrae        = new Point3D(588, 2130, 0);
         public static readonly Point3D CraftsmensLeague_Home_SkaraBrae = new Point3D(592, 2130, 0);
         public static readonly Point3D DeadWatchers_Home_SkaraBrae     = new Point3D(596, 2134, 0);
-        public static readonly Point3D DeadWatchers_Home_Yew           = new Point3D(560, 990,  0); // near Yew crypts
-        public static readonly Point3D DeadWatchers_Home_Vesper        = new Point3D(2840, 600, 0); // Vesper outskirts
-        public static readonly Point3D DeadWatchers_Home_Moonglow      = new Point3D(4440, 1120, 0); // Moonglow graveyard
+        public static readonly Point3D DeadWatchers_Home_Yew           = new Point3D(546, 984,  0); // Yew crypts entrance
+        public static readonly Point3D DeadWatchers_Home_Vesper        = new Point3D(2846, 655, 0); // Vesper cemetery
+        public static readonly Point3D DeadWatchers_Home_Moonglow      = new Point3D(4438, 1128, 0); // Moonglow graveyard
         public static readonly Point3D IronCompany_Home_SkaraBrae      = new Point3D(600, 2134, 0);
 
         // Dungeon outskirt expansion homes (CanBank = false for all these guilds)
