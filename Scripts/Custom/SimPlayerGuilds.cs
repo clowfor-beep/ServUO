@@ -2801,14 +2801,31 @@ namespace Server.Custom
 
     // ============================================================
     // Dead Watchers  (Tier 3 -- Perm Grey)
-    // Bone armour, necromancy. Grey alignment -- attackable.
-    // StatCap 225.
+    // Two sub-types:
+    //   Death Knight (default) — dark bone armour, necro warrior
+    //   Wraith Mage (_isWraithMage=true) — robes, dual spellbooks, spectral caster
+    // Both are grey (AlwaysAttackable), Karma -100.
     // ============================================================
     public class DeadWatchersSimPlayer : SimPlayer
     {
+        private bool _isWraithMage;
+
+        // Default constructor — Death Knight
         public DeadWatchersSimPlayer(string memberName, Point3D home,
                                      SpawnZone zone, ScheduleProfile schedule)
-            : base(FBGuilds.DeadWatchers, memberName, home, zone, schedule) { }
+            : base(FBGuilds.DeadWatchers, memberName, home, zone, schedule)
+        {
+            _isWraithMage = false;
+        }
+
+        // Wraith Mage constructor
+        public DeadWatchersSimPlayer(string memberName, Point3D home,
+                                     SpawnZone zone, ScheduleProfile schedule,
+                                     bool isWraithMage)
+            : base(FBGuilds.DeadWatchers, memberName, home, zone, schedule)
+        {
+            _isWraithMage = isWraithMage;
+        }
 
         public DeadWatchersSimPlayer(Serial serial) : base(serial) { }
 
@@ -2816,6 +2833,21 @@ namespace Server.Custom
         public override bool AlwaysAttackable => true;
 
         protected override void ApplyTemplate()
+        {
+            Fame  = 8000;
+            Karma = -100; // perm grey
+            Kills = 0;
+
+            if (_isWraithMage)
+                ApplyWraithMage();
+            else
+                ApplyDeathKnight();
+        }
+
+        // ── Death Knight ─────────────────────────────────────────
+        // STR 90 / DEX 80 / INT 55, Hits 200
+        // Dark bone armour, enchanted longsword, necro spellbook
+        private void ApplyDeathKnight()
         {
             SetStr(90, 90);
             SetDex(80, 80);
@@ -2831,30 +2863,138 @@ namespace Server.Custom
             SetSkill(SkillName.Parry,       100.0, 100.0);
 
             VirtualArmor = 45;
-            Fame  = 8000;
-            Karma = -100; // perm grey
-            Kills = 0;
 
-            // Dark bone armour
-            var chest = new BoneChest();  chest.Hue = 0x455; AddItem(chest);
-            var legs  = new BoneLegs();   legs.Hue  = 0x455; AddItem(legs);
-            var arms  = new BoneArms();   arms.Hue  = 0x455; AddItem(arms);
-            var glove = new BoneGloves(); glove.Hue = 0x455; AddItem(glove);
-            var helm  = new BoneHelm();   helm.Hue  = 0x455; AddItem(helm);
-            AddItem(new Longsword());
-            PackItem(new NecromancerSpellbook()); // always PackItem
+            // Dark bone armour — enchanted
+            var chest = new BoneChest();
+            chest.Hue = 0x455;
+            chest.Attributes.DefendChance       = 8;
+            chest.Attributes.RegenHits           = 2;
+            chest.HitPoints = chest.MaxHitPoints = 200;
+            AddItem(chest);
+
+            var legs = new BoneLegs();
+            legs.Hue = 0x455;
+            legs.Attributes.DefendChance        = 6;
+            legs.HitPoints = legs.MaxHitPoints = 200;
+            AddItem(legs);
+
+            var arms = new BoneArms();
+            arms.Hue = 0x455;
+            arms.Attributes.DefendChance        = 5;
+            arms.HitPoints = arms.MaxHitPoints = 200;
+            AddItem(arms);
+
+            var glove = new BoneGloves();
+            glove.Hue = 0x455;
+            glove.Attributes.AttackChance       = 7;
+            glove.HitPoints = glove.MaxHitPoints = 200;
+            AddItem(glove);
+
+            var helm = new BoneHelm();
+            helm.Hue = 0x455;
+            helm.Attributes.DefendChance        = 5;
+            helm.HitPoints = helm.MaxHitPoints = 200;
+            AddItem(helm);
+
+            // Enchanted longsword
+            var sword = new Longsword();
+            sword.Hue                           = 0x455;
+            sword.Attributes.AttackChance       = 10;
+            sword.Attributes.WeaponDamage       = 15;
+            sword.WeaponAttributes.HitHarm      = 30; // hits for extra cold damage
+            sword.HitPoints = sword.MaxHitPoints = 200;
+            AddItem(sword);
+
+            // Jewellery
+            var ring = new GoldRing();
+            ring.Attributes.BonusHits           = 10;
+            ring.Attributes.RegenHits            = 1;
+            AddItem(ring);
+
+            var bracelet = new GoldBracelet();
+            bracelet.Attributes.BonusStam        = 5;
+            bracelet.Attributes.DefendChance      = 5;
+            AddItem(bracelet);
+
+            // Spellbook (necro only — no regular spells)
+            PackItem(new NecromancerSpellbook());
+        }
+
+        // ── Wraith Mage ──────────────────────────────────────────
+        // STR 40 / DEX 55 / INT 130, Mana 300, VA 15
+        // Black robes, enchanted staff, dual spellbooks, mana jewellery
+        private void ApplyWraithMage()
+        {
+            SetStr(40, 40);
+            SetDex(55, 55);
+            SetInt(130, 130);
+            SetHits(120, 120);
+            SetMana(300);
+
+            SetSkill(SkillName.Magery,      100.0, 100.0);
+            SetSkill(SkillName.EvalInt,     100.0, 100.0);
+            SetSkill(SkillName.MagicResist, 100.0, 100.0);
+            SetSkill(SkillName.Necromancy,  100.0, 100.0);
+            SetSkill(SkillName.SpiritSpeak, 100.0, 100.0);
+            SetSkill(SkillName.Meditation,  100.0, 100.0);
+            SetSkill(SkillName.Wrestling,   100.0, 100.0);
+
+            VirtualArmor = 15;
+
+            // Spectral robes
+            var robe = new Robe();
+            robe.Hue = 0x455; // near-black
+            AddItem(robe);
+
+            var cloak = new Cloak();
+            cloak.Hue = 0x455;
+            AddItem(cloak);
+
+            var sandals = new Sandals();
+            sandals.Hue = 0x455;
+            AddItem(sandals);
+
+            // Enchanted BlackStaff — spell channeling so they can cast while holding it
+            var staff = new BlackStaff();
+            staff.Hue = 0x455;
+            staff.Attributes.SpellChanneling    = 1;
+            staff.Attributes.LowerManaCost      = 8;
+            staff.WeaponAttributes.MageWeapon   = 30; // -30 weapon skill, use Magery instead
+            staff.HitPoints = staff.MaxHitPoints = 200;
+            AddItem(staff);
+
+            // Jewellery — mana and cast bonuses
+            var ring = new GoldRing();
+            ring.Attributes.BonusMana           = 15;
+            ring.Attributes.RegenMana            = 2;
+            AddItem(ring);
+
+            var bracelet = new GoldBracelet();
+            bracelet.Attributes.BonusInt        = 10;
+            bracelet.Attributes.SpellDamage     = 10;
+            AddItem(bracelet);
+
+            // Both spellbooks
+            PackItem(new Spellbook());
+            PackItem(new NecromancerSpellbook());
         }
 
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
-            writer.Write(0); // version
+            writer.Write(1); // version
+
+            // v1
+            writer.Write(_isWraithMage);
         }
 
         public override void Deserialize(GenericReader reader)
         {
             base.Deserialize(reader);
-            reader.ReadInt(); // version
+            int version = reader.ReadInt();
+
+            if (version >= 1)
+                _isWraithMage = reader.ReadBool();
         }
     }
 
@@ -3383,124 +3523,4 @@ namespace Server.Custom
         {
             switch (_wanderPhase)
             {
-                case WanderPhase.Banking:
-                {
-                    int mins = (int)(_phaseEndsAt - DateTime.UtcNow).TotalMinutes;
-                    return string.Format("Banking ({0}m left)", Math.Max(0, mins));
-                }
-                case WanderPhase.Restocking:
-                {
-                    int mins = (int)(_phaseEndsAt - DateTime.UtcNow).TotalMinutes;
-                    return string.Format("Restocking ({0}m left)", Math.Max(0, mins));
-                }
-                case WanderPhase.Hunting:
-                {
-                    string spot = _currentHuntIdx >= 0 && _currentHuntIdx < HuntSpots.Length
-                        ? HuntSpots[_currentHuntIdx].Name : "unknown";
-                    int mins = (int)(_phaseEndsAt - DateTime.UtcNow).TotalMinutes;
-                    return string.Format("Hunting: {0} ({1}m left)", spot, Math.Max(0, mins));
-                }
-                case WanderPhase.Recalling:
-                    return "Recalling...";
-                default:
-                    return "Idle (wander)";
-            }
-        }
-
-        public override SimHealthStatus GetHealth()
-        {
-            if (Deleted)                        return SimHealthStatus.Stuck;
-            if (Map == Map.Internal)            return SimHealthStatus.Stuck;
-            if (!Alive)                         return SimHealthStatus.Warning;
-            if (Hits < HitsMax / 4 && Alive)   return SimHealthStatus.Warning;
-
-            // Stuck hunting for more than 50 min (phase should last 40 max)
-            if (_wanderPhase == WanderPhase.Hunting &&
-                DateTime.UtcNow > _phaseEndsAt + TimeSpan.FromMinutes(10.0))
-                return SimHealthStatus.Stuck;
-
-            // Do NOT call base.GetHealth() — the base checks SimState.Travelling
-            // which stays set permanently because SkipStateTick suppresses the
-            // state machine. That would cause the watchdog to AutoFix every 15 min.
-            return SimHealthStatus.Healthy;
-        }
-
-        public override void AutoFix()
-        {
-            _wanderPhase    = WanderPhase.None;
-            _recalling      = false;
-            _phaseEndsAt    = DateTime.MinValue;
-            _currentHuntIdx = -1;
-            base.AutoFix();
-        }
-
-        // ── Template ───────────────────────────────────────────
-        protected override void ApplyTemplate()
-        {
-            SetStr(85,  95);
-            SetDex(80,  90);
-            SetInt(60,  70);
-            SetHits(110, 130);
-
-            SetSkill(SkillName.Swords,      65.0, 80.0);
-            SetSkill(SkillName.Tactics,     65.0, 80.0);
-            SetSkill(SkillName.Healing,     60.0, 75.0);
-            SetSkill(SkillName.Anatomy,     55.0, 70.0);
-            SetSkill(SkillName.Magery,      70.0, 85.0);  // needed for Recall
-            SetSkill(SkillName.EvalInt,     50.0, 65.0);
-            SetSkill(SkillName.MagicResist, 55.0, 70.0);
-
-            VirtualArmor = 18;
-            Fame  = 1500;
-            Karma = 1500;
-            Kills = 0;
-
-            // Travelling gear — lootable on death
-            var chest  = new StuddedChest();   chest.Hue  = 0x96D; AddItem(chest);
-            var arms   = new StuddedArms();    arms.Hue   = 0x96D; AddItem(arms);
-            var legs   = new StuddedLegs();    legs.Hue   = 0x96D; AddItem(legs);
-            var gloves = new StuddedGloves();  gloves.Hue = 0x96D; AddItem(gloves);
-            var gorget = new StuddedGorget();  gorget.Hue = 0x96D; AddItem(gorget);
-            var cloak  = new Cloak();          cloak.Hue  = 0x55;  AddItem(cloak);
-
-            AddItem(new Longsword());
-
-            // Gold so the corpse is worth looting
-            PackItem(new Gold(Utility.RandomMinMax(50, 150)));
-
-            // Spellbook for Recall (rules: spellbooks always PackItem)
-            var book = new Spellbook();
-            book.Content = 0xFFFFFFFFFFFFFFFF; // all spells
-            PackItem(book);
-        }
-
-        // ── Serialize / Deserialize ────────────────────────────
-        public override void Serialize(GenericWriter writer)
-        {
-            base.Serialize(writer);
-            writer.Write(1); // version
-
-            writer.Write((int)_wanderPhase);
-            writer.Write(_phaseEndsAt);
-            writer.Write(_currentHuntIdx);
-            writer.Write(_nextSpeechAt);  // v1
-        }
-
-        public override void Deserialize(GenericReader reader)
-        {
-            base.Deserialize(reader);
-            int version = reader.ReadInt();
-
-            if (version >= 0)
-            {
-                _wanderPhase    = (WanderPhase)reader.ReadInt();
-                _phaseEndsAt    = reader.ReadDateTime();
-                _currentHuntIdx = reader.ReadInt();
-            }
-            if (version >= 1)
-            {
-                _nextSpeechAt = reader.ReadDateTime();
-            }
-        }
-    }
-}
+    

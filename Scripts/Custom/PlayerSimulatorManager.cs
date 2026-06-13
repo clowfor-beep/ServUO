@@ -174,12 +174,14 @@ namespace Server.Custom
             _allSimPlayers.Add(new PaladinOrderSimPlayer("Sir Edwyn the Pure",
                 paladinHome, SpawnZone.Britain_Roads, ScheduleProfile.PaladinOrder(-15)));
 
-            // DEAD WATCHERS -- 3 members
+            // DEAD WATCHERS -- 3 members (Britain)
+            // Death Knights: The Pale Warden, Ashborn
+            // Wraith Mage:   Morwen of the Veil
             Point3D deadHome = FBZones.DeadWatchers_Home;
             _allSimPlayers.Add(new DeadWatchersSimPlayer("The Pale Warden",
                 deadHome, SpawnZone.Britain_Roads, ScheduleProfile.DeadWatchers(0)));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Morwen of the Veil",
-                deadHome, SpawnZone.Britain_Roads, ScheduleProfile.DeadWatchers(30)));
+                deadHome, SpawnZone.Britain_Roads, ScheduleProfile.DeadWatchers(30), isWraithMage: true));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Ashborn",
                 deadHome, SpawnZone.Britain_Roads, ScheduleProfile.DeadWatchers(-20)));
 
@@ -405,8 +407,10 @@ namespace Server.Custom
                 craftSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.CraftsmensLeague(-25)));
 
             // Dead Watchers (3) -- the island's graveyard has its appeal
+            // Death Knights: Isle Shade, Ashrift
+            // Wraith Mage:   The Ferryman
             _allSimPlayers.Add(new DeadWatchersSimPlayer("The Ferryman",
-                deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(0)));
+                deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(0), isWraithMage: true));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Isle Shade",
                 deadSkara, SpawnZone.SkaraBrae_City, ScheduleProfile.DeadWatchers(20)));
             _allSimPlayers.Add(new DeadWatchersSimPlayer("Ashrift",
@@ -994,14 +998,4 @@ namespace Server.Custom
             int version = reader.ReadInt();
 
             int count = reader.ReadInt();
-            for (int i = 0; i < count; i++)
-            {
-                SimPlayer sp = reader.ReadMobile() as SimPlayer;
-                if (sp != null)
-                    _allSimPlayers.Add(sp);
-            }
-
-            _instance = this;
-        }
-    }
-}
+            for (int i
