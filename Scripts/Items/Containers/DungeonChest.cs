@@ -96,6 +96,10 @@ namespace Server.Items
             if (Utility.RandomDouble() < 0.05)
                 DropItem(new TreasureMap(2, Map.Felucca));
 
+            // 10% chance: random Mysticism scroll
+            if (Utility.RandomDouble() < 0.10)
+                DropItem(Loot.RandomScroll(0, 15, SpellbookType.Mystic));
+
             // 1% chance: random currency orb
             if (Utility.RandomDouble() < 0.01)
                 DropItem(RandomOrb());
@@ -170,6 +174,10 @@ namespace Server.Items
             if (Utility.RandomDouble() < 0.05)
                 DropItem(new TreasureMap(3, Map.Felucca));
 
+            // 10% chance: random Mysticism scroll
+            if (Utility.RandomDouble() < 0.10)
+                DropItem(Loot.RandomScroll(0, 15, SpellbookType.Mystic));
+
             // 1% chance: random currency orb
             if (Utility.RandomDouble() < 0.01)
                 DropItem(RandomOrb());
@@ -243,6 +251,10 @@ namespace Server.Items
             // 10% chance: circle 8 scroll
             if (Utility.RandomDouble() < 0.10)
                 DropItem(Loot.RandomScroll(56, 63, SpellbookType.Regular));
+
+            // 10% chance: random Mysticism scroll
+            if (Utility.RandomDouble() < 0.10)
+                DropItem(Loot.RandomScroll(0, 15, SpellbookType.Mystic));
 
             // 1% chance: random currency orb
             if (Utility.RandomDouble() < 0.01)
@@ -326,6 +338,10 @@ namespace Server.Items
             // 10% chance: circle 8 scroll
             if (Utility.RandomDouble() < 0.10)
                 DropItem(Loot.RandomScroll(56, 63, SpellbookType.Regular));
+
+            // 10% chance: random Mysticism scroll
+            if (Utility.RandomDouble() < 0.10)
+                DropItem(Loot.RandomScroll(0, 15, SpellbookType.Mystic));
 
             // 1% chance: random currency orb
             if (Utility.RandomDouble() < 0.01)

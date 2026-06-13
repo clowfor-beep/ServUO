@@ -863,6 +863,12 @@ namespace Server.Items
             }
             #endregion
 
+            #region Mysticism Scrolls
+            // 10% chance: random Mysticism scroll in any treasure map chest
+            if (Utility.RandomDouble() < 0.10)
+                chest.DropItem(Loot.RandomScroll(0, 15, SpellbookType.Mystic));
+            #endregion
+
             #region Decorations
             switch (level)
             {
