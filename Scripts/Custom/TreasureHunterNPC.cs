@@ -198,7 +198,7 @@ namespace Server.Custom
 
             SetStr(100); SetDex(100); SetInt(100);
             SetHits(200);
-            SetSkill(SkillName.Cartography, 100.0, 100.0);
+            SetSkill(SkillName.Cartography, 130.0, 130.0);
 
             int leather = Utility.RandomList(1109, 2117, 2213, 2306);
             int boot    = Utility.RandomList(1107, 2101, 2306);
