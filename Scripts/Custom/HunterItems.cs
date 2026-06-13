@@ -1009,7 +1009,7 @@ namespace Server.Custom
     // ============================================================
     public class HuntersMapGump : Gump
     {
-        private const int W       = 480;
+        private const int W       = 560;
         private const int RowH    = 46;
         private const int HeaderH = 80;
         private const int FooterH = 20;
@@ -1062,8 +1062,8 @@ namespace Server.Custom
             // Column headers
             AddHtml(18,  56, 70,  16, "<BASEFONT COLOR=#666655>Type</BASEFONT>",     false, false);
             AddHtml(90,  56, 160, 16, "<BASEFONT COLOR=#666655>Target</BASEFONT>",   false, false);
-            AddHtml(255, 56, 130, 16, "<BASEFONT COLOR=#666655>Location</BASEFONT>", false, false);
-            AddHtml(390, 56, 80,  16, "<BASEFONT COLOR=#666655>Coords</BASEFONT>",   false, false);
+            AddHtml(255, 56, 200, 16, "<BASEFONT COLOR=#666655>Location</BASEFONT>", false, false);
+            AddHtml(460, 56, 80,  16, "<BASEFONT COLOR=#666655>Coords</BASEFONT>",   false, false);
             AddImageTiled(12, 72, W - 24, 1, 9264);
 
             if (snapshot.Count == 0)
@@ -1083,8 +1083,8 @@ namespace Server.Custom
 
                     AddHtml(18,  y, 70,  RowH, $"<BASEFONT COLOR={typeCol}>{e.Type}</BASEFONT>",    false, false);
                     AddHtml(90,  y, 160, RowH, $"<BASEFONT COLOR=#DDCCAA>{e.Name}</BASEFONT>",      false, false);
-                    AddHtml(255, y, 130, RowH, $"<BASEFONT COLOR=#AABBCC>{e.Location}</BASEFONT>",  false, false);
-                    AddHtml(390, y, 80,  RowH, $"<BASEFONT COLOR=#888888>{e.X}, {e.Y}</BASEFONT>",  false, false);
+                    AddHtml(255, y, 200, RowH, $"<BASEFONT COLOR=#AABBCC>{e.Location}</BASEFONT>",  false, false);
+                    AddHtml(460, y, 80,  RowH, $"<BASEFONT COLOR=#888888>{e.X}, {e.Y}</BASEFONT>",  false, false);
 
                     if (i < snapshot.Count - 1)
                         AddImageTiled(12, y + RowH - 2, W - 24, 1, 9264);
