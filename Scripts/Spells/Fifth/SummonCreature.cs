@@ -64,7 +64,8 @@ namespace Server.Spells.Fifth
 
                     //creature.ControlSlots = 2;
 
-                    TimeSpan duration = TimeSpan.FromSeconds(4.0 * Caster.Skills[SkillName.Magery].Value);
+                    double inscribeBonus = 1.0 + (Caster.Skills[SkillName.Inscribe].Value / 100.0);
+                    TimeSpan duration = TimeSpan.FromSeconds(4.0 * Caster.Skills[SkillName.Magery].Value * inscribeBonus);
 
                     SpellHelper.Summon(creature, Caster, 0x215, duration, false, false);
                 }

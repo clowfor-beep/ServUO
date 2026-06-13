@@ -29,7 +29,8 @@ namespace Server.Spells.Spellweaving
         {
             if (CheckSequence())
             {
-                TimeSpan duration = TimeSpan.FromMinutes(Caster.Skills.Spellweaving.Value / 24 + FocusLevel * 2);
+                double inscribeBonus = 1.0 + (Caster.Skills[SkillName.Inscribe].Value / 100.0);
+                TimeSpan duration = TimeSpan.FromMinutes((Caster.Skills.Spellweaving.Value / 24 + FocusLevel * 2) * inscribeBonus);
                 int summons = Math.Min(1 + FocusLevel, Caster.FollowersMax - Caster.Followers);
 
                 for (int i = 0; i < summons; i++)

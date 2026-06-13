@@ -40,7 +40,11 @@ namespace Server.Custom
         public static TimeSpan GetSummonDuration(Mobile caster)
         {
             double ss = caster.Skills[SkillName.SpiritSpeak].Value;
-            return TimeSpan.FromSeconds(120.0 + 480.0 * (ss / 100.0));
+            double baseSeconds = 120.0 + 480.0 * (ss / 100.0);
+
+            // Inscription bonus: +1% duration per skill point
+            double inscribeBonus = 1.0 + (caster.Skills[SkillName.Inscribe].Value / 100.0);
+            return TimeSpan.FromSeconds(baseSeconds * inscribeBonus);
         }
 
         // ── Corpse-harvest timer extension (called from SpiritSpeak.cs) ─────
