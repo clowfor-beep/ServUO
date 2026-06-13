@@ -998,4 +998,14 @@ namespace Server.Custom
             int version = reader.ReadInt();
 
             int count = reader.ReadInt();
-            for (int i
+            for (int i = 0; i < count; i++)
+            {
+                SimPlayer sp = reader.ReadMobile() as SimPlayer;
+                if (sp != null)
+                    _allSimPlayers.Add(sp);
+            }
+
+            _instance = this;
+        }
+    }
+}

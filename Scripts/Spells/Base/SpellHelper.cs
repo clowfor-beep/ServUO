@@ -392,7 +392,9 @@ namespace Server.Spells
             if (caster.Spell is CurseSpell && SkillMasteries.ResilienceSpell.UnderEffects(target))
                 span /= 2;
 
-            return TimeSpan.FromSeconds(span);
+            // Inscription bonus: +1% duration per skill point (e.g. 100 skill = +100% = 2x duration)
+            double inscribeBonus = 1.0 + (caster.Skills[SkillName.Inscribe].Value / 100.0);
+            return TimeSpan.FromSeconds(span * inscribeBonus);
         }
 
         public static int GetCurseOffset(Mobile m, StatType type)

@@ -2802,18 +2802,87 @@ namespace Server.Custom
     // ============================================================
     // Dead Watchers  (Tier 3 -- Perm Grey)
     // Two sub-types:
-    //   Death Knight (default) — dark bone armour, necro warrior
-    //   Wraith Mage (_isWraithMage=true) — robes, dual spellbooks, spectral caster
-    // Both are grey (AlwaysAttackable), Karma -100.
+    //   Death Knight (default) — dark bone armour, necro warrior, AI_Melee
+    //   Wraith Mage (_isWraithMage=true) — robes, dual spellbooks, AI_Mage
+    // Both grey (AlwaysAttackable), Karma -100.
+    //
+    // AI: Primary dungeon hunters.
+    //   - Spawn at home briefly, then gate to a random dungeon
+    //   - Hunt for 20-30 min: seek monsters / Blood Pact / reds
+    //   - Return home, rest 5-10 min, repeat
+    //   - Death Knight engages in melee; Wraith Mage casts spells
     // ============================================================
     public class DeadWatchersSimPlayer : SimPlayer
     {
-        private bool _isWraithMage;
+        private bool     _isWraithMage;
+        private bool     _isOnHunt;
+        private DateTime _nextHuntTime   = DateTime.MinValue;
+        private DateTime _huntReturnTime = DateTime.MinValue;
+        private DateTime _nextFlavorTime = DateTime.MinValue;
 
-        // Default constructor — Death Knight
+        private static readonly (Point3D Loc, Map Map, string Name)[] _allDungeons =
+        {
+            // Felucca
+            (new Point3D(5188,  638,   0), Map.Felucca,   "Deceit Level 1"),
+            (new Point3D(5305,  533,   2), Map.Felucca,   "Deceit Level 2"),
+            (new Point3D(5137,  650,   5), Map.Felucca,   "Deceit Level 3"),
+            (new Point3D(5306,  652,   2), Map.Felucca,   "Deceit Level 4"),
+            (new Point3D(5456, 1863,   0), Map.Felucca,   "Covetous Level 1"),
+            (new Point3D(5614, 1997,   0), Map.Felucca,   "Covetous Level 2"),
+            (new Point3D(5579, 1924,   0), Map.Felucca,   "Covetous Level 3"),
+            (new Point3D(5501,  570,  59), Map.Felucca,   "Despise Level 1"),
+            (new Point3D(5519,  673,  20), Map.Felucca,   "Despise Level 2"),
+            (new Point3D(5407,  859,  45), Map.Felucca,   "Despise Level 3"),
+            (new Point3D(5243, 1006,   0), Map.Felucca,   "Destard Level 1"),
+            (new Point3D(5143,  801,   4), Map.Felucca,   "Destard Level 2"),
+            (new Point3D(5137,  986,   5), Map.Felucca,   "Destard Level 3"),
+            (new Point3D(5905,   20,  46), Map.Felucca,   "Hythloth Level 1"),
+            (new Point3D(5976,  169,   0), Map.Felucca,   "Hythloth Level 2"),
+            (new Point3D(6083,  145, -20), Map.Felucca,   "Hythloth Level 3"),
+            (new Point3D(6059,   89,  24), Map.Felucca,   "Hythloth Level 4"),
+            (new Point3D(5395,  126,   0), Map.Felucca,   "Shame Level 1"),
+            (new Point3D(5515,   11,   5), Map.Felucca,   "Shame Level 2"),
+            (new Point3D(5514,  148,  25), Map.Felucca,   "Shame Level 3"),
+            (new Point3D(5875,   20,  -5), Map.Felucca,   "Shame Level 4"),
+            (new Point3D(5825,  630,   0), Map.Felucca,   "Wrong Level 1"),
+            (new Point3D(5690,  569,  25), Map.Felucca,   "Wrong Level 2"),
+            (new Point3D(5703,  639,   0), Map.Felucca,   "Wrong Level 3"),
+            (new Point3D(5571, 1302,   0), Map.Felucca,   "Khaldun"),
+            (new Point3D(5790, 1416,  40), Map.Felucca,   "Fire Level 1"),
+            (new Point3D(5702, 1316,   1), Map.Felucca,   "Fire Level 2"),
+            (new Point3D(5875,  150,  15), Map.Felucca,   "Ice Level 1"),
+            (new Point3D(5700,  305,   0), Map.Felucca,   "Ice Demon Lair"),
+            // Malas
+            (new Point3D(2367, 1268, -85), Map.Malas,     "Doom"),
+            (new Point3D(2352, 1267,-110), Map.Malas,     "Doom Depths"),
+            // Ilshenar
+            (new Point3D( 155, 1482, -28), Map.Ilshenar,  "Ankh Dungeon"),
+            (new Point3D(2114,  834, -28), Map.Ilshenar,  "Blood Dungeon"),
+            (new Point3D(1974,  115, -28), Map.Ilshenar,  "Exodus Dungeon"),
+            (new Point3D(2188,  318,  -7), Map.Ilshenar,  "Rock Dungeon"),
+            (new Point3D( 428,  109, -28), Map.Ilshenar,  "Sorcerers Dungeon"),
+            (new Point3D(1982, 1103, -28), Map.Ilshenar,  "Spectre Dungeon"),
+        };
+
+        private static readonly string[] _flavorLines =
+        {
+            "*surveys the dungeon with hollow eyes*",
+            "Death comes for all who dwell here.",
+            "*watches a creature fall with quiet satisfaction*",
+            "The void is patient.",
+            "*marks another soul in the tally*",
+            "We see what the living choose to ignore.",
+            "*moves silently through the darkness*",
+            "Another restless soul joins the count.",
+            "Nothing here escapes the eyes of the watchers.",
+            "*tilts its head, listening to the silence*",
+        };
+
+        // Death Knight constructor
         public DeadWatchersSimPlayer(string memberName, Point3D home,
                                      SpawnZone zone, ScheduleProfile schedule)
-            : base(FBGuilds.DeadWatchers, memberName, home, zone, schedule)
+            : base(FBGuilds.DeadWatchers, memberName, home, zone, schedule,
+                   AIType.AI_Melee, FightMode.None)
         {
             _isWraithMage = false;
         }
@@ -2822,7 +2891,8 @@ namespace Server.Custom
         public DeadWatchersSimPlayer(string memberName, Point3D home,
                                      SpawnZone zone, ScheduleProfile schedule,
                                      bool isWraithMage)
-            : base(FBGuilds.DeadWatchers, memberName, home, zone, schedule)
+            : base(FBGuilds.DeadWatchers, memberName, home, zone, schedule,
+                   isWraithMage ? AIType.AI_Mage : AIType.AI_Melee, FightMode.None)
         {
             _isWraithMage = isWraithMage;
         }
@@ -2979,13 +3049,158 @@ namespace Server.Custom
             PackItem(new NecromancerSpellbook());
         }
 
+        // ── AI: Dungeon Hunter ───────────────────────────────────────
+
+        protected override void OnTickIdle()
+        {
+            if (_isOnHunt)
+            {
+                // Return home once time is up and we're not mid-fight
+                if (DateTime.UtcNow >= _huntReturnTime && (Combatant == null || Combatant.Deleted || !Combatant.Alive))
+                {
+                    ReturnHome();
+                    return;
+                }
+
+                TryHuntMonster();
+
+                if (DateTime.UtcNow >= _nextFlavorTime)
+                    TryFlavorSpeech();
+            }
+            else
+            {
+                if (DateTime.UtcNow >= _nextHuntTime)
+                    TravelToDungeon();
+            }
+        }
+
+        private void TravelToDungeon()
+        {
+            if (Deleted || !Alive) return;
+
+            var pick = _allDungeons[Utility.Random(_allDungeons.Length)];
+
+            Animate(203, 7, 1, true, false, 0);
+            Say(_isWraithMage
+                ? $"*drifts toward {pick.Name} like smoke on still water*"
+                : $"*steps through shadow toward {pick.Name}*");
+
+            Point3D dest    = pick.Loc;
+            Map     destMap = pick.Map;
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            {
+                if (Deleted || !Alive) return;
+
+                // Gate effects at origin
+                Effects.SendLocationParticles(
+                    EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                    0x376A, 9, 32, 5023);
+                Effects.PlaySound(Location, Map, 0x20E);
+
+                MoveToWorld(dest, destMap);
+
+                // Gate effects at destination
+                Effects.SendLocationParticles(
+                    EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                    0x376A, 9, 32, 5023);
+                Effects.PlaySound(Location, Map, 0x20E);
+
+                _isOnHunt       = true;
+                _huntReturnTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(20, 30));
+                _nextFlavorTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(1, 3));
+            });
+        }
+
+        private void TryHuntMonster()
+        {
+            // Already in active combat — AI handles the rest
+            if (Combatant != null && !Combatant.Deleted && Combatant.Alive) return;
+
+            Combatant = null;
+
+            Mobile best        = null;
+            int    bestPriority = int.MaxValue;
+
+            foreach (Mobile m in GetMobilesInRange(15))
+            {
+                if (m == this || m.Deleted || !m.Alive) continue;
+                if (m.Map != Map) continue;
+
+                int priority;
+
+                if (m is BloodPactSimPlayer)
+                    priority = 0; // highest — lore enemy
+                else if (m is PlayerMobile pm && (pm.Murderer || pm.Criminal))
+                    priority = 1; // reds / greys
+                else if (m is BaseCreature bc
+                         && bc.ControlMaster == null
+                         && !bc.IsDeadBondedPet
+                         && !(bc is SimPlayer))
+                    priority = 2; // wild dungeon monsters
+                else
+                    continue;
+
+                if (priority < bestPriority)
+                {
+                    bestPriority = priority;
+                    best         = m;
+                }
+            }
+
+            if (best != null)
+                Combatant = best;
+        }
+
+        private void TryFlavorSpeech()
+        {
+            Say(_flavorLines[Utility.Random(_flavorLines.Length)]);
+            _nextFlavorTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(3, 7));
+        }
+
+        private void ReturnHome()
+        {
+            _isOnHunt = false;
+            Combatant = null;
+
+            if (Deleted || !Alive) return;
+
+            Animate(203, 7, 1, true, false, 0);
+            Say("*fades back into shadow*");
+
+            Point3D home = _homeLocation;
+
+            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
+            {
+                if (Deleted || !Alive) return;
+
+                Effects.SendLocationParticles(
+                    EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                    0x376A, 9, 32, 5023);
+                Effects.PlaySound(Location, Map, 0x20E);
+
+                MoveToWorld(home, Map.Felucca);
+
+                Effects.SendLocationParticles(
+                    EffectItem.Create(Location, Map, EffectItem.DefaultDuration),
+                    0x376A, 9, 32, 5023);
+                Effects.PlaySound(Location, Map, 0x20E);
+
+                // Rest 5-10 min before next hunt
+                _nextHuntTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(5, 10));
+            });
+        }
+
+        // ── Serialization ────────────────────────────────────────
+
         public override void Serialize(GenericWriter writer)
         {
             base.Serialize(writer);
-            writer.Write(1); // version
+            writer.Write(2); // version
 
             // v1
             writer.Write(_isWraithMage);
+            // v2: hunt state is transient — not saved
         }
 
         public override void Deserialize(GenericReader reader)
@@ -2995,6 +3210,10 @@ namespace Server.Custom
 
             if (version >= 1)
                 _isWraithMage = reader.ReadBool();
+
+            // Hunt state resets on load — start fresh with a short delay
+            _isOnHunt     = false;
+            _nextHuntTime = DateTime.UtcNow + TimeSpan.FromMinutes(Utility.RandomMinMax(2, 8));
         }
     }
 
@@ -3307,220 +3526,4 @@ namespace Server.Custom
             new HuntSpot { Loc = new Point3D( 596, 1132,  0), HMap = Map.Felucca, Name = "the Yew Cemetery"            },
             new HuntSpot { Loc = new Point3D(2728,  776,  0), HMap = Map.Felucca, Name = "the Vesper Cemetery"         },
             new HuntSpot { Loc = new Point3D( 596, 2161,  0), HMap = Map.Felucca, Name = "the Skara Brae Cemetery"     },
-            new HuntSpot { Loc = new Point3D(2530,  530,  0), HMap = Map.Felucca, Name = "the Minoc outskirts"         },
-            new HuntSpot { Loc = new Point3D(1828, 2820,  0), HMap = Map.Felucca, Name = "the Trinsic south gate"      },
-            new HuntSpot { Loc = new Point3D(1315, 1280,  0), HMap = Map.Felucca, Name = "Despise (first level)"       },
-            new HuntSpot { Loc = new Point3D(4111,  434,  5), HMap = Map.Felucca, Name = "Deceit (first level)"        },
-            new HuntSpot { Loc = new Point3D(2523, 1001,  0), HMap = Map.Felucca, Name = "Covetous (first level)"      },
-            new HuntSpot { Loc = new Point3D(1172, 1665,  0), HMap = Map.Felucca, Name = "the Orc Cave entrance"       },
-        };
-
-        // Britain bank anchor + restock spot (provisioner row near west bank)
-        private static readonly Point3D BritBankLoc   = new Point3D(1430, 1695, 0);
-        private static readonly Point3D BritRestockLoc = new Point3D(1457, 1706, 0);
-        private static readonly Map     BritMap        = Map.Felucca;
-
-        // ── Phase enum ─────────────────────────────────────────
-        private enum WanderPhase { None, Banking, Restocking, Hunting, Recalling }
-
-        // ── State fields ───────────────────────────────────────
-        private WanderPhase _wanderPhase    = WanderPhase.None;
-        private DateTime    _phaseEndsAt    = DateTime.MinValue;
-        private DateTime    _nextSpeechAt   = DateTime.MinValue;
-        private int         _currentHuntIdx = -1;
-        private bool        _recalling      = false;
-
-        // ── Ambient speech ─────────────────────────────────────
-        private static readonly string[] BankLines =
-        {
-            "Anyone seen any good loot lately?",
-            "Just got back from a long road. My feet are killing me.",
-            "The roads are dangerous these days. Watch yourselves.",
-            "I need to find work. Coin doesn't grow on trees.",
-            "Heard there's trouble near Despise again.",
-            "A traveller's life isn't glamorous, but it's honest.",
-            "Have you got any spare regs? I'm running low.",
-        };
-
-        private static readonly string[] HuntLines =
-        {
-            "Stay alert — this place is no joke.",
-            "I've seen worse... I think.",
-            "Keep moving. Standing still gets you killed.",
-            "Watch my back and I'll watch yours.",
-            "*scans the area carefully*",
-            "Good hunting grounds if you know where to look.",
-        };
-
-        // ── Constructor ────────────────────────────────────────
-        public WandererSimPlayer(string memberName, Point3D home, SpawnZone zone, ScheduleProfile schedule)
-            : base(FBGuilds.Wanderers, memberName, home, zone, schedule)
-        {
-        }
-
-        public WandererSimPlayer(Serial serial) : base(serial) { }
-
-        // ── Overrides ──────────────────────────────────────────
-        // Suppress the base state machine (Idle/Travelling) whenever the wander
-        // loop is running. WanderPhase.None is only a transient state that
-        // immediately transitions to Hunting, so this covers all active phases.
-        protected override bool SkipStateTick =>
-            base.SkipStateTick || _wanderPhase != WanderPhase.None;
-
-        // Wanderers manage their own banking inside the wander loop — never
-        // let the base SimPlayer banking logic fire on top of it.
-        protected override bool CanBank => false;
-
-        // ── OnThink ────────────────────────────────────────────
-        public override void OnThink()
-        {
-            base.OnThink();
-            if (Deleted || Map == Map.Internal) return;
-
-            // Snap back to hunt anchor if combat pushed us away
-            if (_wanderPhase == WanderPhase.Hunting && _currentHuntIdx >= 0)
-            {
-                HuntSpot spot = HuntSpots[_currentHuntIdx];
-                if (Map != spot.HMap || !InRange(spot.Loc, 20))
-                    MoveToWorld(spot.Loc, spot.HMap);
-            }
-
-            ManageWanderLoop();
-        }
-
-        // ── Wander loop logic ──────────────────────────────────
-        private void ManageWanderLoop()
-        {
-            switch (_wanderPhase)
-            {
-                case WanderPhase.None:
-                    StartHuntPhase();
-                    break;
-
-                case WanderPhase.Hunting:
-                    if (DateTime.UtcNow >= _phaseEndsAt)
-                        RecallToBritain();
-                    else
-                        TrySpeakAmbient(HuntLines);
-                    break;
-
-                case WanderPhase.Banking:
-                    if (DateTime.UtcNow >= _phaseEndsAt)
-                        StartRestockPhase();
-                    else
-                        TrySpeakAmbient(BankLines);
-                    break;
-
-                case WanderPhase.Restocking:
-                    if (DateTime.UtcNow >= _phaseEndsAt)
-                        StartHuntPhase();
-                    break;
-
-                case WanderPhase.Recalling:
-                    // DoRecall timer is running; nothing to do until callback fires
-                    break;
-            }
-        }
-
-        private void StartRestockPhase()
-        {
-            _wanderPhase = WanderPhase.Restocking;
-            _phaseEndsAt = DateTime.UtcNow + TimeSpan.FromMinutes(10.0);
-            MoveToWorld(BritRestockLoc, BritMap);
-        }
-
-        private void StartHuntPhase()
-        {
-            _currentHuntIdx = Utility.Random(HuntSpots.Length);
-            HuntSpot spot   = HuntSpots[_currentHuntIdx];
-
-            _phaseEndsAt = DateTime.UtcNow + TimeSpan.FromMinutes(40.0);
-
-            if (Map == Map.Internal)
-            {
-                // First activation — place directly into the hunt spot
-                MoveToWorld(spot.Loc, spot.HMap);
-                _wanderPhase = WanderPhase.Hunting;
-                SayIfVisible(string.Format("Heading out to {0}.", spot.Name));
-            }
-            else
-            {
-                // Subsequent loops — Recall from Britain to hunt spot
-                _wanderPhase = WanderPhase.Recalling;  // guard during cast delay
-                SayIfVisible(string.Format("*prepares a Recall scroll for {0}*", spot.Name));
-                DoRecall(spot.Loc, spot.HMap, () =>
-                {
-                    _wanderPhase = WanderPhase.Hunting; // 40-min clock starts on arrival
-                    SayIfVisible(string.Format("Made it to {0}.", spot.Name));
-                });
-            }
-        }
-
-        private void RecallToBritain()
-        {
-            // Recalling phase blocks ManageWanderLoop from re-entering until arrival.
-            _wanderPhase = WanderPhase.Recalling;
-
-            Say("That's enough hunting for now.");
-            DoRecall(BritBankLoc, BritMap, () =>
-            {
-                // Arrive at bank — start the 10 min bank hang-out
-                _wanderPhase = WanderPhase.Banking;
-                _phaseEndsAt = DateTime.UtcNow + TimeSpan.FromMinutes(10.0);
-                Say("Back to Britain.");
-            });
-        }
-
-        // ── Recall helper — visual + sound + 1.5 s delay ──────
-        private void DoRecall(Point3D dest, Map destMap, System.Action onArrival)
-        {
-            if (_recalling) return;
-            _recalling = true;
-
-            // Cast animation (spell cast effect)
-            PlaySound(0x1FC);
-            FixedParticles(0x3728, 8, 20, 5042, EffectLayer.Head);
-
-            Timer.DelayCall(TimeSpan.FromSeconds(1.5), () =>
-            {
-                if (Deleted) { _recalling = false; return; }
-
-                // Arrival flash at source
-                Effects.SendLocationEffect(Location, Map, 0x3728, 13, 1, 0, 0);
-
-                MoveToWorld(dest, destMap);
-
-                // Arrival flash at destination
-                Effects.SendLocationEffect(Location, Map, 0x3728, 13, 1, 0, 0);
-                PlaySound(0x1FC);
-
-                _recalling = false;
-                if (onArrival != null) onArrival();
-            });
-        }
-
-        // ── Small ambient speech helper ────────────────────────
-        private void TrySpeakAmbient(string[] lines)
-        {
-            if (DateTime.UtcNow < _nextSpeechAt) return;
-            if (!Utility.RandomBool()) return;  // 50% chance each tick
-
-            _nextSpeechAt = DateTime.UtcNow
-                + TimeSpan.FromSeconds(Utility.RandomMinMax(60, 180));
-
-            string line = lines[Utility.Random(lines.Length)];
-            Say(line);
-        }
-
-        private void SayIfVisible(string text)
-        {
-            if (Map != null && Map != Map.Internal)
-                Say(text);
-        }
-
-        // ── Status / health ────────────────────────────────────
-        public override string GetStatusDetail()
-        {
-            switch (_wanderPhase)
-            {
-    
+            new Hu

@@ -1,8 +1,8 @@
 ================================================================
 FORSAKEN BRITANNIA — SIMGUILD SYSTEM
 Full Design Document
-Created: 2026-05-23 | Updated: 2026-05-24
-Status: Approved for Implementation
+Created: 2026-05-23 | Updated: 2026-06-13
+Status: In Progress
 ================================================================
 
 OVERVIEW
@@ -631,6 +631,56 @@ PHASE 1 — Wanderers only (foundation test)
 PHASE 2 — Craftsmen's League + Iron Company + Silver Wolves
 PHASE 3 — All 12 guilds
 (Full detail in PlayerSimulator_DesignDoc.txt)
+
+================================================================
+IMPLEMENTATION STATUS — as of 2026-06-13
+================================================================
+
+Legend: [x] = done   [ ] = not started
+
+GUILD                  SimPlayer  Custom AI  Quests (5)  GM NPC
+------                 ---------  ---------  ----------  ------
+Silver Wolves          [x]        [x]        [x]         [ ]
+Arcane Brotherhood     [x]        [x]        [x]         [ ]
+Shadow Hand            [x]        [x]        [ ]         [ ]
+Iron Company           [x]        [x]        [ ]         [ ]
+Shadowblade            [x]        [x]        [ ]         [ ]
+Paladin Order          [x]        [ ]        [x]         [ ]
+Wanderers              [x]        [ ]        [x]         [ ]
+Craftsmen's League     [x]        [ ]        [x]         [ ]
+Dread Hunters          [x]        [ ]        [x]         [ ]
+Dead Watchers          [x]        [ ]        [ ]         [ ]
+Blood Pact             [x]        [ ]        [ ]         [ ]
+The Void               [x]        [ ]        [ ]         [ ]
+
+CUSTOM AI NOTES
+---------------
+Silver Wolves  : DetectHidden scan vs Shadow Hand; Sacred Journey to dungeon
+                 entrances; scout for murderers (red players) and BasePKNPC;
+                 recall home when done. Magical gear + jewelry on template.
+Arcane Brotherhood : Buff nearby players (+10 STR/DEX/INT, 15 min, per-player
+                 cooldown); open public BrotherhoodPortal to random dungeon
+                 (10 choices); 50% chance mage enters, fights, recalls home.
+                 Flavor speech (10 lines). BrotherhoodPortal item (public,
+                 3-min lifetime, arcane blue moongate graphic).
+Shadow Hand    : Pickpockets gold (50-300) from players within 2 tiles; snoops
+                 packs within 4 tiles (green message on success); goes hidden
+                 every 20-60s; flees Silver Wolves within 12 tiles. Death loot:
+                 lockpicks, bandages, gold, regs, treasure maps, poison potion,
+                 jewelry, tinker's tools, 1% random orb. Dagger on template.
+Iron Company   : Champion run AI — gathers at bank, rallies, Sacred Journey to
+                 champion spawn, fights, returns home.
+Shadowblade    : Ambush AI near Wrong dungeon — hides between fights,
+                 FightMode.Closest auto-acquires targets. AlwaysAttackable.
+
+PRIORITY GAPS (suggested build order)
+--------------------------------------
+1. Quests for Shadow Hand, Iron Company, Shadowblade, Dead Watchers,
+   Blood Pact, The Void (6 guilds × 5 quests = 30 quests to write)
+2. Custom AI for Paladin Order, Wanderers, Craftsmen's League,
+   Dread Hunters, Dead Watchers, Blood Pact, The Void (7 guilds)
+3. Guildmaster NPCs for all 12 guilds (join mechanic, rank display,
+   quest board access, sash award at Allied tier)
 
 ================================================================
 RELATED DOCUMENTS
