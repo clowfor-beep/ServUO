@@ -81,7 +81,49 @@ namespace Server.Custom
                 "Wrong",           // excluded by request
             };
 
-        private static readonly TimeSpan WantedTTL = TimeSpan.FromMinutes(20);
+        private static readonly TimeSpan WantedTTL       = TimeSpan.FromMinutes(20);
+        private static readonly TimeSpan CombatLingerTime = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan FleeCheckInterval = TimeSpan.FromSeconds(15);
+
+        // Returns true if the mob received damage within the last minute.
+        private static bool IsEngaged(Mobile m)
+        {
+            if (m is HunterCreature hc) return DateTime.UtcNow - hc.LastCombatHit < CombatLingerTime;
+            if (m is BaseWantedNPC  wn) return DateTime.UtcNow - wn.LastCombatHit < CombatLingerTime;
+            return false;
+        }
+
+        // After the TTL expires, check every 15 s. Flee only once the mob
+        // hasn't received damage for a full minute.
+        private static void StartFleeCheck(
+            Serial capturedSerial, List<HuntRecord> list,
+            string broadcastTag,   string displayName)
+        {
+            Timer.DelayCall(FleeCheckInterval, () =>
+            {
+                Mobile m = World.FindMobile(capturedSerial);
+                if (m == null || m.Deleted)
+                {
+                    RemoveHuntRecord(list, capturedSerial, out _);
+                    return;
+                }
+
+                if (IsEngaged(m))
+                {
+                    // Still in combat — check again after another interval
+                    StartFleeCheck(capturedSerial, list, broadcastTag, displayName);
+                    return;
+                }
+
+                // Disengaged for >= 1 minute — flee
+                if (RemoveHuntRecord(list, capturedSerial, out Mobile target) && target != null && !target.Deleted)
+                {
+                    target.PublicOverheadMessage(MessageType.Regular, 0x22, false, "*flees into the darkness*");
+                    target.Delete();
+                    World.Broadcast(0x22, false, $"{broadcastTag} {displayName} has fled. The hunt is over.");
+                }
+            });
+        }
 
         private static void PruneHunts()  =>
             _activeHunts.RemoveAll(r => { Mobile m = World.FindMobile(r.Serial); return m == null || m.Deleted; });
@@ -94,10 +136,10 @@ namespace Server.Custom
                 if (m == null || m.Deleted)
                     return true; // already dead / gone
 
-                // Expire stale wanted NPCs that haven't been killed within the TTL
-                if (DateTime.UtcNow - r.SpawnTime >= WantedTTL)
+                // Expire stale wanted NPCs past the TTL — but not while actively engaged
+                if (DateTime.UtcNow - r.SpawnTime >= WantedTTL && !IsEngaged(m))
                 {
-                    m.Delete(); // despawn the old one
+                    m.Delete();
                     return true;
                 }
 
@@ -395,12 +437,8 @@ namespace Server.Custom
 
             Timer.DelayCall(TimeSpan.FromMinutes(20), () =>
             {
-                if (RemoveHuntRecord(_activeHunts, capturedSerial, out Mobile target))
-                {
-                    target?.Delete();
-                    World.Broadcast(0x22, false,
-                        $"[World Hunt] {capturedName} has fled into the darkness. The hunt is over.");
-                }
+                if (HuntRecordExists(_activeHunts, capturedSerial))
+                    StartFleeCheck(capturedSerial, _activeHunts, "[World Hunt]", capturedName);
             });
         }
 
@@ -447,15 +485,11 @@ namespace Server.Custom
             Serial capturedSerial = npc.Serial;
             string capturedName   = record.Name;
 
-            // 10-minute expiry — wanted NPCs are fast-moving targets outside dungeons
+            // 10-minute expiry — after this, flee as soon as disengaged
             Timer.DelayCall(TimeSpan.FromMinutes(10), () =>
             {
-                if (RemoveHuntRecord(_activeWanted, capturedSerial, out Mobile target))
-                {
-                    target?.Delete();
-                    World.Broadcast(0x22, false,
-                        $"[Wanted] {capturedName} has slipped away. The bounty has expired.");
-                }
+                if (HuntRecordExists(_activeWanted, capturedSerial))
+                    StartFleeCheck(capturedSerial, _activeWanted, "[Wanted]", capturedName);
             });
         }
 

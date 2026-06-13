@@ -36,6 +36,15 @@ namespace Server.Custom
 
         public BaseWantedNPC(Serial serial) : base(serial) { }
 
+        // ── Combat tracking (for flee-on-disengage logic) ─────────────────
+        public DateTime LastCombatHit { get; private set; } = DateTime.MinValue;
+
+        public override void OnDamage(int amount, Mobile from, bool willKill)
+        {
+            LastCombatHit = DateTime.UtcNow;
+            base.OnDamage(amount, from, willKill);
+        }
+
         // Absorbs the legacy BasePKNPC version int that was written before this
         // class extended BaseFBCombatNPC directly.
         public override void Serialize(GenericWriter writer)

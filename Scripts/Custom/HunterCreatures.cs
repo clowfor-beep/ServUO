@@ -52,6 +52,15 @@ namespace Server.Custom
 
         public HunterCreature(Serial serial) : base(serial) { }
 
+        // ── Combat tracking (for flee-on-disengage logic) ─────────────────
+        public DateTime LastCombatHit { get; private set; } = DateTime.MinValue;
+
+        public override void OnDamage(int amount, Mobile from, bool willKill)
+        {
+            LastCombatHit = DateTime.UtcNow;
+            base.OnDamage(amount, from, willKill);
+        }
+
         // Called by subclass after base constructor sets stats
         protected void InitHunterName()
         {
