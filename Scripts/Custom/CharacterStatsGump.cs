@@ -562,7 +562,8 @@ namespace Server.Gumps
         {
             Mobile m = _from; var pm = m as PlayerMobile;
             int lx = CL + 5; int rx = CR + 5;
-            AddLabel(lx, y, HLabel, "Luck:");   AddLabel(lx + LW, y, HValue, $"{AosAttributes.GetValue(m, AosAttribute.Luck)}");
+            int luckDisplay = pm != null ? pm.RealLuck : m.Luck;
+            AddLabel(lx, y, HLabel, "Luck:");   AddLabel(lx + LW, y, HValue, $"{luckDisplay}");
             AddLabel(lx, y + RH, HLabel, "Fame:");  AddLabel(lx + LW, y + RH, HValue, $"{m.Fame}");
             AddLabel(lx, y + RH * 2, HLabel, "Karma:"); AddLabel(lx + LW, y + RH * 2, HValue, $"{m.Karma}");
             if (pm != null) { AddLabel(rx, y, HLabel, "Tithing Points:"); AddLabel(rx + LW, y, HValue, $"{pm.TithingPoints}"); }

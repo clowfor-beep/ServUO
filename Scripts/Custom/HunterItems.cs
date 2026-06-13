@@ -186,11 +186,28 @@ namespace Server.Custom
 
         public HunterMedallion(Serial serial) : base(serial) { }
 
+        private const int LuckBonus = 100;
+
+        public override void OnAdded(object parent)
+        {
+            base.OnAdded(parent);
+            if (parent is Mobile m)
+                Enhancement.SetValue(m, AosAttribute.Luck, LuckBonus, "HunterMedallion");
+        }
+
+        public override void OnRemoved(object parent)
+        {
+            base.OnRemoved(parent);
+            if (parent is Mobile m)
+                Enhancement.SetValue(m, AosAttribute.Luck, 0, "HunterMedallion");
+        }
+
         public override void GetProperties(ObjectPropertyList list)
         {
             base.GetProperties(list);
             list.Add($"Slain by: {_slayerName}");
             list.Add($"Date: {_killedAt.ToLocalTime():yyyy-MM-dd}");
+            list.Add($"Luck Bonus: +{LuckBonus}");
             list.Add("A trophy of the hunt. Pure prestige.");
         }
 
