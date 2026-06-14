@@ -2,8 +2,8 @@
 // ItemSearchGump.cs
 // Scripts/Custom/ItemSearchGump.cs
 //
-// Searches a player's backpack, bank box, and all secure
-// containers in their house(s). Requires 4+ characters.
+// Searches a player's backpack, bank box, and all containers
+// in houses where the player is owner or co-owner.
 //
 // Usage: [itemsearch  (player command)
 // ============================================================
@@ -27,28 +27,42 @@ namespace Server.Gumps
         public string ItemName;
         public int    Amount;
         public string Location;
-        public int    Serial;   // for AddItemProperty tooltip on hover
-        public int    ItemID;   // for item graphic
+        public int    Serial;
+        public int    ItemID;
+        public int    Hue;
 
-        public ItemSearchResult(string itemName, int amount, string location, int serial, int itemID)
+        public ItemSearchResult(string itemName, int amount, string location, int serial, int itemID, int hue)
         {
             ItemName = itemName;
             Amount   = amount;
             Location = location;
             Serial   = serial;
             ItemID   = itemID;
+            Hue      = hue;
         }
     }
 
     // ── Gump ───────────────────────────────────────────────────────
     public class ItemSearchGump : Gump
     {
-        // Layout
-        private const int W       = 540;
-        private const int PadX    = 12;
-        private const int RowH    = 22;
-        private const int MaxRows = 14;
-        private const int MinChars = 4;
+        // Layout — styled after VendorSearchGump
+        private const int W          = 600;
+        private const int H          = 560;
+        private const int PadX       = 12;
+        private const int RowH       = 40;   // tall enough for item icon
+        private const int MaxRows    = 10;
+        private const int MinChars   = 3;
+
+        // Column X positions
+        private const int ColIcon    = PadX;       // 12
+        private const int ColName    = PadX + 44;  // 56
+        private const int ColQty     = 300;
+        private const int ColLoc     = 360;
+
+        // Colours matching VendorSearchGump palette
+        private const int LabelColor = 0x4BBD;  // teal  — headers / title
+        private const int TextColor  = 0x6B55;  // gold  — row values
+        private const int AlertColor = 0x7C00;  // red   — error / no results
 
         // Button IDs
         private const int BTN_SEARCH   = 1;
@@ -77,7 +91,7 @@ namespace Server.Gumps
         // ── Constructor ────────────────────────────────────────────
 
         public ItemSearchGump(PlayerMobile player, string query, List<ItemSearchResult> results, int page)
-            : base(60, 60)
+            : base(30, 30)
         {
             _player  = player;
             _query   = query  ?? "";
@@ -96,121 +110,117 @@ namespace Server.Gumps
 
         private void Build()
         {
-            int startIdx     = _page * MaxRows;
+            int startIdx      = _page * MaxRows;
             int resultsOnPage = Math.Max(0, Math.Min(MaxRows, _results.Count - startIdx));
-            int totalPages   = _results.Count > 0 ? (_results.Count + MaxRows - 1) / MaxRows : 1;
+            int totalPages    = _results.Count > 0 ? (_results.Count + MaxRows - 1) / MaxRows : 1;
 
-            // Dynamic height
-            int bodyH = 100; // header + search row + hint
-            if (resultsOnPage > 0)
-                bodyH += 26 + resultsOnPage * RowH; // column headers + rows
-            if (totalPages > 1)
-                bodyH += 26; // pagination row
-            bodyH += 10; // bottom padding
-
-            AddBackground(0, 0, W, bodyH, 9270);
-            AddAlphaRegion(8, 8, W - 16, bodyH - 16);
+            AddBackground(0, 0, W, H, 30536);
 
             // ── Title ──────────────────────────────────────────────
-            AddHtml(PadX, 10, W - PadX * 2, 20,
-                "<BASEFONT COLOR=#C8A428><B>Item Search</B></BASEFONT>",
+            AddHtml(PadX, 12, W - PadX * 2, 20,
+                $"<BASEFONT COLOR=#{LabelColor:X4}><B>Item Search</B></BASEFONT>",
                 false, false);
-            AddImageTiled(PadX, 30, W - PadX * 2, 1, 9264);
 
             // ── Search row ─────────────────────────────────────────
-            AddHtml(PadX, 38, 65, 22,
-                "<BASEFONT COLOR=#AAAAAA>Search:</BASEFONT>", false, false);
+            AddHtml(PadX, 40, 55, 22,
+                $"<BASEFONT COLOR=#{LabelColor:X4}>Search:</BASEFONT>", false, false);
 
-            AddBackground(78, 35, 290, 24, 9350);
-            AddTextEntry(81, 37, 284, 20, 0, 0, _query);
+            AddBackground(70, 37, 310, 24, 9350);
+            AddTextEntry(73, 39, 304, 20, TextColor, 0, _query);
 
-            AddButton(382, 36, 4005, 4007, BTN_SEARCH, GumpButtonType.Reply, 0);
-            AddHtml(410, 38, 90, 20,
-                "<BASEFONT COLOR=#DDCCAA>Search</BASEFONT>", false, false);
+            AddButton(394, 38, 30534, 30534, BTN_SEARCH, GumpButtonType.Reply, 0);
+            AddHtml(434, 40, 80, 20,
+                $"<BASEFONT COLOR=#{LabelColor:X4}>Search</BASEFONT>", false, false);
 
             // ── Status / hint line ─────────────────────────────────
-            int hintY = 64;
             string hint;
-            string hintColor;
+            int    hintColor;
 
             if (_query.Length == 0)
             {
-                hint      = "Searches backpack, bank, and all house secure containers.";
-                hintColor = "#888888";
+                hint      = "Searches backpack, bank, and all house containers (owner or co-owner).";
+                hintColor = 0x888888;
             }
             else if (_query.Length < MinChars)
             {
                 hint      = $"Enter at least {MinChars} characters to search.";
-                hintColor = "#FF8844";
+                hintColor = AlertColor;
             }
             else if (_results.Count == 0)
             {
                 hint      = $"No items found matching \"{_query}\".";
-                hintColor = "#FF8844";
+                hintColor = AlertColor;
             }
             else
             {
-                hint      = $"{_results.Count} item{(_results.Count == 1 ? "" : "s")} found matching \"{_query}\".";
-                hintColor = "#88CC88";
+                hint      = $"{_results.Count} result{(_results.Count == 1 ? "" : "s")} for \"{_query}\"  —  Page {_page + 1} of {totalPages}";
+                hintColor = 0x44AA44;
             }
 
-            AddHtml(PadX, hintY, W - PadX * 2, 20,
-                $"<BASEFONT COLOR={hintColor}>{hint}</BASEFONT>", false, false);
+            AddHtml(PadX, 68, W - PadX * 2, 20,
+                $"<BASEFONT COLOR=#{hintColor:X6}>{hint}</BASEFONT>", false, false);
 
-            // ── Results ────────────────────────────────────────────
+            // ── Column headers ─────────────────────────────────────
+            int y = 94;
+            AddHtml(ColName,  y, 240, 18, $"<BASEFONT COLOR=#{LabelColor:X4}><B>Item</B></BASEFONT>",     false, false);
+            AddHtml(ColQty,   y,  55, 18, $"<BASEFONT COLOR=#{LabelColor:X4}><B>Qty</B></BASEFONT>",      false, false);
+            AddHtml(ColLoc,   y, W - ColLoc - PadX, 18,
+                $"<BASEFONT COLOR=#{LabelColor:X4}><B>Location</B></BASEFONT>", false, false);
+
+            // Separator
+            y += 20;
+            AddImageTiled(PadX, y, W - PadX * 2, 1, 9264);
+            y += 4;
+
+            // ── Result rows ────────────────────────────────────────
             if (resultsOnPage > 0)
             {
-                int y = 88;
-
-                // Column headers
-                AddHtml(PadX + 44, y, 200, 20, "<BASEFONT COLOR=#666655>Item</BASEFONT>",      false, false);
-                AddHtml(240,       y,  60, 20, "<BASEFONT COLOR=#666655>Qty</BASEFONT>",       false, false);
-                AddHtml(304,       y, W - 304 - PadX, 20, "<BASEFONT COLOR=#666655>Location</BASEFONT>", false, false);
-                y += 20;
-                AddImageTiled(PadX, y, W - PadX * 2, 1, 9264);
-                y += 5;
-
                 for (int i = startIdx; i < startIdx + resultsOnPage; i++)
                 {
-                    var    r     = _results[i];
-                    string color = (i % 2 == 0) ? "#DDCCAA" : "#BBAA88";
+                    var r = _results[i];
 
-                    // Item icon — hover for full tooltip
-                    AddItem(PadX, y - 2, r.ItemID);
+                    // Alternating row background
+                    if (i % 2 == 0)
+                        AddAlphaRegion(PadX, y, W - PadX * 2, RowH);
+
+                    // Item icon — hover shows property tooltip
+                    AddImageTiledButton(ColIcon, y + 2, 0x918, 0x918, 0, GumpButtonType.Page, 0,
+                        r.ItemID, r.Hue, 0, 0);
                     AddItemProperty(r.Serial);
 
-                    AddHtml(PadX + 44, y, 200, RowH,
-                        $"<BASEFONT COLOR={color}>{r.ItemName}</BASEFONT>", false, false);
-                    AddHtml(240, y,  60, RowH,
-                        $"<BASEFONT COLOR={color}>{(r.Amount > 1 ? r.Amount.ToString() : "—")}</BASEFONT>",
+                    int textY = y + (RowH - 18) / 2; // vertically centre text in row
+
+                    AddHtml(ColName, textY, 240, 18,
+                        $"<BASEFONT COLOR=#{TextColor:X4}>{r.ItemName}</BASEFONT>", false, false);
+
+                    AddHtml(ColQty, textY, 55, 18,
+                        $"<BASEFONT COLOR=#{TextColor:X4}>{(r.Amount > 1 ? r.Amount.ToString() : "—")}</BASEFONT>",
                         false, false);
-                    AddHtml(304, y, W - 304 - PadX, RowH,
-                        $"<BASEFONT COLOR={color}>{r.Location}</BASEFONT>", false, false);
+
+                    AddHtml(ColLoc, textY, W - ColLoc - PadX, 18,
+                        $"<BASEFONT COLOR=#{TextColor:X4}>{r.Location}</BASEFONT>", false, false);
 
                     y += RowH;
                 }
+            }
 
-                // Pagination
-                if (totalPages > 1)
+            // ── Pagination ─────────────────────────────────────────
+            if (totalPages > 1)
+            {
+                int navY = H - 38;
+
+                if (_page > 0)
                 {
-                    y += 4;
-                    AddHtml(PadX, y, 300, 20,
-                        $"<BASEFONT COLOR=#888888>Page {_page + 1} of {totalPages}</BASEFONT>",
-                        false, false);
+                    AddButton(PadX, navY, 30533, 30533, BTN_PREVPAGE, GumpButtonType.Reply, 0);
+                    AddHtml(PadX + 40, navY + 2, 80, 18,
+                        $"<BASEFONT COLOR=#{LabelColor:X4}>Previous</BASEFONT>", false, false);
+                }
 
-                    if (_page > 0)
-                    {
-                        AddButton(W - 115, y, 4014, 4016, BTN_PREVPAGE, GumpButtonType.Reply, 0);
-                        AddHtml(W - 93, y + 2, 40, 18,
-                            "<BASEFONT COLOR=#AAAAAA>Prev</BASEFONT>", false, false);
-                    }
-
-                    if (_page < totalPages - 1)
-                    {
-                        AddButton(W - 60, y, 4005, 4007, BTN_NEXTPAGE, GumpButtonType.Reply, 0);
-                        AddHtml(W - 38, y + 2, 40, 18,
-                            "<BASEFONT COLOR=#AAAAAA>Next</BASEFONT>", false, false);
-                    }
+                if (_page < totalPages - 1)
+                {
+                    AddButton(W - 80, navY, 30534, 30534, BTN_NEXTPAGE, GumpButtonType.Reply, 0);
+                    AddHtml(W - 120, navY + 2, 35, 18,
+                        $"<BASEFONT COLOR=#{LabelColor:X4}>Next</BASEFONT>", false, false);
                 }
             }
         }
@@ -259,29 +269,51 @@ namespace Server.Gumps
             var results = new List<ItemSearchResult>();
             query = query.ToLowerInvariant();
 
-            // 1. Backpack
+            // 1. Backpack (recursive — containers within containers)
             if (player.Backpack != null)
                 ScanContainer(player.Backpack, query, "Backpack", results, player);
 
-            // 2. Bank box
+            // 2. Bank box (recursive)
             if (player.BankBox != null)
                 ScanContainer(player.BankBox, query, "Bank", results, player);
 
-            // 3. All house secure containers
-            var houses = BaseHouse.GetHouses(player);
-            foreach (BaseHouse house in houses)
+            // 3. All houses where the player is owner or co-owner
+            foreach (BaseHouse house in BaseHouse.AllHouses)
             {
-                if (house.Secures == null) continue;
+                if (house == null || house.Deleted) continue;
 
-                foreach (SecureInfo si in house.Secures)
+                bool isOwner   = house.IsOwner(player);
+                bool isCoOwner = !isOwner && house.IsCoOwner(player);
+
+                if (!isOwner && !isCoOwner) continue;
+
+                string houseLabel = isOwner ? "Your House" : "Co-owned House";
+
+                // Secured containers
+                if (house.Secures != null)
                 {
-                    if (si?.Item == null || si.Item.Deleted) continue;
+                    foreach (SecureInfo si in house.Secures)
+                    {
+                        if (si?.Item == null || si.Item.Deleted) continue;
+                        if (!(si.Item is Container cont)) continue;
 
-                    var cont = si.Item as Container;
-                    if (cont == null) continue;
+                        ScanContainer(cont, query, $"{houseLabel} › {GetLabel(cont)}", results, player);
+                    }
+                }
 
-                    string label = GetLabel(si.Item);
-                    ScanContainer(cont, query, $"House › {label}", results, player);
+                // Locked-down containers (not already covered by Secures)
+                if (house.LockDowns != null)
+                {
+                    foreach (Item item in house.LockDowns.Keys)
+                    {
+                        if (item == null || item.Deleted) continue;
+                        if (!(item is Container lc)) continue;
+
+                        // Skip if already in Secures to avoid double-scanning
+                        if (house.Secures != null && house.Secures.Exists(si => si?.Item == item)) continue;
+
+                        ScanContainer(lc, query, $"{houseLabel} › {GetLabel(lc)}", results, player);
+                    }
                 }
             }
 
@@ -290,7 +322,7 @@ namespace Server.Gumps
 
         /// <summary>
         /// Recursively scans a container and all sub-containers.
-        /// Matches against item name AND searchable property text.
+        /// Matches against display name, type name, and searchable property keywords.
         /// </summary>
         private static void ScanContainer(Container cont, string query,
                                            string location, List<ItemSearchResult> results,
@@ -302,39 +334,31 @@ namespace Server.Gumps
             {
                 if (item == null || item.Deleted) continue;
 
-                string label = GetLabel(item);
-                // searchable = display name + type name (always) + property text
+                string label      = GetLabel(item);
                 string searchable = (label + " " + GetItemProperties(item)).ToLowerInvariant();
 
                 if (searchable.Contains(query))
                 {
-                    // Push OPL data to client so AddItemProperty tooltip works on hover
                     item.SendPropertiesTo(player);
-                    results.Add(new ItemSearchResult(Capitalise(label), item.Amount, location, item.Serial.Value, item.ItemID));
+                    results.Add(new ItemSearchResult(
+                        Capitalise(label), item.Amount, location,
+                        item.Serial.Value, item.ItemID, item.Hue));
                 }
 
                 // Recurse into sub-containers
                 if (item is Container sub)
-                    ScanContainer(sub, query, $"{location} › {label}", results, player);
+                    ScanContainer(sub, query, $"{location} › {GetLabel(sub)}", results, player);
             }
         }
 
         // ── Property text builder ──────────────────────────────────
 
-        /// <summary>
-        /// Returns a space-separated lower-case string of searchable property text:
-        /// type name, spell name + reagents for scrolls, slayer names, material,
-        /// quality, and magic attributes for equipment.
-        /// </summary>
         private static string GetItemProperties(Item item)
         {
             var sb = new System.Text.StringBuilder();
 
-            // Always include the type name so e.g. "backpack" finds a Backpack
-            // even when it has a custom Name set
             sb.Append(CamelToWords(item.GetType().Name)).Append(' ');
 
-            // Spell scrolls — spell name + reagent names
             if (item is SpellScroll scroll)
             {
                 try
@@ -351,7 +375,6 @@ namespace Server.Gumps
                 catch { }
             }
 
-            // AOS attributes on weapons, armor, jewelry, clothing
             AosAttributes       attrs       = null;
             AosArmorAttributes  armorAttrs  = null;
             AosWeaponAttributes weaponAttrs = null;
@@ -362,16 +385,10 @@ namespace Server.Gumps
                 weaponAttrs = bw.WeaponAttributes;
                 sb.Append(CamelToWords(bw.Skill.ToString())).Append(' ');
                 sb.Append($"damage {bw.MinDamage}-{bw.MaxDamage} ");
-
-                // Slayer properties — this makes "slayer", "undead", "animal" etc. searchable
                 if (bw.Slayer  != SlayerName.None) sb.Append(CamelToWords(bw.Slayer.ToString())).Append(" slayer ");
                 if (bw.Slayer2 != SlayerName.None) sb.Append(CamelToWords(bw.Slayer2.ToString())).Append(" slayer ");
-
-                // Resource/material — "verite", "valorite", "shadow", "copper", etc.
                 if (bw.Resource != CraftResource.None && bw.Resource != CraftResource.Iron)
                     sb.Append(CamelToWords(bw.Resource.ToString())).Append(' ');
-
-                // Quality
                 if (bw.Quality == ItemQuality.Exceptional) sb.Append("exceptional ");
             }
             else if (item is BaseArmor ba)
@@ -380,20 +397,15 @@ namespace Server.Gumps
                 armorAttrs = ba.ArmorAttributes;
                 sb.Append($"physical {ba.BasePhysicalResistance} fire {ba.BaseFireResistance} ");
                 sb.Append($"cold {ba.BaseColdResistance} poison {ba.BasePoisonResistance} energy {ba.BaseEnergyResistance} ");
-
-                // Resource/material
                 if (ba.Resource != CraftResource.None && ba.Resource != CraftResource.Iron
                     && ba.Resource != CraftResource.RegularLeather)
                     sb.Append(CamelToWords(ba.Resource.ToString())).Append(' ');
-
-                // Quality
                 if (ba.Quality == ItemQuality.Exceptional) sb.Append("exceptional ");
             }
             else if (item is BaseJewel bj)  attrs = bj.Attributes;
             else if (item is BaseClothing bc)
             {
                 attrs = bc.Attributes;
-                // Resource/material on clothing
                 if (bc.Resource != CraftResource.None && bc.Resource != CraftResource.RegularLeather)
                     sb.Append(CamelToWords(bc.Resource.ToString())).Append(' ');
             }
@@ -402,8 +414,6 @@ namespace Server.Gumps
             if (armorAttrs  != null) AppendArmorAttributes(sb, armorAttrs);
             if (weaponAttrs != null) AppendWeaponAttributes(sb, weaponAttrs);
 
-            // Skill bonuses — covers rings/bracelets/armor/clothing/weapons with skill bonuses
-            // e.g. "veterinary", "animal taming", "magery", "swordsmanship"
             AosSkillBonuses skillBonuses = null;
             if      (item is BaseWeapon  sbw) skillBonuses = sbw.SkillBonuses;
             else if (item is BaseArmor   sba) skillBonuses = sba.SkillBonuses;
@@ -426,28 +436,28 @@ namespace Server.Gumps
 
         private static void AppendAosAttributes(System.Text.StringBuilder sb, AosAttributes a)
         {
-            if (a[AosAttribute.LowerRegCost]        > 0) sb.Append("lower reagent cost lrc ");
-            if (a[AosAttribute.LowerManaCost]       > 0) sb.Append("lower mana cost lmc ");
-            if (a[AosAttribute.SpellDamage]         > 0) sb.Append("spell damage increase sdi ");
-            if (a[AosAttribute.CastSpeed]           > 0) sb.Append("faster casting fc cast speed ");
-            if (a[AosAttribute.CastRecovery]        > 0) sb.Append("faster cast recovery fcr ");
-            if (a[AosAttribute.DefendChance]        > 0) sb.Append("defense chance increase dci ");
-            if (a[AosAttribute.AttackChance]        > 0) sb.Append("hit chance increase hci ");
-            if (a[AosAttribute.WeaponDamage]        > 0) sb.Append("damage increase di ");
-            if (a[AosAttribute.WeaponSpeed]         > 0) sb.Append("swing speed increase ssi ");
-            if (a[AosAttribute.BonusStr]            > 0) sb.Append("strength bonus str ");
-            if (a[AosAttribute.BonusDex]            > 0) sb.Append("dexterity bonus dex ");
-            if (a[AosAttribute.BonusInt]            > 0) sb.Append("intelligence bonus int ");
-            if (a[AosAttribute.BonusHits]           > 0) sb.Append("hit point increase hp ");
-            if (a[AosAttribute.BonusStam]           > 0) sb.Append("stamina increase stam ");
-            if (a[AosAttribute.BonusMana]           > 0) sb.Append("mana increase ");
-            if (a[AosAttribute.RegenHits]           > 0) sb.Append("hit point regeneration hpr ");
-            if (a[AosAttribute.RegenStam]           > 0) sb.Append("stamina regeneration ");
-            if (a[AosAttribute.RegenMana]           > 0) sb.Append("mana regeneration mr ");
-            if (a[AosAttribute.Luck]                > 0) sb.Append("luck ");
-            if (a[AosAttribute.EnhancePotions]      > 0) sb.Append("enhance potions ep ");
-            if (a[AosAttribute.ReflectPhysical]     > 0) sb.Append("reflect physical damage rpd ");
-            if (a[AosAttribute.NightSight]          > 0) sb.Append("night sight ");
+            if (a[AosAttribute.LowerRegCost]    > 0) sb.Append("lower reagent cost lrc ");
+            if (a[AosAttribute.LowerManaCost]   > 0) sb.Append("lower mana cost lmc ");
+            if (a[AosAttribute.SpellDamage]     > 0) sb.Append("spell damage increase sdi ");
+            if (a[AosAttribute.CastSpeed]       > 0) sb.Append("faster casting fc cast speed ");
+            if (a[AosAttribute.CastRecovery]    > 0) sb.Append("faster cast recovery fcr ");
+            if (a[AosAttribute.DefendChance]    > 0) sb.Append("defense chance increase dci ");
+            if (a[AosAttribute.AttackChance]    > 0) sb.Append("hit chance increase hci ");
+            if (a[AosAttribute.WeaponDamage]    > 0) sb.Append("damage increase di ");
+            if (a[AosAttribute.WeaponSpeed]     > 0) sb.Append("swing speed increase ssi ");
+            if (a[AosAttribute.BonusStr]        > 0) sb.Append("strength bonus str ");
+            if (a[AosAttribute.BonusDex]        > 0) sb.Append("dexterity bonus dex ");
+            if (a[AosAttribute.BonusInt]        > 0) sb.Append("intelligence bonus int ");
+            if (a[AosAttribute.BonusHits]       > 0) sb.Append("hit point increase hp ");
+            if (a[AosAttribute.BonusStam]       > 0) sb.Append("stamina increase stam ");
+            if (a[AosAttribute.BonusMana]       > 0) sb.Append("mana increase ");
+            if (a[AosAttribute.RegenHits]       > 0) sb.Append("hit point regeneration hpr ");
+            if (a[AosAttribute.RegenStam]       > 0) sb.Append("stamina regeneration ");
+            if (a[AosAttribute.RegenMana]       > 0) sb.Append("mana regeneration mr ");
+            if (a[AosAttribute.Luck]            > 0) sb.Append("luck ");
+            if (a[AosAttribute.EnhancePotions]  > 0) sb.Append("enhance potions ep ");
+            if (a[AosAttribute.ReflectPhysical] > 0) sb.Append("reflect physical damage rpd ");
+            if (a[AosAttribute.NightSight]      > 0) sb.Append("night sight ");
         }
 
         private static void AppendArmorAttributes(System.Text.StringBuilder sb, AosArmorAttributes a)
@@ -460,19 +470,19 @@ namespace Server.Gumps
 
         private static void AppendWeaponAttributes(System.Text.StringBuilder sb, AosWeaponAttributes a)
         {
-            if (a.HitLeechHits    > 0) sb.Append("hit life leech hll ");
-            if (a.HitLeechMana    > 0) sb.Append("hit mana leech hml ");
-            if (a.HitLeechStam    > 0) sb.Append("hit stamina leech hsl ");
-            if (a.HitLowerAttack  > 0) sb.Append("hit lower attack hla ");
-            if (a.HitLowerDefend  > 0) sb.Append("hit lower defense hld ");
-            if (a.HitDispel       > 0) sb.Append("hit dispel ");
-            if (a.HitFireball     > 0) sb.Append("hit fireball ");
-            if (a.HitLightning    > 0) sb.Append("hit lightning ");
-            if (a.HitMagicArrow   > 0) sb.Append("hit magic arrow ");
-            if (a.HitHarm         > 0) sb.Append("hit harm ");
+            if (a.HitLeechHits      > 0) sb.Append("hit life leech hll ");
+            if (a.HitLeechMana      > 0) sb.Append("hit mana leech hml ");
+            if (a.HitLeechStam      > 0) sb.Append("hit stamina leech hsl ");
+            if (a.HitLowerAttack    > 0) sb.Append("hit lower attack hla ");
+            if (a.HitLowerDefend    > 0) sb.Append("hit lower defense hld ");
+            if (a.HitDispel         > 0) sb.Append("hit dispel ");
+            if (a.HitFireball       > 0) sb.Append("hit fireball ");
+            if (a.HitLightning      > 0) sb.Append("hit lightning ");
+            if (a.HitMagicArrow     > 0) sb.Append("hit magic arrow ");
+            if (a.HitHarm           > 0) sb.Append("hit harm ");
             if (a.SplinteringWeapon > 0) sb.Append("splintering ");
-            if (a.BattleLust      > 0) sb.Append("battle lust ");
-            if (a.BloodDrinker    > 0) sb.Append("blood drinker ");
+            if (a.BattleLust        > 0) sb.Append("battle lust ");
+            if (a.BloodDrinker      > 0) sb.Append("blood drinker ");
         }
 
         // ── Helpers ────────────────────────────────────────────────
@@ -484,7 +494,6 @@ namespace Server.Gumps
             return CamelToWords(item.GetType().Name);
         }
 
-        /// <summary>Splits CamelCase into lower-case space-separated words.</summary>
         private static string CamelToWords(string s)
         {
             if (string.IsNullOrEmpty(s)) return s;
