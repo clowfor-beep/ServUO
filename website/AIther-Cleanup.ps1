@@ -3,6 +3,10 @@
 
 Write-Host "Cleaning up AIther installation..." -ForegroundColor Cyan
 
+# 0. Kill any running launcher/game processes
+Get-Process | Where-Object { $_.Name -match "ClassicUO" } | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
+
 # 1. Run the official uninstaller if present
 $uninstaller = "$env:LOCALAPPDATA\AIther\unins000.exe"
 if (Test-Path $uninstaller) {
