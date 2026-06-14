@@ -1386,6 +1386,10 @@ namespace Server.Custom
             // Stop boss battlecry timer if running
             StopBossBattlecryTimer();
 
+            // Capture the spawn ref before we clear it — needed for gold-collection guard
+            // and to cascade withdrawal to other members still at this spawn.
+            ChampionSpawn completedSpawn = _targetSpawn;
+
             // Clean up phase immediately so no other code re-enters
             _champPhase   = ChampPhase.None;
             _targetSpawn  = null;
@@ -1429,9 +1433,9 @@ namespace Server.Custom
 
                 // Only the first member to trigger victory collects gold —
                 // guard with the spawn serial so the other 17 skip it.
-                if (_targetSpawn != null && _goldCollectedForSpawn.Add(_targetSpawn.Serial))
+                if (completedSpawn != null && _goldCollectedForSpawn.Add(completedSpawn.Serial))
                 {
-                    Serial  capturedSerial = _targetSpawn.Serial;
+                    Serial  capturedSerial = completedSpawn.Serial;
                     Point3D capturedLoc    = Location;
                     Map     capturedMap    = Map;
 
@@ -1442,6 +1446,29 @@ namespace Server.Custom
                         Timer.DelayCall(TimeSpan.FromMinutes(10), () =>
                             _goldCollectedForSpawn.Remove(capturedSerial));
                     });
+                }
+
+                // Cascade victory withdrawal to any other Iron Company members still at
+                // this spawn — handles members who arrived after the champion was already
+                // killed (their _champAnnounced stays false, so they never self-detect).
+                if (completedSpawn != null)
+                {
+                    var mgr = PlayerSimulatorManager.Instance;
+                    if (mgr != null)
+                    {
+                        var stuck = new List<IronCompanySimPlayer>();
+                        foreach (SimPlayer sp in mgr.AllSimPlayers)
+                        {
+                            if (sp != this && !sp.Deleted && sp is IronCompanySimPlayer ic
+                                && ic._champPhase == ChampPhase.AtSpawn
+                                && ic._targetSpawn == completedSpawn)
+                            {
+                                stuck.Add(ic);
+                            }
+                        }
+                        foreach (IronCompanySimPlayer other in stuck)
+                            other.BeginWithdraw(true);
+                    }
                 }
             }
             else
