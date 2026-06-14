@@ -372,12 +372,45 @@ namespace Server.Gumps
             {
                 if (item == null || item.Deleted) continue;
 
-                if (VendorSearch.CheckMatch(item, 0, criteria))
+                if (Matches(item, criteria))
                     results.Add(new ItemSearchResult(item, location));
 
                 if (item is Container sub)
                     ScanContainer(sub, location + " › " + GetLabel(sub), results, player, criteria);
             }
+        }
+
+        // Matches item against criteria — separates name check from attribute check
+        // to handle items whose name comes from a cliloc (where GetItemName can return null)
+        private static bool Matches(Item item, SearchCriteria criteria)
+        {
+            // ── Name check ─────────────────────────────────────────
+            if (!string.IsNullOrEmpty(criteria.SearchName))
+            {
+                // Prefer item.Name (set in constructor); fall back to GetItemName (OPL parsing);
+                // fall back further to the type name so cliloc-named items are still found
+                string name = item.Name
+                    ?? VendorSearch.GetItemName(item)
+                    ?? GetLabel(item)
+                    ?? string.Empty;
+
+                if (name.IndexOf(criteria.SearchName, StringComparison.OrdinalIgnoreCase) < 0)
+                    return false;
+            }
+
+            // ── Attribute / layer check ────────────────────────────
+            // Use CheckMatch with SearchName suppressed (we already validated it above)
+            bool hasAttrCriteria = criteria.Details.Count > 0 || criteria.SearchType != Layer.Invalid;
+            if (!hasAttrCriteria)
+                return true;
+
+            string savedName = criteria.SearchName;
+            criteria.SearchName = null;
+            bool attrOk = false;
+            try   { attrOk = VendorSearch.CheckMatch(item, 0, criteria); }
+            finally { criteria.SearchName = savedName; }
+
+            return attrOk;
         }
 
         internal static string GetLabel(Item item)
