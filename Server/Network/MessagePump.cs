@@ -6,7 +6,6 @@ using System.Text;
 using System.Threading;
 
 using Server.Diagnostics;
-using Server.Misc;
 #endregion
 
 namespace Server.Network
@@ -160,7 +159,7 @@ namespace Server.Network
 				try
 				{
 					int online = NetState.Instances.Count(s => s != null && s.Mobile != null);
-					string name = ServerList.ServerName ?? "Aither";
+					string name = Config.Get("Server.Name", "Aither");
 					byte[] nameBytes = Encoding.ASCII.GetBytes(name);
 
 					// Response: 0x7F | online (2 bytes BE) | max (2 bytes BE) | name (null-terminated)
