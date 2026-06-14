@@ -45,24 +45,28 @@ namespace Server.Gumps
     // ── Gump ───────────────────────────────────────────────────────
     public class ItemSearchGump : Gump
     {
-        // Layout — styled after VendorSearchGump
-        private const int W          = 600;
-        private const int H          = 560;
-        private const int PadX       = 12;
-        private const int RowH       = 40;   // tall enough for item icon
-        private const int MaxRows    = 10;
-        private const int MinChars   = 3;
+        // Layout
+        private const int W       = 620;
+        private const int H       = 560;
+        private const int PadX    = 15;
+        private const int RowH    = 40;
+        private const int MaxRows = 10;
+        private const int MinChars = 3;
 
         // Column X positions
-        private const int ColIcon    = PadX;       // 12
-        private const int ColName    = PadX + 44;  // 56
-        private const int ColQty     = 300;
-        private const int ColLoc     = 360;
+        private const int ColIcon = PadX;
+        private const int ColName = PadX + 46;
+        private const int ColQty  = 330;
+        private const int ColLoc  = 390;
 
-        // Colours matching VendorSearchGump palette
-        private const int LabelColor = 0x4BBD;  // teal  — headers / title
-        private const int TextColor  = 0x6B55;  // gold  — row values
-        private const int AlertColor = 0x7C00;  // red   — error / no results
+        // HTML hex colours (6-digit, web-safe)
+        private const string ColTitle   = "#C8A428";   // gold     – title
+        private const string ColHeader  = "#6699CC";   // steel blue – column headers
+        private const string ColRowEven = "#DDCCAA";   // tan      – row text (even)
+        private const string ColRowOdd  = "#BBAA88";   // darker tan – row text (odd)
+        private const string ColHint    = "#888888";   // grey     – idle hint
+        private const string ColOk      = "#88CC88";   // green    – found results
+        private const string ColWarn    = "#FF8844";   // orange   – warning/empty
 
         // Button IDs
         private const int BTN_SEARCH   = 1;
@@ -91,7 +95,7 @@ namespace Server.Gumps
         // ── Constructor ────────────────────────────────────────────
 
         public ItemSearchGump(PlayerMobile player, string query, List<ItemSearchResult> results, int page)
-            : base(30, 30)
+            : base(100, 80)
         {
             _player  = player;
             _query   = query  ?? "";
@@ -114,60 +118,65 @@ namespace Server.Gumps
             int resultsOnPage = Math.Max(0, Math.Min(MaxRows, _results.Count - startIdx));
             int totalPages    = _results.Count > 0 ? (_results.Count + MaxRows - 1) / MaxRows : 1;
 
+            // ── Background ─────────────────────────────────────────
             AddBackground(0, 0, W, H, 30536);
 
             // ── Title ──────────────────────────────────────────────
-            AddHtml(PadX, 12, W - PadX * 2, 20,
-                $"<BASEFONT COLOR=#{LabelColor:X4}><B>Item Search</B></BASEFONT>",
+            AddHtml(PadX, 14, W - PadX * 2, 22,
+                $"<BASEFONT COLOR={ColTitle}><B>Item Search</B></BASEFONT>",
                 false, false);
 
+            // Divider under title
+            AddImageTiled(PadX, 38, W - PadX * 2, 1, 9264);
+
             // ── Search row ─────────────────────────────────────────
-            AddHtml(PadX, 40, 55, 22,
-                $"<BASEFONT COLOR=#{LabelColor:X4}>Search:</BASEFONT>", false, false);
+            AddHtml(PadX, 46, 60, 22,
+                $"<BASEFONT COLOR={ColHeader}>Search:</BASEFONT>", false, false);
 
-            AddBackground(70, 37, 310, 24, 9350);
-            AddTextEntry(73, 39, 304, 20, TextColor, 0, _query);
+            AddBackground(PadX + 62, 44, 340, 24, 9350);
+            AddTextEntry(PadX + 65, 46, 334, 20, 0x9C2, 0, _query);
 
-            AddButton(394, 38, 30534, 30534, BTN_SEARCH, GumpButtonType.Reply, 0);
-            AddHtml(434, 40, 80, 20,
-                $"<BASEFONT COLOR=#{LabelColor:X4}>Search</BASEFONT>", false, false);
+            AddButton(PadX + 416, 44, 30534, 30534, BTN_SEARCH, GumpButtonType.Reply, 0);
+            AddHtml(PadX + 456, 46, 70, 20,
+                $"<BASEFONT COLOR={ColHeader}>Search</BASEFONT>", false, false);
 
-            // ── Status / hint line ─────────────────────────────────
+            // ── Hint / status ──────────────────────────────────────
             string hint;
-            int    hintColor;
+            string hintCol;
 
             if (_query.Length == 0)
             {
-                hint      = "Searches backpack, bank, and all house containers (owner or co-owner).";
-                hintColor = 0x888888;
+                hint    = "Searches backpack, bank, and all house containers (owner or co-owner).";
+                hintCol = ColHint;
             }
             else if (_query.Length < MinChars)
             {
-                hint      = $"Enter at least {MinChars} characters to search.";
-                hintColor = AlertColor;
+                hint    = $"Enter at least {MinChars} characters to search.";
+                hintCol = ColWarn;
             }
             else if (_results.Count == 0)
             {
-                hint      = $"No items found matching \"{_query}\".";
-                hintColor = AlertColor;
+                hint    = $"No items found matching \"{_query}\".";
+                hintCol = ColWarn;
             }
             else
             {
-                hint      = $"{_results.Count} result{(_results.Count == 1 ? "" : "s")} for \"{_query}\"  —  Page {_page + 1} of {totalPages}";
-                hintColor = 0x44AA44;
+                hint    = $"{_results.Count} result{(_results.Count == 1 ? "" : "s")} for \"{_query}\"   —   Page {_page + 1} of {totalPages}";
+                hintCol = ColOk;
             }
 
-            AddHtml(PadX, 68, W - PadX * 2, 20,
-                $"<BASEFONT COLOR=#{hintColor:X6}>{hint}</BASEFONT>", false, false);
+            AddHtml(PadX, 74, W - PadX * 2, 20,
+                $"<BASEFONT COLOR={hintCol}>{hint}</BASEFONT>", false, false);
 
             // ── Column headers ─────────────────────────────────────
-            int y = 94;
-            AddHtml(ColName,  y, 240, 18, $"<BASEFONT COLOR=#{LabelColor:X4}><B>Item</B></BASEFONT>",     false, false);
-            AddHtml(ColQty,   y,  55, 18, $"<BASEFONT COLOR=#{LabelColor:X4}><B>Qty</B></BASEFONT>",      false, false);
-            AddHtml(ColLoc,   y, W - ColLoc - PadX, 18,
-                $"<BASEFONT COLOR=#{LabelColor:X4}><B>Location</B></BASEFONT>", false, false);
+            int y = 100;
+            AddHtml(ColName, y, 180, 18,
+                $"<BASEFONT COLOR={ColHeader}><B>Item</B></BASEFONT>", false, false);
+            AddHtml(ColQty, y, 55, 18,
+                $"<BASEFONT COLOR={ColHeader}><B>Qty</B></BASEFONT>", false, false);
+            AddHtml(ColLoc, y, W - ColLoc - PadX, 18,
+                $"<BASEFONT COLOR={ColHeader}><B>Location</B></BASEFONT>", false, false);
 
-            // Separator
             y += 20;
             AddImageTiled(PadX, y, W - PadX * 2, 1, 9264);
             y += 4;
@@ -177,28 +186,27 @@ namespace Server.Gumps
             {
                 for (int i = startIdx; i < startIdx + resultsOnPage; i++)
                 {
-                    var r = _results[i];
+                    var    r      = _results[i];
+                    string rowCol = (i % 2 == 0) ? ColRowEven : ColRowOdd;
 
-                    // Alternating row background
+                    // Subtle alternating background
                     if (i % 2 == 0)
                         AddAlphaRegion(PadX, y, W - PadX * 2, RowH);
 
-                    // Item icon — hover shows property tooltip
-                    AddImageTiledButton(ColIcon, y + 2, 0x918, 0x918, 0, GumpButtonType.Page, 0,
+                    // Item icon — hovering shows property tooltip
+                    AddImageTiledButton(ColIcon, y + 4, 0x918, 0x918, 0, GumpButtonType.Page, 0,
                         r.ItemID, r.Hue, 0, 0);
                     AddItemProperty(r.Serial);
 
-                    int textY = y + (RowH - 18) / 2; // vertically centre text in row
+                    int textY = y + (RowH - 18) / 2;
 
-                    AddHtml(ColName, textY, 240, 18,
-                        $"<BASEFONT COLOR=#{TextColor:X4}>{r.ItemName}</BASEFONT>", false, false);
-
+                    AddHtml(ColName, textY, 280, 18,
+                        $"<BASEFONT COLOR={rowCol}>{r.ItemName}</BASEFONT>", false, false);
                     AddHtml(ColQty, textY, 55, 18,
-                        $"<BASEFONT COLOR=#{TextColor:X4}>{(r.Amount > 1 ? r.Amount.ToString() : "—")}</BASEFONT>",
+                        $"<BASEFONT COLOR={rowCol}>{(r.Amount > 1 ? r.Amount.ToString() : "—")}</BASEFONT>",
                         false, false);
-
                     AddHtml(ColLoc, textY, W - ColLoc - PadX, 18,
-                        $"<BASEFONT COLOR=#{TextColor:X4}>{r.Location}</BASEFONT>", false, false);
+                        $"<BASEFONT COLOR={rowCol}>{r.Location}</BASEFONT>", false, false);
 
                     y += RowH;
                 }
@@ -207,20 +215,21 @@ namespace Server.Gumps
             // ── Pagination ─────────────────────────────────────────
             if (totalPages > 1)
             {
-                int navY = H - 38;
+                int navY = H - 36;
+                AddImageTiled(PadX, navY - 6, W - PadX * 2, 1, 9264);
 
                 if (_page > 0)
                 {
                     AddButton(PadX, navY, 30533, 30533, BTN_PREVPAGE, GumpButtonType.Reply, 0);
                     AddHtml(PadX + 40, navY + 2, 80, 18,
-                        $"<BASEFONT COLOR=#{LabelColor:X4}>Previous</BASEFONT>", false, false);
+                        $"<BASEFONT COLOR={ColHeader}>Previous</BASEFONT>", false, false);
                 }
 
                 if (_page < totalPages - 1)
                 {
-                    AddButton(W - 80, navY, 30534, 30534, BTN_NEXTPAGE, GumpButtonType.Reply, 0);
-                    AddHtml(W - 120, navY + 2, 35, 18,
-                        $"<BASEFONT COLOR=#{LabelColor:X4}>Next</BASEFONT>", false, false);
+                    AddButton(W - 76, navY, 30534, 30534, BTN_NEXTPAGE, GumpButtonType.Reply, 0);
+                    AddHtml(W - 116, navY + 2, 35, 18,
+                        $"<BASEFONT COLOR={ColHeader}>Next</BASEFONT>", false, false);
                 }
             }
         }
@@ -277,7 +286,7 @@ namespace Server.Gumps
             if (player.BankBox != null)
                 ScanContainer(player.BankBox, query, "Bank", results, player);
 
-            // 3. All houses where the player is owner or co-owner
+            // 3. All houses where owner or co-owner
             foreach (BaseHouse house in BaseHouse.AllHouses)
             {
                 if (house == null || house.Deleted) continue;
@@ -296,22 +305,18 @@ namespace Server.Gumps
                     {
                         if (si?.Item == null || si.Item.Deleted) continue;
                         if (!(si.Item is Container cont)) continue;
-
                         ScanContainer(cont, query, $"{houseLabel} › {GetLabel(cont)}", results, player);
                     }
                 }
 
-                // Locked-down containers (not already covered by Secures)
+                // Locked-down containers (skip any already covered by Secures)
                 if (house.LockDowns != null)
                 {
                     foreach (Item item in house.LockDowns.Keys)
                     {
                         if (item == null || item.Deleted) continue;
                         if (!(item is Container lc)) continue;
-
-                        // Skip if already in Secures to avoid double-scanning
                         if (house.Secures != null && house.Secures.Exists(si => si?.Item == item)) continue;
-
                         ScanContainer(lc, query, $"{houseLabel} › {GetLabel(lc)}", results, player);
                     }
                 }
@@ -320,10 +325,7 @@ namespace Server.Gumps
             return results;
         }
 
-        /// <summary>
-        /// Recursively scans a container and all sub-containers.
-        /// Matches against display name, type name, and searchable property keywords.
-        /// </summary>
+        /// <summary>Recursively scans a container and all sub-containers.</summary>
         private static void ScanContainer(Container cont, string query,
                                            string location, List<ItemSearchResult> results,
                                            PlayerMobile player)
@@ -345,7 +347,6 @@ namespace Server.Gumps
                         item.Serial.Value, item.ItemID, item.Hue));
                 }
 
-                // Recurse into sub-containers
                 if (item is Container sub)
                     ScanContainer(sub, query, $"{location} › {GetLabel(sub)}", results, player);
             }
