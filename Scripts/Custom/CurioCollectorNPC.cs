@@ -404,96 +404,127 @@ namespace Server.Custom
                 });
                 _items = items;
 
-                int gumpWidth  = 580;
-                int rowHeight  = 30;   // taller rows to fit item icon
-                int headerY    = 60;
-                int rowsStart  = 90;
-                int rows       = _items.Count;
-                int gumpHeight = rowsStart + rows * rowHeight + 80;
+                const int gumpWidth   = 580;
+                const int rowHeight   = 30;
+                const int headerY     = 60;
+                const int rowsStart   = 90;
+                const int MaxPerPage  = 12;
 
+                int rows      = _items.Count;
+                int numPages  = Math.Max(1, (int)Math.Ceiling(rows / (double)MaxPerPage));
+                int gumpHeight = rowsStart + MaxPerPage * rowHeight + 80;
+
+                double beggingBonus = GetBeggingBonus(from);
+
+                // Pre-compute totals across all items
+                int totalGold  = 0;
+                int totalCoins = 0;
+                for (int i = 0; i < rows; i++)
+                {
+                    ScoredItem si = _items[i];
+                    double mult = GetMultiplier(i);
+                    if (si.BasePrice > 0)
+                    {
+                        int adj = (int)Math.Round(si.BasePrice * mult * (1.0 + beggingBonus) / 100.0) * 100;
+                        totalGold += Math.Max(100, adj);
+                    }
+                    else
+                    {
+                        totalCoins += Math.Max(1, (int)Math.Round(si.CoinPrice * (1.0 + beggingBonus)));
+                    }
+                }
+
+                // ── Page 0: always visible — background, title, headers, footer ──
+                AddPage(0);
                 AddBackground(0, 0, gumpWidth, gumpHeight, 9200);
                 AddAlphaRegion(5, 5, gumpWidth - 10, gumpHeight - 10);
 
-                // Title
                 AddLabel(gumpWidth / 2 - 100, 12, 0x35, "Curio Collector — Appraisal");
                 AddLabel(gumpWidth / 2 - 115, 30, 1152, "Hover over an item icon to inspect its properties.");
 
-                // Column headers
                 AddLabel(38,  headerY, 0x3B2, "Sell");
-                AddLabel(65,  headerY, 0x3B2, "  ");   // icon col
+                AddLabel(65,  headerY, 0x3B2, "  ");
                 AddLabel(100, headerY, 0x3B2, "Item");
                 AddLabel(295, headerY, 0x3B2, "Tier");
                 AddLabel(370, headerY, 0x3B2, "Full Price");
                 AddLabel(465, headerY, 0x3B2, "Offer");
 
-                int totalGold  = 0;
-                int totalCoins = 0;
-                double beggingBonus = GetBeggingBonus(from);
-
-                for (int i = 0; i < _items.Count; i++)
-                {
-                    ScoredItem si = _items[i];
-                    int y = rowsStart + i * rowHeight;
-                    double mult = GetMultiplier(i);
-
-                    // Checkbox (checked by default)
-                    AddCheck(38, y + 6, 0xD2, 0xD3, false, i);
-
-                    // Item icon — hover shows full property tooltip
-                    AddItem(63, y + 2, si.Item.ItemID, si.Item.Hue);
-                    AddItemProperty(si.Item.Serial);
-
-                    // Name
-                    string name = !string.IsNullOrEmpty(si.Item.Name)
-                        ? si.Item.Name
-                        : si.Item.GetType().Name;
-                    if (name.Length > 26) name = name.Substring(0, 26);
-                    AddLabel(100, y + 7, 0xFFFF, name);
-
-                    // Tier label and colour
-                    int tierHue;
-                    string tierLabel;
-                    switch (si.Tier)
-                    {
-                        case ItemTier.GoldMinor:    tierLabel = "Minor";    tierHue = 0x9C2; break;
-                        case ItemTier.GoldNotable:  tierLabel = "Notable";  tierHue = 0x35;  break;
-                        case ItemTier.CoinsHighEnd: tierLabel = "High-End"; tierHue = 0x4F;  break;
-                        case ItemTier.CoinsArtifact:tierLabel = "Artifact"; tierHue = 0x21;  break;
-                        default:                    tierLabel = "—";        tierHue = 0x3B2; break;
-                    }
-                    AddLabel(280, y, tierHue, tierLabel);
-
-                    // Full price → Offer
-                    if (si.BasePrice > 0)
-                    {
-                        // Gold items: diminishing returns + begging bonus
-                        AddLabel(360, y, 0x9C2, $"{si.BasePrice:N0}g");
-                        int adjusted = (int)Math.Round(si.BasePrice * mult * (1.0 + beggingBonus) / 100.0) * 100;
-                        adjusted = Math.Max(100, adjusted);
-                        AddLabel(450, y, 0x35, $"{adjusted:N0}g");
-                        totalGold += adjusted;
-                    }
-                    else
-                    {
-                        // Coin items: no diminishing returns, begging bonus applies
-                        int adjCoins = Math.Max(1, (int)Math.Round(si.CoinPrice * (1.0 + beggingBonus)));
-                        AddLabel(360, y, 0x4F, $"{si.CoinPrice}c");
-                        AddLabel(450, y, 0x21, $"{adjCoins}c");
-                        totalCoins += adjCoins;
-                    }
-                }
-
-                // Footer totals
-                int footerY = rowsStart + rows * rowHeight + 10;
+                int footerY = rowsStart + MaxPerPage * rowHeight + 10;
                 string beggingNote = beggingBonus > 0 ? $"  (+{(int)(beggingBonus * 100)}% Begging bonus)" : "";
-                AddLabel(70,  footerY, 0x3B2, $"Total gold: {totalGold:N0}  |  Total coins: {totalCoins}{beggingNote}");
+                AddLabel(70, footerY, 0x3B2, $"Total gold: {totalGold:N0}  |  Total coins: {totalCoins}{beggingNote}");
 
-                // Buttons
                 int btnY = footerY + 28;
                 AddButton(70,  btnY, 4005, 4007, BTN_CONFIRM, GumpButtonType.Reply, 0);
                 AddLabel(106,  btnY + 2, 0x35, "Sell Selected");
                 AddButton(260, btnY, 4017, 4019, BTN_CLOSE, GumpButtonType.Reply, 0);
                 AddLabel(296,  btnY + 2, 33, "No Thanks");
+
+                // ── Pages 1..N: item rows ──
+                for (int p = 0; p < numPages; p++)
+                {
+                    AddPage(p + 1);
+
+                    int start = p * MaxPerPage;
+                    int end   = Math.Min(start + MaxPerPage, rows);
+
+                    for (int i = start; i < end; i++)
+                    {
+                        ScoredItem si   = _items[i];
+                        int y           = rowsStart + (i - start) * rowHeight;
+                        double mult     = GetMultiplier(i);
+
+                        AddCheck(38, y + 6, 0xD2, 0xD3, false, i);
+                        AddItem(63, y + 2, si.Item.ItemID, si.Item.Hue);
+                        AddItemProperty(si.Item.Serial);
+
+                        string name = !string.IsNullOrEmpty(si.Item.Name)
+                            ? si.Item.Name : si.Item.GetType().Name;
+                        if (name.Length > 26) name = name.Substring(0, 26);
+                        AddLabel(100, y + 7, 0xFFFF, name);
+
+                        int tierHue;
+                        string tierLabel;
+                        switch (si.Tier)
+                        {
+                            case ItemTier.GoldMinor:     tierLabel = "Minor";    tierHue = 0x9C2; break;
+                            case ItemTier.GoldNotable:   tierLabel = "Notable";  tierHue = 0x35;  break;
+                            case ItemTier.CoinsHighEnd:  tierLabel = "High-End"; tierHue = 0x4F;  break;
+                            case ItemTier.CoinsArtifact: tierLabel = "Artifact"; tierHue = 0x21;  break;
+                            default:                     tierLabel = "—";        tierHue = 0x3B2; break;
+                        }
+                        AddLabel(280, y, tierHue, tierLabel);
+
+                        if (si.BasePrice > 0)
+                        {
+                            AddLabel(360, y, 0x9C2, $"{si.BasePrice:N0}g");
+                            int adj = (int)Math.Round(si.BasePrice * mult * (1.0 + beggingBonus) / 100.0) * 100;
+                            AddLabel(450, y, 0x35, $"{Math.Max(100, adj):N0}g");
+                        }
+                        else
+                        {
+                            int adjCoins = Math.Max(1, (int)Math.Round(si.CoinPrice * (1.0 + beggingBonus)));
+                            AddLabel(360, y, 0x4F, $"{si.CoinPrice}c");
+                            AddLabel(450, y, 0x21, $"{adjCoins}c");
+                        }
+                    }
+
+                    // Prev / Next navigation
+                    if (numPages > 1)
+                    {
+                        int navY = footerY - 22;
+                        if (p > 0)
+                        {
+                            AddButton(390, navY, 0xFAE, 0xFAF, 0, GumpButtonType.Page, p);
+                            AddLabel(426, navY + 2, 0x3B2, "< Prev");
+                        }
+                        if (p < numPages - 1)
+                        {
+                            AddButton(480, navY, 0xFAE, 0xFAF, 0, GumpButtonType.Page, p + 2);
+                            AddLabel(516, navY + 2, 0x3B2, "Next >");
+                        }
+                        AddLabel(390, navY + 22, 0x3B2, $"Page {p + 1} / {numPages}");
+                    }
+                }
             }
 
             public override void OnResponse(NetState sender, RelayInfo info)
