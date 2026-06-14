@@ -570,11 +570,6 @@ namespace Server.Custom
                     _from.SendMessage(0x35, "You receive an Elixir of Rebirth. Use it to resurrect a dead bonded pet.");
                     break;
 
-                case 12: // Elixir of Rebirth
-                    _from.AddToBackpack(new ElixirOfRebirth());
-                    _from.SendMessage(0x35, "You receive an Elixir of Rebirth. Use it to resurrect a dead bonded pet.");
-                    break;
-
                 // ── Ethereal Mounts ──────────────────────────────────────────
                 case 13: // Ethereal Llama
                     _from.AddToBackpack(new EtherealLlama());

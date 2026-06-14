@@ -615,7 +615,7 @@ namespace Server.Gumps
             if (btn == BTN_ITEM_SEARCH)
             {
                 if (_from is PlayerMobile pm2)
-                { pm2.CloseGump(typeof(ItemSearchGump)); pm2.SendGump(new ItemSearchGump(pm2, "", null, 0)); }
+                { pm2.CloseGump(typeof(ItemSearchGump)); pm2.SendGump(new ItemSearchGump(pm2)); }
                 return;
             }
 
