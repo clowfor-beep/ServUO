@@ -1,9 +1,12 @@
 #region References
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading;
 
 using Server.Diagnostics;
+using Server.Misc;
 #endregion
 
 namespace Server.Network
@@ -150,6 +153,35 @@ namespace Server.Network
 
 		public static bool HandleSeed(NetState ns, ByteQueue buffer)
 		{
+			// Handle external server status queries (e.g. uoservers.com monitoring)
+			// These arrive as 3 bytes: 0x7F 0x00 0x00 — before any seed is sent
+			if (buffer.GetPacketID() == 0x7F)
+			{
+				try
+				{
+					int online = NetState.Instances.Count(s => s != null && s.Mobile != null);
+					string name = ServerList.ServerName ?? "Aither";
+					byte[] nameBytes = Encoding.ASCII.GetBytes(name);
+
+					// Response: 0x7F | online (2 bytes BE) | max (2 bytes BE) | name (null-terminated)
+					var resp = new byte[5 + nameBytes.Length + 1];
+					resp[0] = 0x7F;
+					resp[1] = (byte)(online >> 8);
+					resp[2] = (byte)(online & 0xFF);
+					resp[3] = 0x09; // max 2500 = 0x09C4
+					resp[4] = 0xC4;
+					Array.Copy(nameBytes, 0, resp, 5, nameBytes.Length);
+					// resp[5 + nameBytes.Length] = 0x00; // already zero-initialised
+
+					ns.Socket.Send(resp);
+				}
+				catch
+				{ }
+
+				ns.Dispose();
+				return false;
+			}
+
 			if (buffer.GetPacketID() == 0xEF)
 			{
 				// new packet in client	6.0.5.0	replaces the traditional seed method with a	seed packet
