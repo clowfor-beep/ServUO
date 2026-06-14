@@ -114,7 +114,7 @@ namespace Server.Items
             new AtlasLocation("Magincia",        3714, 2190, 20, Map.Felucca),  // Town center
             new AtlasLocation("Nujel'm",         3640, 1301,  0, Map.Felucca),  // Bank
             new AtlasLocation("Ocllo",           3649, 2662,  0, Map.Felucca),  // Bank
-            new AtlasLocation("Serpent's Hold",  2987, 3497,  0, Map.Felucca),  // Town
+            new AtlasLocation("Serpent's Hold",  3010, 3371, 15, Map.Felucca),  // Town
             new AtlasLocation("Papua",           5765, 3175,  0, Map.Felucca),  // Bank
             new AtlasLocation("Delucia",         5228, 3978, 37, Map.Felucca),  // Town
             new AtlasLocation("New Haven",       3503, 2574, 14, Map.Trammel),
