@@ -21,7 +21,7 @@ UninstallDisplayName=AIther
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "sqlite3.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "sqlite3.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\AIther Launcher"; Filename: "{app}\ClassicUOLauncher.exe"
@@ -34,6 +34,26 @@ Filename: "{app}\ClassicUOLauncher.exe"; Description: "Launch AIther now"; Flags
 
 var
   UOPathPage: TInputDirWizardPage;
+
+// ── Uninstall cleanup ─────────────────────────────────────────────────────────
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  LauncherDir: String;
+  Code: Integer;
+begin
+  if CurUninstallStep = usUninstall then begin
+    // Kill launcher/game before removing files
+    Exec('powershell.exe',
+      '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Get-Process | Where-Object { $_.Name -match ''ClassicUO'' } | Stop-Process -Force -ErrorAction SilentlyContinue"',
+      '', SW_HIDE, ewWaitUntilTerminated, Code);
+
+    // Remove ClassicUO Launcher profile DB
+    LauncherDir := ExpandConstant('{userappdata}') + '\ClassicUOLauncher';
+    if DirExists(LauncherDir) then
+      DelTree(LauncherDir, True, True, True);
+  end;
+end;
 
 // ── Wizard pages ─────────────────────────────────────────────────────────────
 
@@ -96,14 +116,14 @@ var
   Lines: TArrayOfString;
   Code: Integer;
 begin
-  if CurStep <> ssInstall then Exit;
+  if CurStep <> ssPostInstall then Exit;
 
   InstallDir := WizardDirValue;
   UOPath     := UOPathPage.Values[0];
   PluginsDir := InstallDir + '\ClassicUO\Plugins';
   CUOPath    := InstallDir + '\ClassicUO';  // launcher downloads ClassicUO.exe here
   LauncherDB := ExpandConstant('{userappdata}') + '\ClassicUOLauncher\launcher.db';
-  SqlitePath := ExpandConstant('{tmp}') + '\sqlite3.exe';
+  SqlitePath := InstallDir + '\sqlite3.exe';
   TmpPath    := ExpandConstant('{tmp}');
 
   // Pre-create the ClassicUO subfolder so the launcher knows where to download CUO
@@ -184,8 +204,8 @@ begin
   ForceDirectories(ExpandConstant('{userappdata}') + '\ClassicUOLauncher');
 
   // Use PowerShell to run all DB setup — matches the method proven to work
-  SaveStringToFile(TmpPath + '\setup_db.ps1',
-    '$sq = "' + SqlitePath + '"' + #13#10 +
+  SaveStringToFile(InstallDir + '\setup_db.ps1',
+    '$sq = "' + InstallDir + '\sqlite3.exe"' + #13#10 +
     '$db = "' + LauncherDB + '"' + #13#10 +
     '$cuo = "' + CUOPath + '"' + #13#10 +
     '$uo = "' + UOPath + '"' + #13#10 +
@@ -205,7 +225,7 @@ begin
     False);
 
   Exec('powershell.exe',
-    '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + TmpPath + '\setup_db.ps1"',
+    '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + InstallDir + '\setup_db.ps1"',
     '', SW_HIDE, ewWaitUntilTerminated, Code);
 
   SetStatus('Done!');
