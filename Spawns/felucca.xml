@@ -28814,14 +28814,14 @@
   <Points>
     <Name>Sarakki Quest</Name>
     <UniqueId>525cc026-f966-4497-a816-e7acd3ce764f</UniqueId>
-    <Map>Felucca</Map>
-    <X>1422</X>
-    <Y>1619</Y>
+    <Map>Tokuno</Map>
+    <X>1346</X>
+    <Y>766</Y>
     <Width>0</Width>
     <Height>0</Height>
-    <CentreX>1422</CentreX>
-    <CentreY>1619</CentreY>
-    <CentreZ>20</CentreZ>
+    <CentreX>1346</CentreX>
+    <CentreY>766</CentreY>
+    <CentreZ>21</CentreZ>
     <Range>4</Range>
     <MaxCount>1</MaxCount>
     <MinDelay>5</MinDelay>

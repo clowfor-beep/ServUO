@@ -80938,14 +80938,14 @@
   <Points>
     <Name>Sarakki Quest</Name>
     <UniqueId>c723d4b7-9bfe-42d7-ac91-f2ca8a5f9a33</UniqueId>
-    <Map>Trammel</Map>
-    <X>1422</X>
-    <Y>1619</Y>
+    <Map>Tokuno</Map>
+    <X>1346</X>
+    <Y>766</Y>
     <Width>0</Width>
     <Height>0</Height>
-    <CentreX>1422</CentreX>
-    <CentreY>1619</CentreY>
-    <CentreZ>20</CentreZ>
+    <CentreX>1346</CentreX>
+    <CentreY>766</CentreY>
+    <CentreZ>21</CentreZ>
     <Range>4</Range>
     <MaxCount>1</MaxCount>
     <MinDelay>5</MinDelay>
