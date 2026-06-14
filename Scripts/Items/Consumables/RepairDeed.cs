@@ -154,12 +154,33 @@ namespace Server.Items
         {
             if (!IsChildOf(from.Backpack))
                 from.SendLocalizedMessage(1047012); // The contract must be in your backpack to use it.
-            else if (!VerifyRegion(from))
+            else if (!CanSelfRepair(from) && !VerifyRegion(from))
                 TextDefinition.SendMessageTo(from, RepairSkillInfo.GetInfo(m_Skill).NotNearbyMessage);
             else
                 return true;
 
             return false;
+        }
+
+        // Players with 100+ in the relevant craft skill can use the deed anywhere.
+        private bool CanSelfRepair(Mobile from)
+        {
+            return from.Skills[GetAssociatedSkill(m_Skill)].Value >= 100.0;
+        }
+
+        private static SkillName GetAssociatedSkill(RepairSkillType type)
+        {
+            switch (type)
+            {
+                case RepairSkillType.Smithing:     return SkillName.Blacksmith;
+                case RepairSkillType.Tailoring:    return SkillName.Tailoring;
+                case RepairSkillType.Tinkering:    return SkillName.Tinkering;
+                case RepairSkillType.Carpentry:    return SkillName.Carpentry;
+                case RepairSkillType.Fletching:    return SkillName.Fletching;
+                case RepairSkillType.Masonry:      return SkillName.Carpentry;
+                case RepairSkillType.Glassblowing: return SkillName.Alchemy;
+                default:                           return SkillName.Blacksmith;
+            }
         }
 
         public bool VerifyRegion(Mobile m)
