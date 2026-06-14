@@ -238,7 +238,18 @@ namespace Server.Gumps
                         return;
                     }
 
-                    List<ItemSearchResult> results = DoSearch(pm, _criteria);
+                    List<ItemSearchResult> results;
+
+                    try
+                    {
+                        results = DoSearch(pm, _criteria);
+                    }
+                    catch (Exception ex)
+                    {
+                        pm.SendMessage(0x22, "Item Search error: " + ex.Message);
+                        pm.SendGump(new ItemSearchGump(pm));
+                        return;
+                    }
 
                     if (results == null || results.Count == 0)
                     {
@@ -362,10 +373,7 @@ namespace Server.Gumps
                 if (item == null || item.Deleted) continue;
 
                 if (VendorSearch.CheckMatch(item, 0, criteria))
-                {
-                    item.SendPropertiesTo(player);
                     results.Add(new ItemSearchResult(item, location));
-                }
 
                 if (item is Container sub)
                     ScanContainer(sub, location + " › " + GetLabel(sub), results, player, criteria);
