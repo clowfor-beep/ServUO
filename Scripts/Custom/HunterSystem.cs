@@ -422,7 +422,7 @@ namespace Server.Custom
             _activeHunts.Add(record);
 
             BroadcastHuntSpawn(record.Name, entry.DungeonName);
-            FBEventBus.Fire_HunterTargetSpawned(record.Name, entry.DungeonName);
+            FBEventBus.Fire_HunterTargetSpawned(record.Name, BroadcastDungeonName(entry.DungeonName));
 
             // Capture locals for timer closures
             Serial capturedSerial   = creature.Serial;
@@ -555,7 +555,10 @@ namespace Server.Custom
             PruneHunts();
             var list = new List<string>(_activeHunts.Count);
             foreach (HuntRecord r in _activeHunts)
-                list.Add(r.Location.Length > 0 ? $"{r.Name} — {r.Location}" : r.Name);
+            {
+                string loc = BroadcastDungeonName(r.Location);
+                list.Add(loc.Length > 0 ? $"{r.Name} — {loc}" : r.Name);
+            }
             return list;
         }
 
@@ -564,7 +567,10 @@ namespace Server.Custom
             PruneWanted();
             var list = new List<string>(_activeWanted.Count);
             foreach (HuntRecord r in _activeWanted)
-                list.Add(r.Location.Length > 0 ? $"{r.Name} — {r.Location}" : r.Name);
+            {
+                string loc = BroadcastDungeonName(r.Location);
+                list.Add(loc.Length > 0 ? $"{r.Name} — {loc}" : r.Name);
+            }
             return list;
         }
 
@@ -675,17 +681,25 @@ namespace Server.Custom
         // BROADCAST HELPERS
         // --------------------------------------------------------
 
+        // Strip " (Level X)" from dungeon names for world broadcasts — players
+        // shouldn't know the exact level before they explore.
+        private static string BroadcastDungeonName(string dungeon)
+        {
+            int idx = dungeon.IndexOf(" (Level ", System.StringComparison.Ordinal);
+            return idx >= 0 ? dungeon.Substring(0, idx) : dungeon;
+        }
+
         public static void BroadcastHuntSpawn(string name, string dungeon)
         {
             World.Broadcast(0x44, false,
-                $"[World Hunt] {name} has been sighted deep within {dungeon}! " +
+                $"[World Hunt] {name} has been sighted deep within {BroadcastDungeonName(dungeon)}! " +
                 $"Seek it out for glory and reward!");
         }
 
         public static void BroadcastHuntReminder(string name, string dungeon)
         {
             World.Broadcast(0x44, false,
-                $"[World Hunt] {name} still prowls {dungeon}. It has not yet been slain!");
+                $"[World Hunt] {name} still prowls {BroadcastDungeonName(dungeon)}. It has not yet been slain!");
         }
 
         public static void BroadcastHuntKill(string name, string killerName)
