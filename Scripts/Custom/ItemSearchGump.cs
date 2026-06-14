@@ -1,76 +1,71 @@
 // ============================================================
-// ItemSearchGump.cs
-// Scripts/Custom/ItemSearchGump.cs
+// ItemSearchGump.cs  —  Scripts/Custom/ItemSearchGump.cs
 //
-// Searches a player's backpack, bank box, and all containers
-// in houses where the player is owner or co-owner.
+// Personal item search that mirrors the Vendor Search gump:
+//   • Same filter categories (Equipment, Combat, Casting,
+//     Resists, Stats, Slayers, Skill Groups, Misc…)
+//   • Searches backpack, bank, and house containers
+//     (owner or co-owner)
+//   • Reuses SearchCriteria / VendorSearch.CheckMatch so every
+//     attribute filter works identically
 //
-// Usage: [itemsearch  (player command)
+// Usage: [itemsearch
 // ============================================================
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Server;
 using Server.Commands;
+using Server.Engines.VendorSearching;
 using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
 using Server.Multis;
 using Server.Network;
-using Server.Spells;
 
 namespace Server.Gumps
 {
     // ── Result record ──────────────────────────────────────────────
     public class ItemSearchResult
     {
-        public string ItemName;
-        public int    Amount;
+        public Item   Item;
         public string Location;
-        public int    Serial;
-        public int    ItemID;
-        public int    Hue;
 
-        public ItemSearchResult(string itemName, int amount, string location, int serial, int itemID, int hue)
+        public ItemSearchResult(Item item, string location)
         {
-            ItemName = itemName;
-            Amount   = amount;
+            Item     = item;
             Location = location;
-            Serial   = serial;
-            ItemID   = itemID;
-            Hue      = hue;
         }
     }
 
-    // ── Gump ───────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════
+    //  Query gump — mirrors VendorSearchGump (no price/sort/auction)
+    // ══════════════════════════════════════════════════════════════
+
     public class ItemSearchGump : Gump
     {
-        // Dimensions — match vendor search query gump
-        private const int W        = 780;
-        private const int H        = 600;
+        // UO integer colours — same as VendorSearchGump
+        public static int LabelColor    = 0x4BBD;
+        public static int CriteriaColor = 0x6B55;
+        public static int TextColor     = 0x9C2;
+        public static int AlertColor    = 0x7C00;
 
-        // Results area
-        private const int PerPage  = 6;    // rows per page
-        private const int RowH     = 75;   // matches SearchResultsGump row height
-        private const int ResultsY = 110;  // Y where rows start
-        private const int MinChars = 3;
+        // Per-player criteria (separate from vendor search contexts)
+        private static readonly Dictionary<PlayerMobile, SearchCriteria> _contexts
+            = new Dictionary<PlayerMobile, SearchCriteria>();
 
-        // Colours (6-digit HTML hex)
-        private const string ColTitle  = "#5BC6E8";  // cyan  – headers
-        private const string ColText   = "#6B9955";  // green – body text / values
-        private const string ColOk     = "#88CC88";
-        private const string ColWarn   = "#FF8844";
-        private const string ColHint   = "#888888";
+        // All categories except price / sort / auction
+        private static readonly SearchCriteriaCategory[] FilteredCats =
+            SearchCriteriaCategory.AllCategories
+                .Where(x => x.Category != Category.PriceRange
+                         && x.Category != Category.Sort
+                         && x.Category != Category.Auction)
+                .ToArray();
 
-        // Button IDs
-        private const int BTN_SEARCH   = 1;
-        private const int BTN_PREVPAGE = 2;
-        private const int BTN_NEXTPAGE = 3;
-
-        private readonly PlayerMobile           _player;
-        private readonly string                 _query;
-        private readonly List<ItemSearchResult> _results;
-        private readonly int                    _page;
+        private readonly PlayerMobile   _player;
+        private readonly SearchCriteria _criteria;
+        private readonly int            _feedback; // -1 = none
 
         // ── Command registration ───────────────────────────────────
 
@@ -83,23 +78,27 @@ namespace Server.Gumps
         {
             if (!(e.Mobile is PlayerMobile pm)) return;
             pm.CloseGump(typeof(ItemSearchGump));
-            pm.SendGump(new ItemSearchGump(pm, "", null, 0));
+            pm.SendGump(new ItemSearchGump(pm));
+        }
+
+        public static SearchCriteria GetCriteria(PlayerMobile pm)
+        {
+            if (!_contexts.TryGetValue(pm, out SearchCriteria c) || c == null)
+                c = _contexts[pm] = new SearchCriteria();
+            return c;
         }
 
         // ── Constructor ────────────────────────────────────────────
 
-        public ItemSearchGump(PlayerMobile player, string query, List<ItemSearchResult> results, int page)
+        public ItemSearchGump(PlayerMobile pm, int feedback = -1)
             : base(10, 10)
         {
-            _player  = player;
-            _query   = query  ?? "";
-            _results = results ?? new List<ItemSearchResult>();
-            _page    = page;
+            _player   = pm;
+            _criteria = GetCriteria(pm);
+            _feedback = feedback;
 
-            Closable   = true;
-            Disposable = true;
-            Dragable   = true;
-            Resizable  = false;
+            Closable = Disposable = Dragable = true;
+            Resizable = false;
 
             Build();
         }
@@ -108,120 +107,102 @@ namespace Server.Gumps
 
         private void Build()
         {
-            int startIdx      = _page * PerPage;
-            int resultsOnPage = Math.Max(0, Math.Min(PerPage, _results.Count - startIdx));
-            int totalPages    = _results.Count > 0 ? (_results.Count + PerPage - 1) / PerPage : 1;
+            AddPage(0);
+            AddBackground(0, 0, 780, 600, 30546);
 
-            // Background — same as VendorSearchGump
-            AddBackground(0, 0, W, H, 30546);
+            // Title (1114513 = "~1_val~", outputs the arg as-is)
+            AddHtmlLocalized(10, 10, 760, 18, 1114513, "#1154508", LabelColor, false, false); // "Item Search"
 
-            // ── Title ──────────────────────────────────────────────
-            AddHtml(10, 10, W - 20, 18,
-                $"<BASEFONT COLOR={ColTitle}><CENTER><B>Item Search</B></CENTER></BASEFONT>",
-                false, false);
+            // ── Right panel header ─────────────────────────────────
+            AddHtmlLocalized(522, 30, 246, 18, 1154546, LabelColor, false, false); // "Selected Search Criteria"
 
-            // ── Search row ─────────────────────────────────────────
-            AddHtml(10, 30, 80, 18,
-                $"<BASEFONT COLOR={ColTitle}>Item Name</BASEFONT>", false, false);
+            // ── Right panel: active criteria list ──────────────────
+            int yRight = 0;
 
-            AddBackground(10, 50, 340, 22, 9350);
-            AddTextEntry(12, 52, 336, 18, 0x9C2, 0, _query, 50);
-
-            // Search button (matches vendor search)
-            AddButton(W - 50, H - 30, 30534, 30534, BTN_SEARCH, GumpButtonType.Reply, 0);
-            AddHtml(W - 120, H - 28, 60, 20,
-                $"<BASEFONT COLOR={ColTitle}>Search</BASEFONT>", false, false);
-
-            // Cancel / close button
-            AddButton(10, H - 30, 0x7747, 0x7747, 0, GumpButtonType.Reply, 0);
-            AddHtml(50, H - 28, 60, 20,
-                $"<BASEFONT COLOR={ColTitle}>Cancel</BASEFONT>", false, false);
-
-            // ── Status hint ────────────────────────────────────────
-            string hint;
-            string hintCol;
-
-            if (_query.Length == 0)
+            if (!string.IsNullOrEmpty(_criteria.SearchName))
             {
-                hint    = "Searches backpack, bank, and all house containers (owner or co-owner).";
-                hintCol = ColHint;
-            }
-            else if (_query.Length < MinChars)
-            {
-                hint    = $"Enter at least {MinChars} characters to search.";
-                hintCol = ColWarn;
-            }
-            else if (_results.Count == 0)
-            {
-                hint    = $"No items found matching \"{_query}\".";
-                hintCol = ColWarn;
-            }
-            else
-            {
-                hint    = $"{_results.Count} result{(_results.Count == 1 ? "" : "s")} for \"{_query}\"   —   Page {_page + 1} of {totalPages}";
-                hintCol = ColOk;
+                AddButton(522, 50 + yRight * 22, 4017, 4019, 7, GumpButtonType.Reply, 0);
+                AddTooltip(1154694); // "Remove Selected Search Criteria"
+                AddHtmlLocalized(562, 50 + yRight * 22, 206, 20, 1154510, CriteriaColor, false, false); // Item Name
+                yRight++;
             }
 
-            AddHtml(10, 78, W - 20, 20,
-                $"<BASEFONT COLOR={hintCol}>{hint}</BASEFONT>", false, false);
-
-            // ── Column headers ─────────────────────────────────────
-            AddHtml(162, ResultsY - 22, 200, 18,
-                $"<BASEFONT COLOR={ColTitle}><B>Item</B></BASEFONT>", false, false);
-            AddHtml(420, ResultsY - 22, 60, 18,
-                $"<BASEFONT COLOR={ColTitle}><B>Qty</B></BASEFONT>", false, false);
-            AddHtml(490, ResultsY - 22, W - 500, 18,
-                $"<BASEFONT COLOR={ColTitle}><B>Location</B></BASEFONT>", false, false);
-
-            // ── Result rows ────────────────────────────────────────
-            if (resultsOnPage > 0)
+            for (int i = 0; i < _criteria.Details.Count; i++)
             {
-                int index = 0;
-                for (int i = startIdx; i < startIdx + resultsOnPage; i++)
+                SearchDetail det   = _criteria.Details[i];
+                int          cliloc = det.PropLabel;
+
+                if (cliloc > 0)
                 {
-                    var r = _results[i];
-                    int y = ResultsY + (index * RowH);
-
-                    // Icon area — centered item graphic (matches SearchResultsGump)
-                    Rectangle2D bounds = ItemBounds.Table[r.ItemID & 0x3FFF];
-                    AddImageTiledButton(50, y, 0x918, 0x918, 0, GumpButtonType.Page, 0,
-                        r.ItemID, r.Hue,
-                        40 - bounds.Width / 2 - bounds.X,
-                        30 - bounds.Height / 2 - bounds.Y);
-                    AddItemProperty(r.Serial);
-
-                    // Item name
-                    AddHtml(162, y, 250, RowH,
-                        $"<BASEFONT COLOR={ColText}>{r.ItemName}</BASEFONT>", false, false);
-
-                    // Qty
-                    AddHtml(420, y, 60, RowH,
-                        $"<BASEFONT COLOR={ColText}>{(r.Amount > 1 ? r.Amount.ToString() : "—")}</BASEFONT>",
-                        false, false);
-
-                    // Location
-                    AddHtml(490, y, W - 500, RowH,
-                        $"<BASEFONT COLOR={ColText}>{r.Location}</BASEFONT>", false, false);
-
-                    index++;
+                    if (det.Attribute is SkillName)
+                        AddHtmlLocalized(562, 50 + yRight * 22, 206, 20, 1060451,
+                            string.Format("#{0}@{1}", cliloc, det.Value), CriteriaColor, false, false);
+                    else
+                        AddHtmlLocalized(562, 50 + yRight * 22, 206, 20, cliloc,
+                            det.Value.ToString(), CriteriaColor, false, false);
                 }
-            }
-
-            // ── Pagination ─────────────────────────────────────────
-            if (totalPages > 1)
-            {
-                if (_page > 0)
+                else
                 {
-                    AddButton(W - 180, H - 30, 30533, 30533, BTN_PREVPAGE, GumpButtonType.Reply, 0);
-                    AddHtml(W - 140, H - 28, 50, 20,
-                        $"<BASEFONT COLOR={ColTitle}>Prev</BASEFONT>", false, false);
+                    AddHtmlLocalized(562, 50 + yRight * 22, 206, 20, det.Label, CriteriaColor, false, false);
                 }
 
-                if (_page < totalPages - 1)
+                AddButton(522, 50 + yRight * 22, 4017, 4019, 1001 + i, GumpButtonType.Reply, 0);
+                AddTooltip(1154694);
+                yRight++;
+            }
+
+            // ── Left panel: Item Name ──────────────────────────────
+            AddHtmlLocalized(10, 30, 246, 18, 1154510, LabelColor, false, false); // "Item Name"
+            AddBackground(10, 50, 246, 22, 9350);
+            AddTextEntry(12, 52, 242, 18, TextColor, 1, _criteria.SearchName, 25);
+
+            // ── Left panel: category navigation buttons ────────────
+            int yLeft = 0;
+
+            foreach (SearchCriteriaCategory cat in FilteredCats)
+            {
+                AddButton(10, 74 + yLeft * 22, 30533, 30533, 0, GumpButtonType.Page, cat.PageID);
+                AddHtmlLocalized(50, 75 + yLeft * 22, 215, 20, cat.Cliloc, LabelColor, false, false);
+                yLeft++;
+            }
+
+            // ── Bottom bar ─────────────────────────────────────────
+            AddButton(10, 570, 0x7747, 0x7747, 0, GumpButtonType.Reply, 0);
+            AddHtmlLocalized(50, 570, 50, 20, 1150300, LabelColor, false, false); // "CANCEL"
+
+            if (_feedback != -1)
+                AddHtmlLocalized(110, 570, 660, 20, _feedback, AlertColor, false, false);
+
+            AddButton(740, 570, 30534, 30534, 1, GumpButtonType.Reply, 0);
+            AddHtmlLocalized(630, 570, 100, 20, 1114514, "#1154641", LabelColor, false, false); // "Search"
+
+            AddButton(740, 550, 30533, 30533, 2, GumpButtonType.Reply, 0);
+            AddHtmlLocalized(630, 550, 100, 20, 1114514, "#1154588", LabelColor, false, false); // "Clear Search Criteria"
+
+            // ── Sub-pages: one per category ────────────────────────
+            int buttonIdx = 50;
+
+            foreach (SearchCriteriaCategory cat in FilteredCats)
+            {
+                AddPage(cat.PageID);
+                AddHtmlLocalized(266, 30, 246, 18, cat.Cliloc, LabelColor, false, false);
+
+                int yEntry = 0;
+                foreach (SearchCriterionEntry entry in cat.Criteria)
                 {
-                    AddButton(W - 90, H - 30, 30534, 30534, BTN_NEXTPAGE, GumpButtonType.Reply, 0);
-                    AddHtml(W - 50, H - 28, 40, 20,
-                        $"<BASEFONT COLOR={ColTitle}>Next</BASEFONT>", false, false);
+                    AddHtmlLocalized(306, 50 + yEntry * 22, 215, 20, entry.Cliloc, LabelColor, false, false);
+                    AddButton(266, 50 + yEntry * 22, 30533, 30533, buttonIdx, GumpButtonType.Reply, 0);
+
+                    if (entry.PropCliloc != 0)
+                    {
+                        int val = _criteria.GetValueForDetails(entry.Object);
+                        AddBackground(482, 50 + yEntry * 22, 30, 20, 9350);
+                        AddTextEntry(484, 50 + yEntry * 22, 26, 16, TextColor,
+                            buttonIdx - 40, val > 0 ? val.ToString() : "", 3);
+                    }
+
+                    yEntry++;
+                    buttonIdx++;
                 }
             }
         }
@@ -232,84 +213,138 @@ namespace Server.Gumps
         {
             if (!(sender.Mobile is PlayerMobile pm)) return;
 
-            string query = info.GetTextEntry(0)?.Text?.Trim() ?? "";
+            // Persist search name on every response
+            if (info.ButtonID != 0)
+            {
+                TextRelay nameRelay = info.GetTextEntry(1);
+                if (nameRelay != null && !string.IsNullOrEmpty(nameRelay.Text))
+                {
+                    string txt = nameRelay.Text.Trim();
+                    if (_criteria.SearchName == null
+                        || !txt.Equals(_criteria.SearchName, StringComparison.OrdinalIgnoreCase))
+                        _criteria.SearchName = txt;
+                }
+            }
 
             switch (info.ButtonID)
             {
-                case 0: return; // closed / cancel
+                case 0: return; // close / cancel
 
-                case BTN_SEARCH:
+                case 1: // Search
                 {
-                    if (query.Length < MinChars)
+                    if (_criteria.IsEmpty)
                     {
-                        pm.SendGump(new ItemSearchGump(pm, query, null, 0));
+                        pm.SendGump(new ItemSearchGump(pm, 1154586)); // "Please select some criteria"
                         return;
                     }
-                    var results = DoSearch(pm, query);
-                    pm.SendGump(new ItemSearchGump(pm, query, results, 0));
+
+                    List<ItemSearchResult> results = DoSearch(pm, _criteria);
+
+                    if (results == null || results.Count == 0)
+                    {
+                        pm.SendGump(new ItemSearchGump(pm, 1154587)); // "No items matched"
+                        return;
+                    }
+
+                    pm.SendGump(new ItemSearchGump(pm));
+                    pm.SendGump(new ItemSearchResultsGump(pm, results));
                     break;
                 }
 
-                case BTN_PREVPAGE:
-                    pm.SendGump(new ItemSearchGump(pm, _query, _results, Math.Max(0, _page - 1)));
+                case 2: // Clear
+                    _criteria.Reset();
+                    pm.SendGump(new ItemSearchGump(pm));
                     break;
 
-                case BTN_NEXTPAGE:
-                {
-                    int totalPages = (_results.Count + PerPage - 1) / PerPage;
-                    pm.SendGump(new ItemSearchGump(pm, _query, _results, Math.Min(totalPages - 1, _page + 1)));
+                case 7: // Remove search name
+                    _criteria.SearchName = null;
+                    pm.SendGump(new ItemSearchGump(pm));
                     break;
-                }
+
+                default:
+                    if (info.ButtonID > 1000) // Remove a detail
+                    {
+                        int idx = info.ButtonID - 1001;
+                        if (idx >= 0 && idx < _criteria.Details.Count)
+                        {
+                            SearchDetail det = _criteria.Details[idx];
+                            if (det.Category == Category.Equipment)
+                                _criteria.SearchType = Layer.Invalid;
+                            _criteria.Details.Remove(det);
+                        }
+                        pm.SendGump(new ItemSearchGump(pm));
+                    }
+                    else if (info.ButtonID >= 50) // Add a criterion
+                    {
+                        int flatIdx = info.ButtonID - 50;
+                        var allEntries = FilteredCats
+                            .SelectMany(x => x.Criteria,
+                                (x, c) => new { x.Category, c.Object, c.Cliloc, c.PropCliloc })
+                            .ToList();
+
+                        if (flatIdx < allEntries.Count)
+                        {
+                            var entry = allEntries[flatIdx];
+                            int value = 0;
+
+                            TextRelay valueText = info.GetTextEntry(info.ButtonID - 40);
+                            if (valueText != null)
+                                value = Math.Max(
+                                    entry.Object is AosAttribute &&
+                                    (AosAttribute)entry.Object == AosAttribute.CastSpeed ? -1 : 0,
+                                    Utility.ToInt32(valueText.Text));
+
+                            _criteria.TryAddDetails(
+                                entry.Object, entry.Cliloc, entry.PropCliloc, value, entry.Category);
+                        }
+
+                        pm.SendGump(new ItemSearchGump(pm));
+                    }
+                    break;
             }
         }
 
         // ── Search logic ───────────────────────────────────────────
 
-        private static List<ItemSearchResult> DoSearch(PlayerMobile player, string query)
+        private static List<ItemSearchResult> DoSearch(PlayerMobile player, SearchCriteria criteria)
         {
             var results = new List<ItemSearchResult>();
-            query = query.ToLowerInvariant();
 
             // 1. Backpack (recursive)
             if (player.Backpack != null)
-                ScanContainer(player.Backpack, query, "Backpack", results, player);
+                ScanContainer(player.Backpack, "Backpack", results, player, criteria);
 
-            // 2. Bank box (recursive)
+            // 2. Bank (recursive)
             if (player.BankBox != null)
-                ScanContainer(player.BankBox, query, "Bank", results, player);
+                ScanContainer(player.BankBox, "Bank", results, player, criteria);
 
-            // 3. All houses where owner or co-owner
+            // 3. Houses — owner or co-owner
             foreach (BaseHouse house in BaseHouse.AllHouses)
             {
                 if (house == null || house.Deleted) continue;
 
                 bool isOwner   = house.IsOwner(player);
                 bool isCoOwner = !isOwner && house.IsCoOwner(player);
-
                 if (!isOwner && !isCoOwner) continue;
 
                 string houseLabel = isOwner ? "Your House" : "Co-owned House";
 
-                // Secured containers
                 if (house.Secures != null)
                 {
                     foreach (SecureInfo si in house.Secures)
                     {
-                        if (si?.Item == null || si.Item.Deleted) continue;
-                        if (!(si.Item is Container cont)) continue;
-                        ScanContainer(cont, query, $"{houseLabel} › {GetLabel(cont)}", results, player);
+                        if (si?.Item == null || si.Item.Deleted || !(si.Item is Container sc)) continue;
+                        ScanContainer(sc, houseLabel + " › " + GetLabel(sc), results, player, criteria);
                     }
                 }
 
-                // Locked-down containers not already in Secures
                 if (house.LockDowns != null)
                 {
                     foreach (Item item in house.LockDowns.Keys)
                     {
-                        if (item == null || item.Deleted) continue;
-                        if (!(item is Container lc)) continue;
+                        if (item == null || item.Deleted || !(item is Container lc)) continue;
                         if (house.Secures != null && house.Secures.Exists(si => si?.Item == item)) continue;
-                        ScanContainer(lc, query, $"{houseLabel} › {GetLabel(lc)}", results, player);
+                        ScanContainer(lc, houseLabel + " › " + GetLabel(lc), results, player, criteria);
                     }
                 }
             }
@@ -317,10 +352,8 @@ namespace Server.Gumps
             return results;
         }
 
-        /// <summary>Recursively scans a container and all sub-containers.</summary>
-        private static void ScanContainer(Container cont, string query,
-                                           string location, List<ItemSearchResult> results,
-                                           PlayerMobile player)
+        private static void ScanContainer(Container cont, string location,
+            List<ItemSearchResult> results, PlayerMobile player, SearchCriteria criteria)
         {
             if (cont == null) return;
 
@@ -328,182 +361,144 @@ namespace Server.Gumps
             {
                 if (item == null || item.Deleted) continue;
 
-                string label      = GetLabel(item);
-                string searchable = (label + " " + GetItemProperties(item)).ToLowerInvariant();
-
-                if (searchable.Contains(query))
+                if (VendorSearch.CheckMatch(item, 0, criteria))
                 {
                     item.SendPropertiesTo(player);
-                    results.Add(new ItemSearchResult(
-                        Capitalise(label), item.Amount, location,
-                        item.Serial.Value, item.ItemID, item.Hue));
+                    results.Add(new ItemSearchResult(item, location));
                 }
 
                 if (item is Container sub)
-                    ScanContainer(sub, query, $"{location} › {GetLabel(sub)}", results, player);
+                    ScanContainer(sub, location + " › " + GetLabel(sub), results, player, criteria);
             }
         }
 
-        // ── Property text builder ──────────────────────────────────
-
-        private static string GetItemProperties(Item item)
-        {
-            var sb = new System.Text.StringBuilder();
-
-            sb.Append(CamelToWords(item.GetType().Name)).Append(' ');
-
-            if (item is SpellScroll scroll)
-            {
-                try
-                {
-                    Spell spell = SpellRegistry.NewSpell(scroll.SpellID, null, null);
-                    if (spell?.Info != null)
-                    {
-                        sb.Append(spell.Info.Name.ToLower()).Append(' ');
-                        if (spell.Info.Reagents != null)
-                            foreach (Type t in spell.Info.Reagents)
-                                sb.Append(CamelToWords(t.Name)).Append(' ');
-                    }
-                }
-                catch { }
-            }
-
-            AosAttributes       attrs       = null;
-            AosArmorAttributes  armorAttrs  = null;
-            AosWeaponAttributes weaponAttrs = null;
-
-            if (item is BaseWeapon bw)
-            {
-                attrs       = bw.Attributes;
-                weaponAttrs = bw.WeaponAttributes;
-                sb.Append(CamelToWords(bw.Skill.ToString())).Append(' ');
-                sb.Append($"damage {bw.MinDamage}-{bw.MaxDamage} ");
-                if (bw.Slayer  != SlayerName.None) sb.Append(CamelToWords(bw.Slayer.ToString())).Append(" slayer ");
-                if (bw.Slayer2 != SlayerName.None) sb.Append(CamelToWords(bw.Slayer2.ToString())).Append(" slayer ");
-                if (bw.Resource != CraftResource.None && bw.Resource != CraftResource.Iron)
-                    sb.Append(CamelToWords(bw.Resource.ToString())).Append(' ');
-                if (bw.Quality == ItemQuality.Exceptional) sb.Append("exceptional ");
-            }
-            else if (item is BaseArmor ba)
-            {
-                attrs      = ba.Attributes;
-                armorAttrs = ba.ArmorAttributes;
-                sb.Append($"physical {ba.BasePhysicalResistance} fire {ba.BaseFireResistance} ");
-                sb.Append($"cold {ba.BaseColdResistance} poison {ba.BasePoisonResistance} energy {ba.BaseEnergyResistance} ");
-                if (ba.Resource != CraftResource.None && ba.Resource != CraftResource.Iron
-                    && ba.Resource != CraftResource.RegularLeather)
-                    sb.Append(CamelToWords(ba.Resource.ToString())).Append(' ');
-                if (ba.Quality == ItemQuality.Exceptional) sb.Append("exceptional ");
-            }
-            else if (item is BaseJewel bj)  attrs = bj.Attributes;
-            else if (item is BaseClothing bc)
-            {
-                attrs = bc.Attributes;
-                if (bc.Resource != CraftResource.None && bc.Resource != CraftResource.RegularLeather)
-                    sb.Append(CamelToWords(bc.Resource.ToString())).Append(' ');
-            }
-
-            if (attrs       != null) AppendAosAttributes(sb, attrs);
-            if (armorAttrs  != null) AppendArmorAttributes(sb, armorAttrs);
-            if (weaponAttrs != null) AppendWeaponAttributes(sb, weaponAttrs);
-
-            AosSkillBonuses skillBonuses = null;
-            if      (item is BaseWeapon  sbw) skillBonuses = sbw.SkillBonuses;
-            else if (item is BaseArmor   sba) skillBonuses = sba.SkillBonuses;
-            else if (item is BaseJewel   sbj) skillBonuses = sbj.SkillBonuses;
-            else if (item is BaseClothing sbc) skillBonuses = sbc.SkillBonuses;
-
-            if (skillBonuses != null)
-            {
-                for (int i = 0; i < 5; i++)
-                {
-                    SkillName sk;
-                    double    val;
-                    if (skillBonuses.GetValues(i, out sk, out val) && val != 0)
-                        sb.Append(CamelToWords(sk.ToString())).Append(' ');
-                }
-            }
-
-            return sb.ToString();
-        }
-
-        private static void AppendAosAttributes(System.Text.StringBuilder sb, AosAttributes a)
-        {
-            if (a[AosAttribute.LowerRegCost]    > 0) sb.Append("lower reagent cost lrc ");
-            if (a[AosAttribute.LowerManaCost]   > 0) sb.Append("lower mana cost lmc ");
-            if (a[AosAttribute.SpellDamage]     > 0) sb.Append("spell damage increase sdi ");
-            if (a[AosAttribute.CastSpeed]       > 0) sb.Append("faster casting fc cast speed ");
-            if (a[AosAttribute.CastRecovery]    > 0) sb.Append("faster cast recovery fcr ");
-            if (a[AosAttribute.DefendChance]    > 0) sb.Append("defense chance increase dci ");
-            if (a[AosAttribute.AttackChance]    > 0) sb.Append("hit chance increase hci ");
-            if (a[AosAttribute.WeaponDamage]    > 0) sb.Append("damage increase di ");
-            if (a[AosAttribute.WeaponSpeed]     > 0) sb.Append("swing speed increase ssi ");
-            if (a[AosAttribute.BonusStr]        > 0) sb.Append("strength bonus str ");
-            if (a[AosAttribute.BonusDex]        > 0) sb.Append("dexterity bonus dex ");
-            if (a[AosAttribute.BonusInt]        > 0) sb.Append("intelligence bonus int ");
-            if (a[AosAttribute.BonusHits]       > 0) sb.Append("hit point increase hp ");
-            if (a[AosAttribute.BonusStam]       > 0) sb.Append("stamina increase stam ");
-            if (a[AosAttribute.BonusMana]       > 0) sb.Append("mana increase ");
-            if (a[AosAttribute.RegenHits]       > 0) sb.Append("hit point regeneration hpr ");
-            if (a[AosAttribute.RegenStam]       > 0) sb.Append("stamina regeneration ");
-            if (a[AosAttribute.RegenMana]       > 0) sb.Append("mana regeneration mr ");
-            if (a[AosAttribute.Luck]            > 0) sb.Append("luck ");
-            if (a[AosAttribute.EnhancePotions]  > 0) sb.Append("enhance potions ep ");
-            if (a[AosAttribute.ReflectPhysical] > 0) sb.Append("reflect physical damage rpd ");
-            if (a[AosAttribute.NightSight]      > 0) sb.Append("night sight ");
-        }
-
-        private static void AppendArmorAttributes(System.Text.StringBuilder sb, AosArmorAttributes a)
-        {
-            if (a.MageArmor       > 0) sb.Append("mage armor ");
-            if (a.LowerStatReq    > 0) sb.Append("lower requirements lr ");
-            if (a.DurabilityBonus > 0) sb.Append("durability ");
-            if (a.SoulCharge      > 0) sb.Append("soul charge ");
-        }
-
-        private static void AppendWeaponAttributes(System.Text.StringBuilder sb, AosWeaponAttributes a)
-        {
-            if (a.HitLeechHits      > 0) sb.Append("hit life leech hll ");
-            if (a.HitLeechMana      > 0) sb.Append("hit mana leech hml ");
-            if (a.HitLeechStam      > 0) sb.Append("hit stamina leech hsl ");
-            if (a.HitLowerAttack    > 0) sb.Append("hit lower attack hla ");
-            if (a.HitLowerDefend    > 0) sb.Append("hit lower defense hld ");
-            if (a.HitDispel         > 0) sb.Append("hit dispel ");
-            if (a.HitFireball       > 0) sb.Append("hit fireball ");
-            if (a.HitLightning      > 0) sb.Append("hit lightning ");
-            if (a.HitMagicArrow     > 0) sb.Append("hit magic arrow ");
-            if (a.HitHarm           > 0) sb.Append("hit harm ");
-            if (a.SplinteringWeapon > 0) sb.Append("splintering ");
-            if (a.BattleLust        > 0) sb.Append("battle lust ");
-            if (a.BloodDrinker      > 0) sb.Append("blood drinker ");
-        }
-
-        // ── Helpers ────────────────────────────────────────────────
-
-        private static string GetLabel(Item item)
+        internal static string GetLabel(Item item)
         {
             if (item == null) return "Item";
             if (!string.IsNullOrEmpty(item.Name)) return item.Name;
-            return CamelToWords(item.GetType().Name);
-        }
 
-        private static string CamelToWords(string s)
-        {
-            if (string.IsNullOrEmpty(s)) return s;
-            var sb = new System.Text.StringBuilder();
-            for (int i = 0; i < s.Length; i++)
+            string n = item.GetType().Name;
+            var sb = new System.Text.StringBuilder(n.Length + 4);
+            for (int i = 0; i < n.Length; i++)
             {
-                if (i > 0 && char.IsUpper(s[i]) && !char.IsUpper(s[i - 1]))
-                    sb.Append(' ');
-                sb.Append(char.ToLower(s[i]));
+                if (i > 0 && char.IsUpper(n[i]) && !char.IsUpper(n[i - 1])) sb.Append(' ');
+                sb.Append(i == 0 ? char.ToUpper(n[i]) : n[i]);
             }
             return sb.ToString();
         }
+    }
 
-        private static string Capitalise(string s)
+    // ══════════════════════════════════════════════════════════════
+    //  Results gump — mirrors SearchResultsGump (no price/map/button)
+    // ══════════════════════════════════════════════════════════════
+
+    public class ItemSearchResultsGump : Gump
+    {
+        private const int PerPage = 5;
+
+        private static int LabelColor = 0x4BBD;
+        private static int TextColor  = 0x6B55;
+
+        private readonly PlayerMobile           _player;
+        private readonly List<ItemSearchResult> _results;
+        private          int                    _index;
+
+        public ItemSearchResultsGump(PlayerMobile pm, List<ItemSearchResult> results, int index = 0)
+            : base(30, 30)
         {
-            if (string.IsNullOrEmpty(s)) return s;
-            return char.ToUpper(s[0]) + s.Substring(1);
+            _player  = pm;
+            _results = results;
+            _index   = Math.Max(0, Math.Min(index, results.Count - 1));
+
+            Closable = Disposable = Dragable = true;
+            Resizable = false;
+
+            Build();
+        }
+
+        private void Build()
+        {
+            AddBackground(0, 0, 560, 570, 30536);
+
+            // Header
+            AddHtmlLocalized(50, 15, 460, 18, 1114513, "#1154509", LabelColor, false, false); // "Item Search Results"
+
+            // Column headers
+            AddHtmlLocalized(162, 48, 150, 18, 1154510, LabelColor, false, false); // "Item Name"
+            AddHtml(318, 48,  50, 18, "<BASEFONT COLOR=#7ABDE8>Qty</BASEFONT>", false, false);
+            AddHtml(374, 48, 170, 18, "<BASEFONT COLOR=#7ABDE8>Location</BASEFONT>", false, false);
+
+            // ── Rows ───────────────────────────────────────────────
+            int start = _index;
+            int shown = 0;
+
+            for (int i = start; i < start + PerPage && i < _results.Count; i++)
+            {
+                var  r    = _results[i];
+                Item item = r.Item;
+                if (item == null || item.Deleted) { shown++; continue; }
+
+                int y = 70 + shown * 90;
+
+                // Item icon, centred in its 80×80 slot (same as SearchResultsGump)
+                Rectangle2D bounds = ItemBounds.Table[item.ItemID];
+                AddImageTiledButton(50, y, 0x918, 0x918, 0, GumpButtonType.Page, 0,
+                    item.ItemID, item.Hue,
+                    40 - bounds.Width / 2 - bounds.X,
+                    40 - bounds.Height / 2 - bounds.Y);
+                AddItemProperty(item);
+
+                // Item name — cliloc 1114513 = "~1_val~" (pass through)
+                string name = VendorSearch.GetItemName(item) ?? ItemSearchGump.GetLabel(item);
+                AddHtmlLocalized(162, y, 150, 72, 1114513, name, TextColor, false, false);
+
+                // Qty
+                AddHtmlLocalized(318, y, 50, 72, 1114513,
+                    item.Amount > 1 ? item.Amount.ToString() : "-", TextColor, false, false);
+
+                // Location
+                AddHtmlLocalized(374, y, 170, 72, 1114513, r.Location, TextColor, false, false);
+
+                shown++;
+            }
+
+            // ── Footer ─────────────────────────────────────────────
+            int totalPages = (_results.Count + PerPage - 1) / PerPage;
+            int curPage    = _index / PerPage + 1;
+
+            AddHtml(10, 540, 220, 18,
+                string.Format("<BASEFONT COLOR=#888888>{0} result{1}  —  page {2}/{3}</BASEFONT>",
+                    _results.Count, _results.Count == 1 ? "" : "s", curPage, totalPages),
+                false, false);
+
+            if (_index + PerPage < _results.Count)
+            {
+                AddButton(490, 537, 30534, 30534, 2, GumpButtonType.Reply, 0);
+                AddHtmlLocalized(410, 537, 75, 20, 1044045, LabelColor, false, false); // "NEXT PAGE"
+            }
+
+            if (_index >= PerPage)
+            {
+                AddButton(50, 537, 30533, 30533, 3, GumpButtonType.Reply, 0);
+                AddHtmlLocalized(90, 537, 100, 20, 1044044, LabelColor, false, false); // "PREV PAGE"
+            }
+
+            // Refine button
+            AddButton(260, 537, 30533, 30533, 4, GumpButtonType.Reply, 0);
+            AddHtmlLocalized(300, 537, 100, 20, 1114513, "#1154588", LabelColor, false, false); // "Refine"
+        }
+
+        public override void OnResponse(NetState sender, RelayInfo info)
+        {
+            if (!(sender.Mobile is PlayerMobile pm)) return;
+
+            switch (info.ButtonID)
+            {
+                case 0: break; // close
+                case 2: pm.SendGump(new ItemSearchResultsGump(pm, _results, _index + PerPage)); break;
+                case 3: pm.SendGump(new ItemSearchResultsGump(pm, _results, Math.Max(0, _index - PerPage))); break;
+                case 4: pm.SendGump(new ItemSearchGump(pm)); break;
+            }
         }
     }
 }
