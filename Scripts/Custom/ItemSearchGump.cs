@@ -321,6 +321,20 @@ namespace Server.Gumps
         {
             var results = new List<ItemSearchResult>();
 
+            // ── DEBUG: show name resolution for every item in backpack ──
+            if (!string.IsNullOrEmpty(criteria.SearchName) && player.Backpack != null)
+            {
+                player.SendMessage(0x35, $"[ItemSearch debug] SearchName='{criteria.SearchName}' backpack items={player.Backpack.Items.Count}");
+                foreach (Item dbg in player.Backpack.Items)
+                {
+                    string n1 = dbg.Name ?? "(null)";
+                    string n2 = VendorSearch.GetItemName(dbg) ?? "(null)";
+                    string n3 = GetLabel(dbg) ?? "(null)";
+                    player.SendMessage(0x35, $"  {dbg.GetType().Name}: .Name={n1} | GetItemName={n2} | GetLabel={n3}");
+                }
+            }
+            // ── END DEBUG ───────────────────────────────────────────────
+
             // 1. Backpack (recursive)
             if (player.Backpack != null)
                 ScanContainer(player.Backpack, "Backpack", results, player, criteria);
