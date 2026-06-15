@@ -321,20 +321,6 @@ namespace Server.Gumps
         {
             var results = new List<ItemSearchResult>();
 
-            // ── DEBUG: show name resolution for every item in backpack ──
-            if (!string.IsNullOrEmpty(criteria.SearchName) && player.Backpack != null)
-            {
-                player.SendMessage(0x35, $"[ItemSearch debug] SearchName='{criteria.SearchName}' backpack items={player.Backpack.Items.Count}");
-                foreach (Item dbg in player.Backpack.Items)
-                {
-                    string n1 = dbg.Name ?? "(null)";
-                    string n2 = VendorSearch.GetItemName(dbg) ?? "(null)";
-                    string n3 = GetLabel(dbg) ?? "(null)";
-                    player.SendMessage(0x35, $"  {dbg.GetType().Name}: .Name={n1} | GetItemName={n2} | GetLabel={n3}");
-                }
-            }
-            // ── END DEBUG ───────────────────────────────────────────────
-
             // 1. Backpack (recursive)
             if (player.Backpack != null)
                 ScanContainer(player.Backpack, "Backpack", results, player, criteria);
@@ -476,7 +462,7 @@ namespace Server.Gumps
             AddBackground(0, 0, 560, 570, 30536);
 
             // Header
-            AddHtmlLocalized(50, 15, 460, 18, 1114513, "#1154509", LabelColor, false, false); // "Item Search Results"
+            AddHtml(50, 15, 460, 18, "<CENTER><BASEFONT COLOR=#7ABDE8>Item Search Results</BASEFONT></CENTER>", false, false);
 
             // Column headers
             AddHtmlLocalized(162, 48, 150, 18, 1154510, LabelColor, false, false); // "Item Name"
@@ -493,26 +479,26 @@ namespace Server.Gumps
                 Item item = r.Item;
                 if (item == null || item.Deleted) { shown++; continue; }
 
-                int y = 70 + shown * 90;
+                int y = 70 + shown * 75;
 
-                // Item icon, centred in its 80×80 slot (same as SearchResultsGump)
+                // Item icon — matches SearchResultsGump exactly
                 Rectangle2D bounds = ItemBounds.Table[item.ItemID];
                 AddImageTiledButton(50, y, 0x918, 0x918, 0, GumpButtonType.Page, 0,
                     item.ItemID, item.Hue,
                     40 - bounds.Width / 2 - bounds.X,
-                    40 - bounds.Height / 2 - bounds.Y);
+                    30 - bounds.Height / 2 - bounds.Y);
                 AddItemProperty(item);
 
                 // Item name — cliloc 1114513 = "~1_val~" (pass through)
                 string name = VendorSearch.GetItemName(item) ?? ItemSearchGump.GetLabel(item);
-                AddHtmlLocalized(162, y, 150, 72, 1114513, name, TextColor, false, false);
+                AddHtmlLocalized(162, y, 150, 65, 1114513, name, TextColor, false, false);
 
                 // Qty
                 AddHtmlLocalized(318, y, 50, 72, 1114513,
                     item.Amount > 1 ? item.Amount.ToString() : "-", TextColor, false, false);
 
                 // Location
-                AddHtmlLocalized(374, y, 170, 72, 1114513, r.Location, TextColor, false, false);
+                AddHtmlLocalized(374, y, 170, 65, 1114513, r.Location, TextColor, false, false);
 
                 shown++;
             }
