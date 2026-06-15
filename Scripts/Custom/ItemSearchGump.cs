@@ -435,7 +435,8 @@ namespace Server.Gumps
 
     public class ItemSearchResultsGump : Gump
     {
-        private const int PerPage = 5;
+        private const int PerPage   = 25;
+        private const int RowHeight = 18;
 
         private static int LabelColor = 0x4BBD;
         private static int TextColor  = 0x6B55;
@@ -459,15 +460,19 @@ namespace Server.Gumps
 
         private void Build()
         {
-            AddBackground(0, 0, 560, 570, 30536);
+            // 580 wide × 545 tall:
+            //   header 47px | 25 rows × 18px = 450px | footer 48px = 545
+            AddBackground(0, 0, 580, 545, 30536);
 
-            // Header
-            AddHtml(50, 15, 460, 18, "<CENTER><BASEFONT COLOR=#7ABDE8>Item Search Results</BASEFONT></CENTER>", false, false);
+            // Title
+            AddHtml(10, 8, 560, 18,
+                "<CENTER><BASEFONT COLOR=#7ABDE8>Item Search Results</BASEFONT></CENTER>",
+                false, false);
 
             // Column headers
-            AddHtmlLocalized(162, 48, 150, 18, 1154510, LabelColor, false, false); // "Item Name"
-            AddHtml(318, 48,  50, 18, "<BASEFONT COLOR=#7ABDE8>Qty</BASEFONT>", false, false);
-            AddHtml(374, 48, 170, 18, "<BASEFONT COLOR=#7ABDE8>Location</BASEFONT>", false, false);
+            AddHtml(30, 28, 220, 16, "<BASEFONT COLOR=#7ABDE8>Item</BASEFONT>", false, false);
+            AddHtml(256, 28, 40,  16, "<BASEFONT COLOR=#7ABDE8>Qty</BASEFONT>", false, false);
+            AddHtml(300, 28, 274, 16, "<BASEFONT COLOR=#7ABDE8>Location</BASEFONT>", false, false);
 
             // ── Rows ───────────────────────────────────────────────
             int start = _index;
@@ -479,26 +484,22 @@ namespace Server.Gumps
                 Item item = r.Item;
                 if (item == null || item.Deleted) { shown++; continue; }
 
-                int y = 70 + shown * 75;
+                int y = 47 + shown * RowHeight;
 
-                // Item icon — matches SearchResultsGump exactly
-                Rectangle2D bounds = ItemBounds.Table[item.ItemID];
-                AddImageTiledButton(50, y, 0x918, 0x918, 0, GumpButtonType.Page, 0,
-                    item.ItemID, item.Hue,
-                    40 - bounds.Width / 2 - bounds.X,
-                    30 - bounds.Height / 2 - bounds.Y);
+                // Small item icon — no background box
+                AddItem(8, y, item.ItemID, item.Hue);
                 AddItemProperty(item);
 
-                // Item name — cliloc 1114513 = "~1_val~" (pass through)
+                // Item name
                 string name = VendorSearch.GetItemName(item) ?? ItemSearchGump.GetLabel(item);
-                AddHtmlLocalized(162, y, 150, 65, 1114513, name, TextColor, false, false);
+                AddHtmlLocalized(30, y, 220, RowHeight, 1114513, name, TextColor, false, false);
 
                 // Qty
-                AddHtmlLocalized(318, y, 50, 72, 1114513,
-                    item.Amount > 1 ? item.Amount.ToString() : "-", TextColor, false, false);
+                string qty = item.Amount > 1 ? item.Amount.ToString() : "-";
+                AddHtmlLocalized(256, y, 40, RowHeight, 1114513, qty, TextColor, false, false);
 
                 // Location
-                AddHtmlLocalized(374, y, 170, 65, 1114513, r.Location, TextColor, false, false);
+                AddHtmlLocalized(300, y, 274, RowHeight, 1114513, r.Location, TextColor, false, false);
 
                 shown++;
             }
@@ -507,26 +508,29 @@ namespace Server.Gumps
             int totalPages = (_results.Count + PerPage - 1) / PerPage;
             int curPage    = _index / PerPage + 1;
 
-            AddHtml(10, 540, 220, 18,
+            AddHtml(10, 508, 200, 16,
                 string.Format("<BASEFONT COLOR=#888888>{0} result{1}  —  page {2}/{3}</BASEFONT>",
                     _results.Count, _results.Count == 1 ? "" : "s", curPage, totalPages),
                 false, false);
 
             if (_index + PerPage < _results.Count)
             {
-                AddButton(490, 537, 30534, 30534, 2, GumpButtonType.Reply, 0);
-                AddHtmlLocalized(410, 537, 75, 20, 1044045, LabelColor, false, false); // "NEXT PAGE"
+                AddButton(540, 506, 30534, 30534, 2, GumpButtonType.Reply, 0);
+                AddHtml(458, 508, 78, 16,
+                    "<BASEFONT COLOR=#7ABDE8>NEXT PAGE</BASEFONT>", false, false);
             }
 
             if (_index >= PerPage)
             {
-                AddButton(50, 537, 30533, 30533, 3, GumpButtonType.Reply, 0);
-                AddHtmlLocalized(90, 537, 100, 20, 1044044, LabelColor, false, false); // "PREV PAGE"
+                AddButton(218, 506, 30533, 30533, 3, GumpButtonType.Reply, 0);
+                AddHtml(238, 508, 90, 16,
+                    "<BASEFONT COLOR=#7ABDE8>PREV PAGE</BASEFONT>", false, false);
             }
 
             // Refine button
-            AddButton(260, 537, 30533, 30533, 4, GumpButtonType.Reply, 0);
-            AddHtmlLocalized(300, 537, 100, 20, 1114513, "#1154588", LabelColor, false, false); // "Refine"
+            AddButton(335, 506, 30533, 30533, 4, GumpButtonType.Reply, 0);
+            AddHtml(355, 508, 60, 16,
+                "<BASEFONT COLOR=#7ABDE8>Refine</BASEFONT>", false, false);
         }
 
         public override void OnResponse(NetState sender, RelayInfo info)
