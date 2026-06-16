@@ -166,6 +166,14 @@ namespace Server.Custom
 
         // -- OnThink - main AI tick ------------------------------------
         // ServUO calls this every ActiveSpeed seconds.
+        /// <summary>
+        /// Suppress the vanilla BaseCreature detect-hidden scan entirely.
+        /// SimPlayers that need detect behaviour implement it themselves
+        /// (e.g. SilverWolvesSimPlayer.TryDetectHidden).  The vanilla path
+        /// can crash when a targeted mobile's ControlMaster is deleted mid-scan.
+        /// </summary>
+        public override void TryFindPlayer() { }
+
         public override void OnThink()
         {
             base.OnThink();
