@@ -439,7 +439,7 @@ namespace Server.Gumps
         private const int RowHeight = 18;
 
         private static int LabelColor = 0x4BBD;
-        private static int TextColor  = 0x6B55;
+        private static int TextColor  = 0x9C2;
 
         private readonly PlayerMobile           _player;
         private readonly List<ItemSearchResult> _results;
@@ -509,7 +509,7 @@ namespace Server.Gumps
             int curPage    = _index / PerPage + 1;
 
             AddHtml(10, 508, 200, 16,
-                string.Format("<BASEFONT COLOR=#888888>{0} result{1}  —  page {2}/{3}</BASEFONT>",
+                string.Format("<BASEFONT COLOR=#BBBBBB>{0} result{1}  —  page {2}/{3}</BASEFONT>",
                     _results.Count, _results.Count == 1 ? "" : "s", curPage, totalPages),
                 false, false);
 
