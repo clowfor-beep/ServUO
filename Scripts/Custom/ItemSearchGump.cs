@@ -111,7 +111,7 @@ namespace Server.Gumps
             AddBackground(0, 0, 780, 600, 30546);
 
             // Title (1114513 = "~1_val~", outputs the arg as-is)
-            AddHtmlLocalized(10, 10, 760, 18, 1114513, "#1154508", LabelColor, false, false); // "Item Search"
+            AddHtml(10, 10, 760, 18, "<CENTER><BASEFONT COLOR=#7ABDE8>Item Search</BASEFONT></CENTER>", false, false);
 
             // ── Right panel header ─────────────────────────────────
             AddHtmlLocalized(522, 30, 246, 18, 1154546, LabelColor, false, false); // "Selected Search Criteria"
