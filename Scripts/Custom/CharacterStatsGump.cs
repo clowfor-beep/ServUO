@@ -373,7 +373,7 @@ namespace Server.Gumps
 
         private void DrawSkillRow(Skill skill, int sortedIndex, int x, int y)
         {
-            double baseVal = skill.Base / 10.0;   // trained skill (no bonuses)
+            double baseVal = skill.Base;             // trained skill (no bonuses), already in 0-120 range
             double effVal  = skill.Value;          // effective skill (with item/stat bonuses)
             bool   atCap   = skill.Cap > 0 && effVal >= skill.Cap / 10.0 - 0.05;
             bool   boosted = effVal > baseVal + 0.05; // item/buff bonus active

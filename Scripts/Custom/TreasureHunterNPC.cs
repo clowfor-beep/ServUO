@@ -657,32 +657,32 @@ namespace Server.Custom
 
             // ── Solo Portal ──────────────────────────────────────
             AddButton(20, 80, 0xFA5, 0xFA7, BTN_PORTAL, GumpButtonType.Reply, 0);
-            AddLabel(55, 81,  0x44,  "Solo Portal");
+            AddLabel(55, 81,  0x44,  "Solo Portal  (30% fee)");
             AddLabel(55, 98,  1153, "Gate for you and your pets. Requires decoded map.");
 
             // ── Party Portal ─────────────────────────────────────
             AddButton(20, 128, 0xFA5, 0xFA7, BTN_PARTY_PORTAL, GumpButtonType.Reply, 0);
-            AddLabel(55, 129, 0x44,  "Party Portal  (+10%)");
+            AddLabel(55, 129, 0x44,  "Party Portal  (33% fee)");
             AddLabel(55, 146, 1153, "Gate for your whole party and all pets. Open 60 seconds.");
 
             // ── Solo Full Assistance ─────────────────────────────
             AddButton(20, 176, 0xFA5, 0xFA7, BTN_FULL, GumpButtonType.Reply, 0);
-            AddLabel(55, 177, 0x44,  "Solo Full Assistance");
+            AddLabel(55, 177, 0x44,  "Solo Full Assistance  (50% fee)");
             AddLabel(55, 194, 1153, "I travel with you, dig, disarm and unlock. You and pets teleported.");
 
             // ── Party Full Assistance ────────────────────────────
             AddButton(20, 224, 0xFA5, 0xFA7, BTN_PARTY_FULL, GumpButtonType.Reply, 0);
-            AddLabel(55, 225, 0x44,  "Party Full Assistance  (+10%)");
+            AddLabel(55, 225, 0x44,  "Party Full Assistance  (55% fee)");
             AddLabel(55, 242, 1153, "Same — whole party and all pets teleported.");
 
             // ── Solo Decode + Full ───────────────────────────────
             AddButton(20, 272, 0xFA5, 0xFA7, BTN_DECODE_FULL, GumpButtonType.Reply, 0);
-            AddLabel(55, 273, 0x44,  "Solo Decode + Full Assistance");
+            AddLabel(55, 273, 0x44,  "Solo Decode + Full Assistance  (80% fee)");
             AddLabel(55, 290, 1153, "I decode the map, travel with you, dig, disarm and unlock.");
 
             // ── Party Decode + Full ──────────────────────────────
             AddButton(20, 320, 0xFA5, 0xFA7, BTN_PARTY_DECODE_FULL, GumpButtonType.Reply, 0);
-            AddLabel(55, 321, 0x44,  "Party Decode + Full Assistance  (+10%)");
+            AddLabel(55, 321, 0x44,  "Party Decode + Full Assistance  (88% fee)");
             AddLabel(55, 338, 1153, "Same — decodes undecoded map, whole party and pets.");
 
             AddButton(420, 10, 0xFB1, 0xFB2, BTN_CLOSE, GumpButtonType.Reply, 0);

@@ -98,6 +98,46 @@ namespace Server.Custom
 
         public EssenceShard(Serial serial) : base(serial) { }
 
+        // ── Grid-loot stack fix ───────────────────────────────────────────
+        // Graphic 0x1F19 lacks the TileData stackable flag, so the client
+        // sends LiftReq amount=1 instead of the full stack.  We intercept
+        // the split: when the player picks up 1 shard from a larger stack,
+        // the remainder is automatically pushed into their backpack.
+        //
+        [NonSerialized]
+        private Mobile _pendingLifter;
+
+        public override bool OnDragLift(Mobile from)
+        {
+            if (Amount > 1)
+                _pendingLifter = from;
+            return true;
+        }
+
+        public override void OnAfterDuped(Item remainder)
+        {
+            base.OnAfterDuped(remainder);
+
+            var mob = _pendingLifter;
+            _pendingLifter = null;
+
+            if (mob == null || !(remainder is EssenceShard) || remainder.Deleted)
+                return;
+
+            // Fire after the engine finishes placing the remainder in the corpse.
+            Timer.DelayCall(TimeSpan.FromMilliseconds(50), () =>
+            {
+                if (mob.Deleted || !mob.Alive || remainder.Deleted) return;
+
+                if (mob.Backpack != null && mob.Backpack.TryDropItem(mob, remainder, false))
+                    return; // stacked or added to pack
+
+                // Pack full — drop at feet so nothing is lost
+                remainder.MoveToWorld(mob.Location, mob.Map);
+            });
+        }
+        // ─────────────────────────────────────────────────────────────────
+
         public override void GetProperties(ObjectPropertyList list)
         {
             base.GetProperties(list);
