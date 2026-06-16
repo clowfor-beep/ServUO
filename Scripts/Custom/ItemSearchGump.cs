@@ -436,7 +436,7 @@ namespace Server.Gumps
     public class ItemSearchResultsGump : Gump
     {
         private const int PerPage   = 25;
-        private const int RowHeight = 18;
+        private const int RowHeight = 20;
 
         private static int LabelColor = 0x4BBD;
         private static int TextColor  = 0x9C2;
@@ -460,19 +460,25 @@ namespace Server.Gumps
 
         private void Build()
         {
-            // 580 wide × 545 tall:
-            //   header 47px | 25 rows × 18px = 450px | footer 48px = 545
-            AddBackground(0, 0, 580, 545, 30536);
+            // 580 wide × 582 tall:
+            //   header 50px | 25 rows × 20px = 500px | footer 32px
+            AddBackground(0, 0, 580, 582, 30536);
 
             // Title
             AddHtml(10, 8, 560, 18,
                 "<CENTER><BASEFONT COLOR=#7ABDE8>Item Search Results</BASEFONT></CENTER>",
                 false, false);
 
-            // Column headers
-            AddHtml(30, 28, 220, 16, "<BASEFONT COLOR=#7ABDE8>Item</BASEFONT>", false, false);
-            AddHtml(256, 28, 40,  16, "<BASEFONT COLOR=#7ABDE8>Qty</BASEFONT>", false, false);
-            AddHtml(300, 28, 274, 16, "<BASEFONT COLOR=#7ABDE8>Location</BASEFONT>", false, false);
+            // Header separator
+            AddImageTiled(10, 27, 560, 2, 0x27B);
+
+            // Column headers (aligned to row columns below)
+            AddHtml(83,  30, 185, 16, "<BASEFONT COLOR=#7ABDE8>Item</BASEFONT>",     false, false);
+            AddHtml(272, 30, 40,  16, "<BASEFONT COLOR=#7ABDE8>Qty</BASEFONT>",      false, false);
+            AddHtml(316, 30, 258, 16, "<BASEFONT COLOR=#7ABDE8>Location</BASEFONT>", false, false);
+
+            // Header / rows separator
+            AddImageTiled(10, 47, 560, 2, 0x27B);
 
             // ── Rows ───────────────────────────────────────────────
             int start = _index;
@@ -484,22 +490,23 @@ namespace Server.Gumps
                 Item item = r.Item;
                 if (item == null || item.Deleted) { shown++; continue; }
 
-                int y = 47 + shown * RowHeight;
+                int y = 50 + shown * RowHeight;
 
-                // Small item icon — no background box
-                AddItem(8, y, item.ItemID, item.Hue);
+                // Icon: invisible-background tiled button so AddItemProperty tooltip works
+                AddImageTiledButton(5, y, 0, 0, 0, GumpButtonType.Page, 0,
+                    item.ItemID, item.Hue, 0, 0);
                 AddItemProperty(item);
 
                 // Item name
                 string name = VendorSearch.GetItemName(item) ?? ItemSearchGump.GetLabel(item);
-                AddHtmlLocalized(30, y, 220, RowHeight, 1114513, name, TextColor, false, false);
+                AddHtmlLocalized(83, y, 185, RowHeight, 1114513, name, TextColor, false, false);
 
                 // Qty
                 string qty = item.Amount > 1 ? item.Amount.ToString() : "-";
-                AddHtmlLocalized(256, y, 40, RowHeight, 1114513, qty, TextColor, false, false);
+                AddHtmlLocalized(272, y, 40, RowHeight, 1114513, qty, TextColor, false, false);
 
                 // Location
-                AddHtmlLocalized(300, y, 274, RowHeight, 1114513, r.Location, TextColor, false, false);
+                AddHtmlLocalized(316, y, 258, RowHeight, 1114513, r.Location, TextColor, false, false);
 
                 shown++;
             }
@@ -508,28 +515,31 @@ namespace Server.Gumps
             int totalPages = (_results.Count + PerPage - 1) / PerPage;
             int curPage    = _index / PerPage + 1;
 
-            AddHtml(10, 508, 200, 16,
+            // Footer separator
+            AddImageTiled(10, 553, 560, 2, 0x27B);
+
+            AddHtml(10, 558, 200, 18,
                 string.Format("<BASEFONT COLOR=#BBBBBB>{0} result{1}  —  page {2}/{3}</BASEFONT>",
                     _results.Count, _results.Count == 1 ? "" : "s", curPage, totalPages),
                 false, false);
 
             if (_index + PerPage < _results.Count)
             {
-                AddButton(540, 506, 30534, 30534, 2, GumpButtonType.Reply, 0);
-                AddHtml(458, 508, 78, 16,
+                AddButton(540, 556, 30534, 30534, 2, GumpButtonType.Reply, 0);
+                AddHtml(456, 558, 80, 18,
                     "<BASEFONT COLOR=#7ABDE8>NEXT PAGE</BASEFONT>", false, false);
             }
 
             if (_index >= PerPage)
             {
-                AddButton(218, 506, 30533, 30533, 3, GumpButtonType.Reply, 0);
-                AddHtml(238, 508, 90, 16,
+                AddButton(218, 556, 30533, 30533, 3, GumpButtonType.Reply, 0);
+                AddHtml(238, 558, 90, 18,
                     "<BASEFONT COLOR=#7ABDE8>PREV PAGE</BASEFONT>", false, false);
             }
 
             // Refine button
-            AddButton(335, 506, 30533, 30533, 4, GumpButtonType.Reply, 0);
-            AddHtml(355, 508, 60, 16,
+            AddButton(335, 556, 30533, 30533, 4, GumpButtonType.Reply, 0);
+            AddHtml(355, 558, 60, 18,
                 "<BASEFONT COLOR=#7ABDE8>Refine</BASEFONT>", false, false);
         }
 
