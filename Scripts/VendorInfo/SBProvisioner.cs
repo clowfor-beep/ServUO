@@ -17,9 +17,11 @@ namespace Server.Mobiles
             {
                 Add(new GenericBuyInfo("1060834", typeof(Engines.Plants.PlantBowl), 2, 20, 0x15FD, 0));
 
-                // Repair deeds — Smithing and Tailoring (provisioners stock both)
-                Add(new GenericBuyInfo(typeof(RepairDeed), 2000, 10, 0x14F0, 0, new object[] { RepairSkillType.Smithing,  100.0 }));
-                Add(new GenericBuyInfo(typeof(RepairDeed), 2000, 10, 0x14F0, 0, new object[] { RepairSkillType.Tailoring, 100.0 }));
+                // Repair deeds — all four craft skills
+                Add(new GenericBuyInfo(typeof(RepairDeed), 2000, 10, 0x14F0, 0, new object[] { RepairSkillType.Smithing,   100.0 }));
+                Add(new GenericBuyInfo(typeof(RepairDeed), 2000, 10, 0x14F0, 0, new object[] { RepairSkillType.Tailoring,  100.0 }));
+                Add(new GenericBuyInfo(typeof(RepairDeed), 2000, 10, 0x14F0, 0, new object[] { RepairSkillType.Tinkering,  100.0 }));
+                Add(new GenericBuyInfo(typeof(RepairDeed), 2000, 10, 0x14F0, 0, new object[] { RepairSkillType.Carpentry,  100.0 }));
 
                 Add(new GenericBuyInfo(typeof(Arrow), 2, 20, 0xF3F, 0, true));
                 Add(new GenericBuyInfo(typeof(Bolt), 5, 20, 0x1BFB, 0, true));

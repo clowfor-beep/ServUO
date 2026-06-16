@@ -20,6 +20,7 @@ namespace Server.Mobiles
         {
             public InternalBuyInfo(BaseVendor owner)
             {
+                Add(new GenericBuyInfo(typeof(RepairDeed), 2000, 10, 0x14F0, 0, new object[] { RepairSkillType.Tinkering, 100.0 }));
                 Add(new GenericBuyInfo(typeof(Clock), 22, 20, 0x104B, 0));
                 Add(new GenericBuyInfo(typeof(Nails), 3, 20, 0x102E, 0));
                 Add(new GenericBuyInfo(typeof(ClockParts), 3, 20, 0x104F, 0, true));

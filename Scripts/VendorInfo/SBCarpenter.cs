@@ -15,6 +15,7 @@ namespace Server.Mobiles
         {
             public InternalBuyInfo()
             {
+                Add(new GenericBuyInfo(typeof(RepairDeed), 2000, 10, 0x14F0, 0, new object[] { RepairSkillType.Carpentry, 100.0 }));
                 Add(new GenericBuyInfo(typeof(Nails), 3, 20, 0x102E, 0));
                 Add(new GenericBuyInfo(typeof(Axle), 2, 20, 0x105B, 0, true));
                 Add(new GenericBuyInfo(typeof(Board), 3, 20, 0x1BD7, 0, true));
