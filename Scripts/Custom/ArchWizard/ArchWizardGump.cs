@@ -254,6 +254,35 @@ namespace Server.Custom.ArchWizard
         // ============================================================
         // CHAMPION SPAWN SCANNER
         // ============================================================
+        /// <summary>
+        /// Searches outward from the spawn altar for the first walkable tile,
+        /// using the same CanFit approach as the dig/teleport systems.
+        /// Tries a spiral of increasing radius up to 12 tiles out.
+        /// </summary>
+        private static Point3D FindSafeLandingNear(Point3D center, Map map)
+        {
+            if (map == null || map == Map.Internal) return Point3D.Zero;
+
+            // Check progressively wider rings (3, 6, 9, 12 tiles)
+            for (int radius = 3; radius <= 12; radius += 3)
+            {
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    for (int dy = -radius; dy <= radius; dy++)
+                    {
+                        if (Math.Abs(dx) != radius && Math.Abs(dy) != radius) continue; // ring only
+                        int nx = center.X + dx;
+                        int ny = center.Y + dy;
+                        int nz = map.GetAverageZ(nx, ny);
+                        if (map.CanSpawnMobile(nx, ny, nz))
+                            return new Point3D(nx, ny, nz);
+                    }
+                }
+            }
+
+            return Point3D.Zero;
+        }
+
         private static List<ChampionDestination> GetActiveChampionSpawns()
         {
             var list = new List<ChampionDestination>();
@@ -597,8 +626,10 @@ namespace Server.Custom.ArchWizard
                     _player.SendGump(new ArchWizardGump(_player, _npc, ArchWizardPage.ChampionSpawns));
                     return;
                 }
-                destLoc   = new Point3D(c.Location.X + 5, c.Location.Y + 5, c.Location.Z);
                 destMap   = c.Map;
+                destLoc   = FindSafeLandingNear(c.Location, destMap);
+                if (destLoc == Point3D.Zero)
+                    destLoc = new Point3D(c.Location.X + 5, c.Location.Y + 5, c.Location.Z); // fallback
                 basePrice = ArchWizardNPC.CostChampion;
             }
 
