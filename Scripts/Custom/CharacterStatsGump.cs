@@ -517,7 +517,7 @@ namespace Server.Gumps
             bw.GetDamageTypes(_from, out int phys, out int fire, out int cold, out int pois, out int nrgy, out int chaos, out int direct);
             AddRow(x, ref y, "Elements:", BuildElemString(phys, fire, cold, pois, nrgy, chaos, direct), HValue);
             AddRow(x, ref y, "Base Speed:", $"{bw.WeaponSpeed:F1}", HValue);
-            string onhit = BuildOnHitString(bw);
+            string onhit = BuildOnHitString(bw, _from);
             if (!string.IsNullOrEmpty(onhit))
             { AddLabel(x, y, HLabel, "On-Hit:"); AddLabel(x + LW, y, HValue, onhit); y += RH; }
             return y;
@@ -536,7 +536,7 @@ namespace Server.Gumps
             return parts.Count > 0 ? string.Join(", ", parts) : "100% Physical";
         }
 
-        private string BuildOnHitString(BaseWeapon bw)
+        private string BuildOnHitString(BaseWeapon bw, Mobile m)
         {
             var a = bw.WeaponAttributes; var parts = new List<string>();
             if (a.HitPhysicalArea > 0) parts.Add($"Area Phys {a.HitPhysicalArea}%");
@@ -549,9 +549,14 @@ namespace Server.Gumps
             if (a.HitHarm         > 0) parts.Add($"Harm {a.HitHarm}%");
             if (a.HitMagicArrow   > 0) parts.Add($"Magic Arrow {a.HitMagicArrow}%");
             if (a.HitDispel       > 0) parts.Add($"Dispel {a.HitDispel}%");
-            if (a.HitLeechHits    > 0) parts.Add($"Life Leech {a.HitLeechHits}%");
-            if (a.HitLeechMana    > 0) parts.Add($"Mana Leech {a.HitLeechMana}%");
-            if (a.HitLeechStam    > 0) parts.Add($"Stam Leech {a.HitLeechStam}%");
+            // Leech: aggregate across ALL equipped items (weapon + armor + clothing + jewels)
+            // so that leech on non-weapon items is included — same method the combat engine uses.
+            int lifeLeech = AosWeaponAttributes.GetValue(m, AosWeaponAttribute.HitLeechHits);
+            int manaLeech = AosWeaponAttributes.GetValue(m, AosWeaponAttribute.HitLeechMana);
+            int stamLeech = AosWeaponAttributes.GetValue(m, AosWeaponAttribute.HitLeechStam);
+            if (lifeLeech > 0) parts.Add($"Life Leech {lifeLeech}%");
+            if (manaLeech > 0) parts.Add($"Mana Leech {manaLeech}%");
+            if (stamLeech > 0) parts.Add($"Stam Leech {stamLeech}%");
             if (a.HitManaDrain    > 0) parts.Add($"Mana Drain {a.HitManaDrain}%");
             if (a.HitLowerAttack  > 0) parts.Add($"Lower Atk {a.HitLowerAttack}%");
             if (a.HitLowerDefend  > 0) parts.Add($"Lower Def {a.HitLowerDefend}%");
