@@ -58,6 +58,9 @@ namespace Server.Mobiles
 
         private Item DropTreasureMap(IEntity e)
         {
+            if (Utility.RandomDouble() > 0.05)
+                return null;
+
             return new TreasureMap(Utility.RandomList(0, 0, 0, 1), e.Map, Spells.SpellHelper.IsEodon(e.Map, e.Location));
         }
 
