@@ -1789,7 +1789,7 @@ namespace Server.Mobiles
             m_Mobile.PlaySound(m_Mobile.GetAngerSound());
             Mobile master = m_Mobile.ControlMaster;
 
-            if (m_Mobile.DeleteOnRelease)
+            if (m_Mobile.DeleteOnRelease && master != null)
             {
                 m_Mobile.PrivateOverheadMessage(
                     MessageType.Regular,
