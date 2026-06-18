@@ -102,16 +102,15 @@ namespace Server.Custom
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                     Directory.CreateDirectory(dir);
 
-                using (BinaryFileWriter writer = new BinaryFileWriter(SavePath, true))
+                BinaryFileWriter writer = new BinaryFileWriter(SavePath, true);
+                writer.Write(0); // version
+                writer.Write(_expansions.Count);
+                foreach (var kvp in _expansions)
                 {
-                    writer.Write(0); // version
-                    writer.Write(_expansions.Count);
-                    foreach (var kvp in _expansions)
-                    {
-                        writer.Write((int)kvp.Key); // Serial → int
-                        writer.Write(kvp.Value);
-                    }
+                    writer.Write((int)kvp.Key); // Serial → int
+                    writer.Write(kvp.Value);
                 }
+                writer.Close();
             }
             catch (Exception ex)
             {
