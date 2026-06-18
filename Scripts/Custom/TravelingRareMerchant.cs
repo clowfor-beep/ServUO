@@ -214,6 +214,7 @@ namespace Server.Custom
             (SkillName.DetectHidden, "Detect Hidden"),
             (SkillName.Hiding,       "Hiding"),
             (SkillName.Snooping,     "Snooping"),
+            (SkillName.Poisoning,    "Poisoning"),
         };
 
         // Tier → coin cost
