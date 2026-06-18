@@ -377,10 +377,10 @@ namespace Server.Custom
             ("Hunter's Tabard (cosmetic robe)",               10,  typeof(Robe)),
             ("Hunter's Map (active hunts: dungeon, floor, coords)", 5, typeof(HuntersMap)),
             ("Hunter's Compass (find active hunts)",           8,  typeof(HunterCompass)),
-            ("Lesser Bag of Holding (1 item, -33% weight)",   10,  typeof(LesserBagOfHolding)),
-            ("Bag of Holding (2 items, -50% weight)",         25,  typeof(BagOfHolding)),
-            ("Greater Bag of Holding (4 items, -75% weight)", 50,  typeof(GreaterBagOfHolding)),
-            ("Supreme Bag of Holding (5 items, -100% weight)",100, typeof(SupremeBagOfHolding)),
+            ("Lesser Bag of Holding (1 item, -33% weight)",   15,  typeof(LesserBagOfHolding)),
+            ("Bag of Holding (2 items, -50% weight)",         38,  typeof(BagOfHolding)),
+            ("Greater Bag of Holding (4 items, -75% weight)", 75,  typeof(GreaterBagOfHolding)),
+            ("Supreme Bag of Holding (5 items, -100% weight)",150, typeof(SupremeBagOfHolding)),
             ("Tracking Orb (+3 tracking range)",              20,  typeof(EssenceShard)),
             ("Title Deed: 'the Monster Hunter'",              30,  typeof(Gold)),
             ("Orb of Alacrity (uncommon) — 2x skill gains 10 min",  2,  typeof(OrbOfAlacrity)),
@@ -395,6 +395,8 @@ namespace Server.Custom
             ("Ethereal Beetle Statuette",       100, typeof(EtherealBeetle)),
             ("Ethereal Swamp Dragon Statuette", 150, typeof(EtherealSwampDragon)),
             ("Ethereal Tiger Statuette",        150, typeof(EtherealTiger)),
+            // ── Bank Storage ─────────────────────────────────────────────────
+            ("Bank Expansion Deed (+25 bank slots, max 1000 bonus)", 25, typeof(BankExpansionDeed)),
         };
 
         public HunterShopGump(Mobile from, HunterGuildmaster npc) : base(50, 50)
@@ -604,6 +606,13 @@ namespace Server.Custom
                 case 19: // Ethereal Tiger
                     _from.AddToBackpack(new EtherealTiger());
                     _from.SendMessage(0x35, "You receive an Ethereal Tiger Statuette.");
+                    break;
+
+                case 20: // Bank Expansion Deed
+                    _from.AddToBackpack(new BankExpansionDeed());
+                    _from.SendMessage(0x35,
+                        $"You receive a Bank Expansion Deed. Double-click it to add 25 slots to your bank. " +
+                        $"Current bank: {BankExpansionSystem.GetTotalSlots(_from)} slots.");
                     break;
             }
         }
