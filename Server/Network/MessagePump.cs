@@ -158,12 +158,21 @@ namespace Server.Network
 			{
 				try
 				{
-					int online = NetState.Instances.Count(s => s != null && s.Mobile != null);
+					// Snapshot the list to avoid concurrent modification during iteration
+					var instances = NetState.Instances.ToArray();
+					int online = 0;
+					foreach (var s in instances)
+					{
+						if (s != null && s.Mobile != null)
+							online++;
+					}
+
 					string name = Config.Get("Server.Name", "Aither");
 					byte[] nameBytes = Encoding.ASCII.GetBytes(name);
 
-					// Response matches ServUO variable-length packet format:
-					// [0x7F] [len_hi] [len_lo] [online_hi] [online_lo] [max_hi] [max_lo] [name...] [0x00]
+					Console.WriteLine("[UOServers] Status query from {0}: reporting {1} players online", ns, online);
+
+					// Response: [0x7F][len_hi][len_lo][online_hi][online_lo][max_hi][max_lo][name...][0x00]
 					int totalLen = 7 + nameBytes.Length + 1;
 					var resp = new byte[totalLen];
 					resp[0] = 0x7F;
@@ -178,8 +187,10 @@ namespace Server.Network
 
 					ns.Socket.Send(resp);
 				}
-				catch
-				{ }
+				catch (Exception ex)
+				{
+					Console.WriteLine("[UOServers] Exception in status handler: " + ex.Message);
+				}
 
 				ns.Dispose();
 				return false;
