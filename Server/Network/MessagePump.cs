@@ -162,12 +162,12 @@ namespace Server.Network
 					var instances = NetState.Instances.ToArray();
 					int online = 0;
 					foreach (var s in instances)
-						if (s != null && s.Mobile != null) online++;
+						if (s != null && (s.Mobile != null || s.Account != null)) online++;
 
 					Console.WriteLine("[UOServers] F0 query: reporting {0} players", online);
 
-					// Mirror query format with player count in bytes [3-4]
-					ns.Socket.Send(new byte[] { 0xF0, 0x00, 0x05, (byte)(online >> 8), (byte)(online & 0xFF) });
+					// Count at bytes [1-2], same layout as 0x7F response
+					ns.Socket.Send(new byte[] { 0xF0, (byte)(online >> 8), (byte)(online & 0xFF), 0x09, 0xC4 });
 				}
 				catch (Exception ex)
 				{
@@ -182,12 +182,12 @@ namespace Server.Network
 			{
 				try
 				{
-					// Snapshot the list to avoid concurrent modification during iteration
+					// Count players who are logged in (in-world OR at character select)
 					var instances = NetState.Instances.ToArray();
 					int online = 0;
 					foreach (var s in instances)
 					{
-						if (s != null && s.Mobile != null)
+						if (s != null && (s.Mobile != null || s.Account != null))
 							online++;
 					}
 
@@ -201,8 +201,8 @@ namespace Server.Network
 					int totalLen = 5 + nameBytes.Length + 1;
 					var resp = new byte[totalLen];
 					resp[0] = 0x7F;
-					resp[1] = (byte)(online >> 8);
-					resp[2] = (byte)(online & 0xFF);
+					resp[1] = (byte)(online & 0xFF);
+					resp[2] = (byte)(online >> 8);
 					resp[3] = 0x09; // max 2500 = 0x09C4
 					resp[4] = 0xC4;
 					Array.Copy(nameBytes, 0, resp, 5, nameBytes.Length);
