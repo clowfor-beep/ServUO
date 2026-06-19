@@ -40,8 +40,8 @@ namespace Server.Custom
                 state.Socket.Send(new byte[]
                 {
                     0xF1,
-                    (byte)(online & 0xFF),  // count low byte at [1]
-                    (byte)(online >> 8),    // count high byte at [2]
+                    (byte)(online >> 8),    // count high byte at [1]
+                    (byte)(online & 0xFF),  // count low byte at [2]
                     0x09, 0xC4              // max players 2500
                 });
             }
