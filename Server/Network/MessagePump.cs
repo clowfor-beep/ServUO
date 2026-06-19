@@ -154,6 +154,30 @@ namespace Server.Network
 		{
 			// Handle external server status queries (e.g. uoservers.com monitoring)
 			// These arrive as 3 bytes: 0x7F 0x00 0x00 — before any seed is sent
+			// Handle uoservers.com "Check Server" probe: F0 00 05 01 01
+			if (buffer.GetPacketID() == 0xF0)
+			{
+				try
+				{
+					var instances = NetState.Instances.ToArray();
+					int online = 0;
+					foreach (var s in instances)
+						if (s != null && s.Mobile != null) online++;
+
+					Console.WriteLine("[UOServers] F0 query: reporting {0} players", online);
+
+					// Mirror query format with player count in bytes [3-4]
+					ns.Socket.Send(new byte[] { 0xF0, 0x00, 0x05, (byte)(online >> 8), (byte)(online & 0xFF) });
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine("[UOServers] F0 exception: " + ex.Message);
+				}
+
+				ns.Dispose();
+				return false;
+			}
+
 			if (buffer.GetPacketID() == 0x7F)
 			{
 				try
