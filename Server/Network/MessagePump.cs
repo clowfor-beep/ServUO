@@ -172,18 +172,17 @@ namespace Server.Network
 
 					Console.WriteLine("[UOServers] Status query from {0}: reporting {1} players online", ns, online);
 
-					// Response: [0x7F][len_hi][len_lo][online_hi][online_lo][max_hi][max_lo][name...][0x00]
-					int totalLen = 7 + nameBytes.Length + 1;
+					// Response (no length header — count goes directly at bytes [1-2]):
+					// [0x7F][online_hi][online_lo][max_hi][max_lo][name...][0x00]
+					int totalLen = 5 + nameBytes.Length + 1;
 					var resp = new byte[totalLen];
 					resp[0] = 0x7F;
-					resp[1] = (byte)(totalLen >> 8);
-					resp[2] = (byte)(totalLen & 0xFF);
-					resp[3] = (byte)(online >> 8);
-					resp[4] = (byte)(online & 0xFF);
-					resp[5] = 0x09; // max 2500 = 0x09C4
-					resp[6] = 0xC4;
-					Array.Copy(nameBytes, 0, resp, 7, nameBytes.Length);
-					// resp[7 + nameBytes.Length] = 0x00; // already zero-initialised
+					resp[1] = (byte)(online >> 8);
+					resp[2] = (byte)(online & 0xFF);
+					resp[3] = 0x09; // max 2500 = 0x09C4
+					resp[4] = 0xC4;
+					Array.Copy(nameBytes, 0, resp, 5, nameBytes.Length);
+					// resp[5 + nameBytes.Length] = 0x00; // already zero-initialised
 
 					ns.Socket.Send(resp);
 				}
