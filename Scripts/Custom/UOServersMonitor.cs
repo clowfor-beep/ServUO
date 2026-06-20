@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text;
 using Server.Network;
 
 namespace Server.Custom
@@ -7,7 +8,8 @@ namespace Server.Custom
     /// <summary>
     /// Handles uoservers.com status checks.
     /// Protocol: client sends seed 7F 00 00 01, then packet F1 00 04 FF.
-    /// We respond to F1 with player count and close the connection.
+    /// uoservers.com parses the response as plain text, looking for "Clients=N"
+    /// in a comma-separated Key=Value format.
     /// </summary>
     public static class UOServersMonitor
     {
@@ -37,13 +39,10 @@ namespace Server.Custom
 
                 Console.WriteLine("[UOServers] F1 status query from {0}: reporting {1} players", state, online);
 
-                state.Socket.Send(new byte[]
-                {
-                    0xF1,
-                    (byte)(online & 0xFF),  // count low byte at [1] — uoservers.com reads byte[1]
-                    (byte)(online >> 8),    // count high byte at [2]
-                    0x09, 0xC4              // max players 2500
-                });
+                // uoservers.com parses plain text Key=Value, looks for "Clients=N"
+                string response = string.Format("Name=AIther UO,Clients={0},MaxPlayers=2500", online);
+                byte[] responseBytes = Encoding.ASCII.GetBytes(response);
+                state.Socket.Send(responseBytes);
             }
             catch (Exception ex)
             {
