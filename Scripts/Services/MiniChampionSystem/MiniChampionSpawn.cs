@@ -21,7 +21,7 @@ namespace Server.Engines.MiniChamps
         [Description("MiniChampion Generator")]
         public static void GenStoneRuins_OnCommand(CommandEventArgs e)
         {
-            foreach (MiniChamp controller in Controllers)
+            foreach (MiniChamp controller in new List<MiniChamp>(Controllers))
             {
                 controller.Delete();
             }
